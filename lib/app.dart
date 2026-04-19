@@ -28,7 +28,8 @@ class _BootstrapHome extends StatelessWidget {
         child: Padding(
           padding: EdgeInsets.all(24),
           child: Text(
-            'Phase 0 bootstrap complete.\nFeed in the Phase 1 prompt to begin.',
+            'Phase 1 complete: audio capture + VAD library landed.\n'
+            'No UI in this phase — drive CaptureService programmatically.',
             textAlign: TextAlign.center,
           ),
         ),
