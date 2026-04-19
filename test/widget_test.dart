@@ -8,6 +8,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('VoxSynth'), findsOneWidget);
-    expect(find.textContaining('Phase 1 complete'), findsOneWidget);
+    expect(find.textContaining('Phase 3 complete'), findsOneWidget);
   });
 }

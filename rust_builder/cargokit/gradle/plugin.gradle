@@ -80,6 +80,15 @@ abstract class CargoKitBuildTask extends DefaultTask {
             environment "CARGOKIT_MIN_SDK_VERSION", minSdkVersion
             environment "CARGOKIT_TARGET_PLATFORMS", targetPlatforms.join(",")
             environment "CARGOKIT_JAVA_HOME", System.properties['java.home']
+            // candle → gemm-f16 uses ARMv8.2 fullfp16 SIMD. Android's
+            // arm64-v8a baseline is v8-A without fp16; without this flag
+            // rustc emits "instruction requires: fullfp16". Any phone
+            // that can run a ~770MB LLM is v8.2+ so this is safe.
+            //
+            // cargokit merges its libgcc workaround into CARGO_ENCODED_RUSTFLAGS
+            // (\x1f-separated), so we prepend our target-feature flag into
+            // the same env var. \u001f is the ASCII Unit Separator.
+            environment "CARGO_ENCODED_RUSTFLAGS", "-C\u001ftarget-feature=+fp16,+fullfp16"
         }
     }
 }

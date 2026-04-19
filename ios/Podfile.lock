@@ -22,7 +22,7 @@ PODS:
     - SQLCipher (~> 4.10.0)
   - voxsynth_asr (0.0.1):
     - Flutter
-  - workmanager (0.0.1):
+  - workmanager_apple (0.0.1):
     - Flutter
 
 DEPENDENCIES:
@@ -34,7 +34,7 @@ DEPENDENCIES:
   - record_darwin (from `.symlinks/plugins/record_darwin/ios`)
   - sqlcipher_flutter_libs (from `.symlinks/plugins/sqlcipher_flutter_libs/ios`)
   - voxsynth_asr (from `.symlinks/plugins/voxsynth_asr/ios`)
-  - workmanager (from `.symlinks/plugins/workmanager/ios`)
+  - workmanager_apple (from `.symlinks/plugins/workmanager_apple/ios`)
 
 SPEC REPOS:
   trunk:
@@ -58,8 +58,8 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/sqlcipher_flutter_libs/ios"
   voxsynth_asr:
     :path: ".symlinks/plugins/voxsynth_asr/ios"
-  workmanager:
-    :path: ".symlinks/plugins/workmanager/ios"
+  workmanager_apple:
+    :path: ".symlinks/plugins/workmanager_apple/ios"
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
@@ -72,7 +72,7 @@ SPEC CHECKSUMS:
   SQLCipher: eb79c64049cb002b4e9fcb30edb7979bf4706dfc
   sqlcipher_flutter_libs: ae224763b087bffb3a5955fe295a1c460d458cb1
   voxsynth_asr: fdcfbeaf47b197417330fd244d2b22b0cabf7184
-  workmanager: 01be2de7f184bd15de93a1812936a2b7f42ef07e
+  workmanager_apple: 904529ae31e97fc5be632cf628507652294a0778
 
 PODFILE CHECKSUM: 7adc493ed3f25f0049bd8c04b40918a9f59c679a
 
