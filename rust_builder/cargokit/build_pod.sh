@@ -49,6 +49,17 @@ do
   fi
 done
 
+SLICER="$CARGOKIT_ROOT_PROJECT_DIR/../scripts/slice_sherpa_ios.sh"
+
+# VoxSynth: sherpa-rs-sys ships iOS sidecar libs as fat archives and rust's
+# linker rejects them ("Unsupported archive identifier"). First pass primes
+# the sherpa-rs cache; slicer converts fat → thin; second pass links cleanly.
+# A clean cache or cargo rebuild both need this.
+if [ -x "$SLICER" ]; then
+  sh "$BASEDIR/run_build_tool.sh" build-pod "$@" || true
+  bash "$SLICER" || true
+fi
+
 sh "$BASEDIR/run_build_tool.sh" build-pod "$@"
 
 # Make a symlink from built framework to phony file, which will be used as input to
