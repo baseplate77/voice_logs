@@ -45,6 +45,18 @@ fetch "ggml-small-q8_0.bin" \
 fetch "multilingual-e5-small-int8.onnx" \
   "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/onnx/model_qint8_avx512_vnni.onnx"
 
+# multilingual-e5-small — XLM-RoBERTa base weights for candle. Prefer
+# safetensors (clean load) over pytorch_model.bin. The int8 ONNX we used
+# to download is no longer needed — we embed via candle in Phase 4.
+E5_DIR="$MODELS_DIR/e5"
+mkdir -p "$E5_DIR"
+fetch "e5/model.safetensors" \
+  "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/model.safetensors"
+fetch "e5/config.json" \
+  "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/config.json"
+fetch "e5/tokenizer.json" \
+  "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/tokenizer.json"
+
 # Parakeet-TDT-0.6B-v2 (sherpa-onnx int8 export). ~482 MB compressed,
 # expands into assets/models/parakeet/ with encoder/decoder/joiner/tokens.
 PARAKEET_DIR="$MODELS_DIR/parakeet"

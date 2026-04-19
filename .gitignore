@@ -60,6 +60,8 @@ assets/models/*.tflite
 assets/models/*.gguf
 assets/models/parakeet/
 assets/models/gemma/
+assets/models/e5/
+assets/models/*.safetensors
 
 # Rust build output
 /rust/**/target/
