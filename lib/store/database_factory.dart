@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import '../../objectbox.g.dart';
 import '../core/errors.dart';
 import '../core/result.dart';
 import 'app_database.dart';
@@ -59,6 +60,34 @@ Future<Result<AppDatabase, AppError>> openAppDatabase({
       StorageError('failed to open app database', cause: e, stackTrace: st),
     );
   }
+}
+
+/// Open the ObjectBox store that backs the HNSW vector index.
+///
+/// Stored under `<app-documents>/voxsynth-vectors/`. ObjectBox needs
+/// an exclusive lock on that directory, so the `Store` lives as long
+/// as the app; callers pass it into [VoiceLogRepository].
+Future<Result<Store, AppError>> openObjectBoxStore({
+  String dirName = 'voxsynth-vectors',
+}) async {
+  try {
+    final appDir = await getApplicationDocumentsDirectory();
+    final dir = Directory(p.join(appDir.path, dirName));
+    if (!dir.existsSync()) dir.createSync(recursive: true);
+    return Ok<Store, AppError>(await openStore(directory: dir.path));
+  } on Object catch (e, st) {
+    return Err<Store, AppError>(
+      StorageError('failed to open ObjectBox store', cause: e, stackTrace: st),
+    );
+  }
+}
+
+/// Open a throw-away ObjectBox store in a fresh temp directory —
+/// used by tests. Caller must close it (and rm the directory) when done.
+Future<Store> openInMemoryObjectBoxStore() {
+  final dir =
+      Directory.systemTemp.createTempSync('voxsynth-objectbox-test-');
+  return openStore(directory: dir.path);
 }
 
 /// Opens an [AppDatabase] on an in-memory SQLite instance. Used by

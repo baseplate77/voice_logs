@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voxsynth/asr/models/transcript.dart';
 import 'package:voxsynth/capture/models/speech_segment.dart';
+import 'package:voxsynth/embed/embedder.dart';
 import 'package:voxsynth/llm/models/cleaned_transcript.dart';
 import 'package:voxsynth/store/app_database.dart';
 import 'package:voxsynth/store/database_factory.dart';
@@ -55,12 +56,18 @@ CleanedTranscript _sampleCleaned({
       tags: tags,
     );
 
+Future<Embedder> _loadedFakeEmbedder() async {
+  final e = FakeEmbedder();
+  await e.load();
+  return e;
+}
+
 Future<VoiceLogRepository> _makeRepo() async {
   final db = openInMemoryAppDatabase();
   // Force schema creation on a fresh in-memory DB. Drift's
   // MigrationStrategy.onCreate runs on first query.
   await db.customSelect('SELECT 1').get();
-  return VoiceLogRepository(db);
+  return VoiceLogRepository(db, embedder: await _loadedFakeEmbedder());
 }
 
 Future<AppDatabase> _makeDb() async {
@@ -74,7 +81,7 @@ void main() {
     test('writes voice_log, chunks, entities, chunk_entities in one tx',
         () async {
       final db = await _makeDb();
-      final repo = VoiceLogRepository(db);
+      final repo = VoiceLogRepository(db, embedder: await _loadedFakeEmbedder());
 
       final result = await repo.ingest(
         recording: _sampleHandle(),
@@ -106,7 +113,7 @@ void main() {
     test('re-ingesting the same id updates the log row and merges '
         'aliases', () async {
       final db = await _makeDb();
-      final repo = VoiceLogRepository(db);
+      final repo = VoiceLogRepository(db, embedder: await _loadedFakeEmbedder());
 
       await repo.ingest(
         recording: _sampleHandle(),
@@ -271,7 +278,7 @@ void main() {
     test('removes every trace from voice_logs/chunks/fts5/chunk_entities',
         () async {
       final db = await _makeDb();
-      final repo = VoiceLogRepository(db);
+      final repo = VoiceLogRepository(db, embedder: await _loadedFakeEmbedder());
 
       await repo.ingest(
         recording: _sampleHandle(),

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:drift/drift.dart';
@@ -7,25 +8,56 @@ import '../asr/models/transcript.dart';
 import '../capture/models/speech_segment.dart';
 import '../core/errors.dart';
 import '../core/result.dart';
+import '../embed/embedder.dart';
 import '../llm/models/cleaned_transcript.dart';
 import 'app_database.dart';
 import 'models/voice_log_record.dart';
+import 'vector_index.dart';
+
+/// How audio files get deleted on cascade. File I/O is abstracted so
+/// tests don't need a real filesystem; production just passes
+/// `File(path).delete`.
+typedef AudioFileDeleter = Future<void> Function(String path);
 
 /// High-level store for voice logs — the layer every other piece of the
 /// app uses to read and write persisted data.
 ///
-/// Phase 4b scope: Drift-backed CRUD + FTS5 keyword search. Vector
-/// search is a stub; Phase 4c wires it to an ObjectBox HNSW index and
-/// that's where [vectorSearch] starts returning real results.
+/// Four stores behind the scenes:
+///   1. Drift / SQLCipher (Phase 4b): voice_logs, transcript_chunks,
+///      entities, chunk_entities + FTS5.
+///   2. ObjectBox (Phase 4c): HNSW index of chunk embeddings keyed by
+///      `chunks.objectbox_id`.
+///   3. Embedder (Phase 4a): produces the vectors during ingest.
+///   4. Filesystem: audio WAVs; [deleteLog] removes the file too.
 ///
 /// Every public method returns a [Result]. Storage failures (disk
 /// full, SQLCipher key mismatch, schema violation) surface as
 /// [StorageError]; programmer errors (passing an empty transcript to
 /// `ingest`) throw.
 class VoiceLogRepository {
-  VoiceLogRepository(this._db);
+  VoiceLogRepository(
+    this._db, {
+    required Embedder embedder,
+    VectorIndex? vectorIndex,
+    AudioFileDeleter? audioFileDeleter,
+  })  : _embedder = embedder,
+        _vectorIndex = vectorIndex,
+        _audioFileDeleter = audioFileDeleter ?? _defaultDeleteAudioFile;
 
   final AppDatabase _db;
+  final Embedder _embedder;
+
+  /// Nullable so tests that don't care about vectors (Phase 4b-era
+  /// tests) can skip the vector pipeline. When null, ingest writes no
+  /// vectors and vectorSearch returns an empty list.
+  final VectorIndex? _vectorIndex;
+
+  final AudioFileDeleter _audioFileDeleter;
+
+  static Future<void> _defaultDeleteAudioFile(String path) async {
+    final f = File(path);
+    if (f.existsSync()) await f.delete();
+  }
 
   /// Write a full recording + its cleaned transcript in one
   /// transaction. Returns the [VoiceLogId] of the inserted row.
@@ -152,7 +184,42 @@ class VoiceLogRepository {
                 );
           }
         }
+
+        // Stash the inserted chunk ids on the outer closure so the
+        // post-transaction vector write can key each embedding to its
+        // chunk row.
+        _pendingChunkIds = insertedChunkIds;
       });
+      final chunkIds = _pendingChunkIds;
+      _pendingChunkIds = const <int>[];
+
+      // Vectors live OUTSIDE the Drift transaction — ObjectBox isn't
+      // enrolled in it, and holding the Drift tx open while we embed
+      // would serialise everything. A mid-crash here leaves chunks
+      // with `objectbox_id = 0`; [cleanupOrphanVectors] reconciles on
+      // next startup. Phase 7's re-embed job would re-fill them.
+      final index = _vectorIndex;
+      if (index != null && chunkIds.isNotEmpty) {
+        final texts = cleaned.chunks
+            .map((c) => c.text)
+            .toList(growable: false);
+        final embedResult = await _embedder.embedPassages(texts);
+        if (embedResult.isErr) {
+          // Chunks are durable already — we just didn't index them.
+          return Err<VoiceLogId, AppError>(embedResult.errOrNull!);
+        }
+        final vectors = embedResult.okOrNull!;
+        for (var i = 0; i < chunkIds.length; i++) {
+          final vId = index.put(
+            logId: recording.id,
+            embedding: vectors[i],
+          );
+          await (_db.update(_db.transcriptChunks)
+                ..where((c) => c.id.equals(chunkIds[i])))
+              .write(TranscriptChunksCompanion(objectboxId: Value(vId)));
+        }
+      }
+
       return Ok<VoiceLogId, AppError>(VoiceLogId(recording.id));
     } on Object catch (e, st) {
       return Err<VoiceLogId, AppError>(
@@ -160,6 +227,11 @@ class VoiceLogRepository {
       );
     }
   }
+
+  /// Holds chunk ids from the most recent ingest transaction so the
+  /// post-transaction vector-write step can key each embedding back
+  /// to its chunk row. Written inside the tx, read once outside.
+  List<int> _pendingChunkIds = const <int>[];
 
   /// BM25-ranked keyword search across all chunks.
   Future<Result<List<ChunkRecord>, AppError>> keywordSearch(
@@ -193,14 +265,50 @@ class VoiceLogRepository {
     }
   }
 
-  /// Vector search stub. Phase 4c replaces this with an ObjectBox HNSW
-  /// query; until then it always returns an empty list.
-  // ignore: use_setters_to_change_properties
+  /// Cosine-similarity search against the ObjectBox HNSW index.
+  /// Returns chunks ordered most-similar first. The caller owns query
+  /// embedding (prefixed with `"query: "` and L2-normalised by the
+  /// [Embedder]).
   Future<Result<List<ChunkRecord>, AppError>> vectorSearch(
     Float32List queryVec, {
     int limit = 20,
-  }) async =>
-      const Ok<List<ChunkRecord>, AppError>(<ChunkRecord>[]);
+  }) async {
+    final index = _vectorIndex;
+    if (index == null) {
+      return const Ok<List<ChunkRecord>, AppError>(<ChunkRecord>[]);
+    }
+    if (queryVec.length != _embedder.embeddingDim) {
+      return Err<List<ChunkRecord>, AppError>(
+        StorageError(
+          'queryVec has dim ${queryVec.length}, '
+          'expected ${_embedder.embeddingDim}',
+        ),
+      );
+    }
+    try {
+      final matches = index.nearest(queryVec, limit);
+      if (matches.isEmpty) {
+        return const Ok<List<ChunkRecord>, AppError>(<ChunkRecord>[]);
+      }
+      // Preserve VectorIndex ordering while doing a single
+      // Drift IN () lookup to hydrate the chunk rows.
+      final vectorIds = matches.map((m) => m.vectorId).toList();
+      final chunkRows = await (_db.select(_db.transcriptChunks)
+            ..where((c) => c.objectboxId.isIn(vectorIds)))
+          .get();
+      final byVectorId = {for (final r in chunkRows) r.objectboxId: r};
+      final ordered = <ChunkRecord>[];
+      for (final match in matches) {
+        final row = byVectorId[match.vectorId];
+        if (row != null) ordered.add(_toChunkRecord(row));
+      }
+      return Ok<List<ChunkRecord>, AppError>(ordered);
+    } on Object catch (e, st) {
+      return Err<List<ChunkRecord>, AppError>(
+        StorageError('vectorSearch failed', cause: e, stackTrace: st),
+      );
+    }
+  }
 
   /// Fetch a log and its chunks + entities. Returns null (wrapped in
   /// [Ok]) when the id doesn't exist.
@@ -267,16 +375,36 @@ class VoiceLogRepository {
     }
   }
 
-  /// Atomic delete across voice_logs → chunks → chunk_entities → FTS5.
-  /// Entities are left alone (may still be referenced by other logs;
-  /// orphan cleanup is an offline job).
+  /// Delete a log across every store: ObjectBox vectors → audio file
+  /// → Drift rows (voice_logs + transcript_chunks + chunk_entities +
+  /// FTS5 via triggers).
   ///
-  /// NOTE: Phase 4c adds an ObjectBox delete call inside this
-  /// transaction. Also deletes the audio file on disk; not yet wired
-  /// (tracked — deleting orphaned WAVs also happens in the 4c cleanup
-  /// job when the log row is already gone).
+  /// Ordering matters: vectors first (keyed by logId index) because a
+  /// crash mid-cascade is recoverable via Drift's FK integrity —
+  /// orphaned vectors are detected by [cleanupOrphanVectors] on next
+  /// boot. If Drift was deleted first we'd be chasing phantom row ids
+  /// in the vector store with no way to match them back.
+  ///
+  /// Entities are intentionally NOT cascade-deleted — they can still
+  /// be referenced by other logs.
   Future<Result<void, AppError>> deleteLog(VoiceLogId id) async {
     try {
+      // 1. Vectors, keyed by logId (denormalised onto ChunkVector).
+      _vectorIndex?.removeByLogId(id.raw);
+
+      // 2. Audio file. Look it up before deleting the log row.
+      final log = await (_db.select(_db.voiceLogs)
+            ..where((l) => l.id.equals(id.raw)))
+          .getSingleOrNull();
+      if (log != null) {
+        try {
+          await _audioFileDeleter(log.audioPath);
+        } on Object catch (_) {
+          // Non-fatal: audio file may already be gone on a retry.
+        }
+      }
+
+      // 3. Drift rows.
       await _db.transaction(() async {
         final chunkIds = await (_db.selectOnly(_db.transcriptChunks)
               ..addColumns([_db.transcriptChunks.id])
@@ -302,6 +430,42 @@ class VoiceLogRepository {
     } on Object catch (e, st) {
       return Err<void, AppError>(
         StorageError('deleteLog failed', cause: e, stackTrace: st),
+      );
+    }
+  }
+
+  /// Remove ChunkVector rows that no longer have a matching chunk in
+  /// Drift. Should be called once at app startup — resolves the gap
+  /// between ObjectBox and Drift when a crash split the two stores.
+  ///
+  /// Returns the number of vectors removed.
+  Future<Result<int, AppError>> cleanupOrphanVectors() async {
+    final index = _vectorIndex;
+    if (index == null) return const Ok<int, AppError>(0);
+    try {
+      final vectorIds = index.allIds();
+      if (vectorIds.isEmpty) return const Ok<int, AppError>(0);
+      final usedRows = await (_db.selectOnly(_db.transcriptChunks)
+            ..addColumns([_db.transcriptChunks.objectboxId])
+            ..where(_db.transcriptChunks.objectboxId.isIn(vectorIds)))
+          .get();
+      final used = <int>{
+        for (final r in usedRows)
+          r.read(_db.transcriptChunks.objectboxId) ?? 0,
+      };
+      final orphaned =
+          vectorIds.where((id) => !used.contains(id)).toList(growable: false);
+      if (orphaned.isNotEmpty) {
+        index.removeByIds(orphaned);
+      }
+      return Ok<int, AppError>(orphaned.length);
+    } on Object catch (e, st) {
+      return Err<int, AppError>(
+        StorageError(
+          'cleanupOrphanVectors failed',
+          cause: e,
+          stackTrace: st,
+        ),
       );
     }
   }
