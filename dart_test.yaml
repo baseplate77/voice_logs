@@ -1,0 +1,13 @@
+# Integration tests self-skip when their model files aren't present, so
+# default `flutter test` runs are safe. Registering the tag here just
+# silences "A tag was used that wasn't specified" warnings.
+#
+# To run only integration tests:
+#   flutter test --tags integration
+#
+# To skip them during CI, they already self-skip when
+# assets/models/{gemma,parakeet}/ are empty.
+
+tags:
+  integration:
+    timeout: 5x

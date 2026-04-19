@@ -26,18 +26,15 @@ void main() {
     final modelDir = '${Directory.current.path}/assets/models/parakeet';
     final wavPath = '$modelDir/test_wavs/0.wav';
 
-    setUpAll(() {
-      if (!File('$modelDir/encoder.int8.onnx').existsSync()) {
-        throw StateError(
-          'Parakeet model missing at $modelDir. Run scripts/fetch_models.sh.',
-        );
-      }
-      if (!File(wavPath).existsSync()) {
-        throw StateError('Test WAV missing at $wavPath');
-      }
-    });
-
     test('load + transcribe a 16 kHz WAV returns English text', () async {
+      if (!File('$modelDir/encoder.int8.onnx').existsSync() ||
+          !File(wavPath).existsSync()) {
+        markTestSkipped(
+          'Parakeet model not present at $modelDir — run scripts/fetch_models.sh '
+          'to opt into this test.',
+        );
+        return;
+      }
       final runner = ParakeetRunner(modelDir: modelDir);
 
       final loadResult = await runner.load();

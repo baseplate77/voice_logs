@@ -8,9 +8,20 @@ crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 flutter_rust_bridge = "=2.11.1"
+
 # sherpa-rs wraps the C++ sherpa-onnx runtime. Handles Parakeet-TDT
 # encoder/decoder/joiner inference + transducer beam search for us.
 sherpa-rs = "0.6"
+
+# candle — pure-Rust ML inference for Gemma 3. Chosen over flutter_gemma
+# to avoid the abseil symbol clash with sherpa-onnx documented in Phase 2c.
+candle-core = "0.10"
+candle-nn = "0.10"
+candle-transformers = "0.10"
+tokenizers = { version = "0.21", default-features = false, features = ["onig"] }
+
+# Error helpers used by the candle LLM loop.
+anyhow = "1"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

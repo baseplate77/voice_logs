@@ -64,8 +64,16 @@ else
 fi
 
 echo ""
-echo "Gemma (gemma-4-it-int4.task) requires Kaggle auth — place manually."
-echo "See assets/models/README.md."
+
+# Gemma 3 1B IT — Q4_K_M GGUF + matching tokenizer.
+# The official google/gemma-3-* repos are gated; bartowski mirrors the
+# quantized weights and unsloth mirrors the tokenizer without auth.
+GEMMA_DIR="$MODELS_DIR/gemma"
+mkdir -p "$GEMMA_DIR"
+fetch "gemma/gemma-3-1b-it-Q4_K_M.gguf" \
+  "https://huggingface.co/bartowski/google_gemma-3-1b-it-GGUF/resolve/main/google_gemma-3-1b-it-Q4_K_M.gguf"
+fetch "gemma/tokenizer.json" \
+  "https://huggingface.co/unsloth/gemma-3-1b-it/resolve/main/tokenizer.json"
 echo ""
 echo "Done. Files in $MODELS_DIR:"
 ls -lh "$MODELS_DIR" | grep -v '^total' | grep -v 'README.md'

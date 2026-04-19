@@ -3,15 +3,14 @@
 
 // ignore_for_file: unused_import, unused_element, unnecessary_import, duplicate_ignore, invalid_use_of_internal_member, annotate_overrides, non_constant_identifier_names, curly_braces_in_flow_control_structures, prefer_const_literals_to_create_immutables, unused_field
 
+import 'api/asr.dart';
+import 'api/llm.dart';
 import 'dart:async';
 import 'dart:convert';
-
-import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
-
-import 'api/asr.dart';
 import 'frb_generated.dart';
 import 'frb_generated.io.dart'
     if (dart.library.js_interop) 'frb_generated.web.dart';
+import 'package:flutter_rust_bridge/flutter_rust_bridge_for_generated.dart';
 
 /// Main entrypoint of the Rust API
 class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
@@ -68,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -2125195637;
+  int get rustContentHash => -1285382902;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -81,9 +80,24 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
 abstract class RustLibApi extends BaseApi {
   Future<void> crateApiAsrDispose();
 
+  Future<void> crateApiLlmDisposeLlm();
+
+  Future<String> crateApiLlmGenerateSync({
+    required String prompt,
+    required int maxTokens,
+    required double temperature,
+  });
+
   Future<void> crateApiInitInitApp();
 
+  Future<bool> crateApiLlmIsGemmaLoaded();
+
   Future<bool> crateApiAsrIsLoaded();
+
+  Future<void> crateApiLlmLoadGemma({
+    required String modelPath,
+    required String tokenizerPath,
+  });
 
   Future<void> crateApiAsrLoadParakeet({
     required String modelDir,
@@ -126,10 +140,10 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   TaskConstMeta get kCrateApiAsrDisposeConstMeta =>
-      const TaskConstMeta(debugName: 'dispose', argNames: []);
+      const TaskConstMeta(debugName: "dispose", argNames: []);
 
   @override
-  Future<void> crateApiInitInitApp() {
+  Future<void> crateApiLlmDisposeLlm() {
     return handler.executeNormal(
       NormalTask(
         callFfi: (port_) {
@@ -145,6 +159,69 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeSuccessData: sse_decode_unit,
           decodeErrorData: null,
         ),
+        constMeta: kCrateApiLlmDisposeLlmConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLlmDisposeLlmConstMeta =>
+      const TaskConstMeta(debugName: "dispose_llm", argNames: []);
+
+  @override
+  Future<String> crateApiLlmGenerateSync({
+    required String prompt,
+    required int maxTokens,
+    required double temperature,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(prompt, serializer);
+          sse_encode_i_32(maxTokens, serializer);
+          sse_encode_f_32(temperature, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 3,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLlmGenerateSyncConstMeta,
+        argValues: [prompt, maxTokens, temperature],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLlmGenerateSyncConstMeta => const TaskConstMeta(
+    debugName: "generate_sync",
+    argNames: ["prompt", "maxTokens", "temperature"],
+  );
+
+  @override
+  Future<void> crateApiInitInitApp() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 4,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: null,
+        ),
         constMeta: kCrateApiInitInitAppConstMeta,
         argValues: [],
         apiImpl: this,
@@ -153,7 +230,34 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   TaskConstMeta get kCrateApiInitInitAppConstMeta =>
-      const TaskConstMeta(debugName: 'init_app', argNames: []);
+      const TaskConstMeta(debugName: "init_app", argNames: []);
+
+  @override
+  Future<bool> crateApiLlmIsGemmaLoaded() {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 5,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_bool,
+          decodeErrorData: null,
+        ),
+        constMeta: kCrateApiLlmIsGemmaLoadedConstMeta,
+        argValues: [],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLlmIsGemmaLoadedConstMeta =>
+      const TaskConstMeta(debugName: "is_gemma_loaded", argNames: []);
 
   @override
   Future<bool> crateApiAsrIsLoaded() {
@@ -164,7 +268,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 3,
+            funcId: 6,
             port: port_,
           );
         },
@@ -180,7 +284,41 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   TaskConstMeta get kCrateApiAsrIsLoadedConstMeta =>
-      const TaskConstMeta(debugName: 'is_loaded', argNames: []);
+      const TaskConstMeta(debugName: "is_loaded", argNames: []);
+
+  @override
+  Future<void> crateApiLlmLoadGemma({
+    required String modelPath,
+    required String tokenizerPath,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_String(modelPath, serializer);
+          sse_encode_String(tokenizerPath, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 7,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_unit,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiLlmLoadGemmaConstMeta,
+        argValues: [modelPath, tokenizerPath],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiLlmLoadGemmaConstMeta => const TaskConstMeta(
+    debugName: "load_gemma",
+    argNames: ["modelPath", "tokenizerPath"],
+  );
 
   @override
   Future<void> crateApiAsrLoadParakeet({
@@ -196,7 +334,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 8,
             port: port_,
           );
         },
@@ -212,8 +350,8 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   TaskConstMeta get kCrateApiAsrLoadParakeetConstMeta => const TaskConstMeta(
-    debugName: 'load_parakeet',
-    argNames: ['modelDir', 'numThreads'],
+    debugName: "load_parakeet",
+    argNames: ["modelDir", "numThreads"],
   );
 
   @override
@@ -228,7 +366,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 5,
+            funcId: 9,
             port: port_,
           );
         },
@@ -244,7 +382,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   }
 
   TaskConstMeta get kCrateApiAsrTranscribePcmS16LeConstMeta =>
-      const TaskConstMeta(debugName: 'transcribe_pcm_s16le', argNames: ['pcm']);
+      const TaskConstMeta(debugName: "transcribe_pcm_s16le", argNames: ["pcm"]);
 
   @protected
   String dco_decode_String(dynamic raw) {
@@ -256,6 +394,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   bool dco_decode_bool(dynamic raw) {
     // Codec=Dco (DartCObject based), see doc to use other codecs
     return raw as bool;
+  }
+
+  @protected
+  double dco_decode_f_32(dynamic raw) {
+    // Codec=Dco (DartCObject based), see doc to use other codecs
+    return raw as double;
   }
 
   @protected
@@ -303,7 +447,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   String sse_decode_String(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final inner = sse_decode_list_prim_u_8_strict(deserializer);
+    var inner = sse_decode_list_prim_u_8_strict(deserializer);
     return utf8.decoder.convert(inner);
   }
 
@@ -311,6 +455,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   bool sse_decode_bool(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     return deserializer.buffer.getUint8() != 0;
+  }
+
+  @protected
+  double sse_decode_f_32(SseDeserializer deserializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    return deserializer.buffer.getFloat32();
   }
 
   @protected
@@ -322,22 +472,22 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @protected
   List<int> sse_decode_list_prim_u_8_loose(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final len_ = sse_decode_i_32(deserializer);
+    var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
   }
 
   @protected
   Uint8List sse_decode_list_prim_u_8_strict(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final len_ = sse_decode_i_32(deserializer);
+    var len_ = sse_decode_i_32(deserializer);
     return deserializer.buffer.getUint8List(len_);
   }
 
   @protected
   TranscriptDto sse_decode_transcript_dto(SseDeserializer deserializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
-    final var_text = sse_decode_String(deserializer);
-    final var_detectedLanguage = sse_decode_String(deserializer);
+    var var_text = sse_decode_String(deserializer);
+    var var_detectedLanguage = sse_decode_String(deserializer);
     return TranscriptDto(
       text: var_text,
       detectedLanguage: var_detectedLanguage,
@@ -365,6 +515,12 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   void sse_encode_bool(bool self, SseSerializer serializer) {
     // Codec=Sse (Serialization based), see doc to use other codecs
     serializer.buffer.putUint8(self ? 1 : 0);
+  }
+
+  @protected
+  void sse_encode_f_32(double self, SseSerializer serializer) {
+    // Codec=Sse (Serialization based), see doc to use other codecs
+    serializer.buffer.putFloat32(self);
   }
 
   @protected

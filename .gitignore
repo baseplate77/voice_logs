@@ -57,7 +57,9 @@ assets/models/*.bin
 assets/models/*.task
 assets/models/*.gguf
 assets/models/*.tflite
+assets/models/*.gguf
 assets/models/parakeet/
+assets/models/gemma/
 
 # Rust build output
 /rust/**/target/
@@ -75,3 +77,6 @@ assets/fixtures/*.wav
 assets/fixtures/*.mp3
 assets/fixtures/*.m4a
 
+
+# Local Claude tooling (session state, settings)
+.claude/
