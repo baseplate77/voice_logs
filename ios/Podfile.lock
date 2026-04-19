@@ -1,37 +1,17 @@
 PODS:
   - Flutter (1.0.0)
-  - flutter_gemma (0.8.6):
-    - Flutter
-    - MediaPipeTasksGenAI (= 0.10.24)
-    - MediaPipeTasksGenAIC (= 0.10.24)
   - flutter_secure_storage (6.0.0):
     - Flutter
   - integration_test (0.0.1):
     - Flutter
-  - large_file_handler (0.0.1):
-    - Flutter
-  - MediaPipeTasksGenAI (0.10.24):
-    - MediaPipeTasksGenAIC (= 0.10.24)
-  - MediaPipeTasksGenAIC (0.10.24)
   - ObjectBox (4.3.0)
   - objectbox_flutter_libs (0.0.1):
     - Flutter
     - ObjectBox (= 4.3.0)
-  - onnxruntime (0.0.1):
-    - Flutter
-    - onnxruntime-objc (= 1.15.1)
-  - onnxruntime-c (1.15.1)
-  - onnxruntime-objc (1.15.1):
-    - onnxruntime-objc/Core (= 1.15.1)
-  - onnxruntime-objc/Core (1.15.1):
-    - onnxruntime-c (= 1.15.1)
   - permission_handler_apple (9.3.0):
     - Flutter
   - record_darwin (1.0.0):
     - Flutter
-  - shared_preferences_foundation (0.0.1):
-    - Flutter
-    - FlutterMacOS
   - SQLCipher (4.10.0):
     - SQLCipher/standard (= 4.10.0)
   - SQLCipher/common (4.10.0)
@@ -47,49 +27,33 @@ PODS:
 
 DEPENDENCIES:
   - Flutter (from `Flutter`)
-  - flutter_gemma (from `.symlinks/plugins/flutter_gemma/ios`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
-  - large_file_handler (from `.symlinks/plugins/large_file_handler/ios`)
   - objectbox_flutter_libs (from `.symlinks/plugins/objectbox_flutter_libs/ios`)
-  - onnxruntime (from `.symlinks/plugins/onnxruntime/ios`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - record_darwin (from `.symlinks/plugins/record_darwin/ios`)
-  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
   - sqlcipher_flutter_libs (from `.symlinks/plugins/sqlcipher_flutter_libs/ios`)
   - voxsynth_asr (from `.symlinks/plugins/voxsynth_asr/ios`)
   - workmanager (from `.symlinks/plugins/workmanager/ios`)
 
 SPEC REPOS:
   trunk:
-    - MediaPipeTasksGenAI
-    - MediaPipeTasksGenAIC
     - ObjectBox
-    - onnxruntime-c
-    - onnxruntime-objc
     - SQLCipher
 
 EXTERNAL SOURCES:
   Flutter:
     :path: Flutter
-  flutter_gemma:
-    :path: ".symlinks/plugins/flutter_gemma/ios"
   flutter_secure_storage:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
   integration_test:
     :path: ".symlinks/plugins/integration_test/ios"
-  large_file_handler:
-    :path: ".symlinks/plugins/large_file_handler/ios"
   objectbox_flutter_libs:
     :path: ".symlinks/plugins/objectbox_flutter_libs/ios"
-  onnxruntime:
-    :path: ".symlinks/plugins/onnxruntime/ios"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
   record_darwin:
     :path: ".symlinks/plugins/record_darwin/ios"
-  shared_preferences_foundation:
-    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
   sqlcipher_flutter_libs:
     :path: ".symlinks/plugins/sqlcipher_flutter_libs/ios"
   voxsynth_asr:
@@ -99,23 +63,15 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  flutter_gemma: c104e5c505eac327a0877a7cb21a593982703154
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
-  large_file_handler: b37481e9b4972562ffcdc8f75700f47cd592bcec
-  MediaPipeTasksGenAI: 076ba7032a6e9da16db9c7cf0c3b67c751c18bc1
-  MediaPipeTasksGenAIC: ec35d9f431f6a6b651a0bc9f67a4ed149ffa575c
   ObjectBox: 7760fa9072adcffe102a6adf4646ca84ba70ab6b
   objectbox_flutter_libs: 4014e38f57250b074b99893ae84579aba8f02876
-  onnxruntime: 2ab1957eb029c71d47f7bb35cc4efc9f0d297828
-  onnxruntime-c: ebdcfd8650bcbd10121c125262f99dea681b92a3
-  onnxruntime-objc: ae7acec7a3d03eaf072d340afed7a35635c1c2a6
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   record_darwin: fb1f375f1d9603714f55b8708a903bbb91ffdb0a
-  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   SQLCipher: eb79c64049cb002b4e9fcb30edb7979bf4706dfc
   sqlcipher_flutter_libs: ae224763b087bffb3a5955fe295a1c460d458cb1
-  voxsynth_asr: dedfec083d8acf4c91b7ac7714b7b21bfa33a1ee
+  voxsynth_asr: fdcfbeaf47b197417330fd244d2b22b0cabf7184
   workmanager: 01be2de7f184bd15de93a1812936a2b7f42ef07e
 
 PODFILE CHECKSUM: 7adc493ed3f25f0049bd8c04b40918a9f59c679a

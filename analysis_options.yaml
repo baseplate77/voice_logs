@@ -24,6 +24,7 @@ analyzer:
     - "lib/objectbox.g.dart"
     # frb / sherpa-rs-sys vendor Dart code into Cargo build outputs. Not ours.
     - "rust/**/target/**"
+    - "build/**"
     - "rust_builder/**"
     - "lib/src/rust/**"
 

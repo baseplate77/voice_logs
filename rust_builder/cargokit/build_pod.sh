@@ -49,15 +49,27 @@ do
   fi
 done
 
-SLICER="$CARGOKIT_ROOT_PROJECT_DIR/../scripts/slice_sherpa_ios.sh"
+# SRCROOT for iOS pod builds is ios/Pods — repo root is two levels up.
+SLICER="$CARGOKIT_ROOT_PROJECT_DIR/../../scripts/slice_sherpa_ios.sh"
 
 # VoxSynth: sherpa-rs-sys ships iOS sidecar libs as fat archives and rust's
 # linker rejects them ("Unsupported archive identifier"). First pass primes
 # the sherpa-rs cache; slicer converts fat → thin; second pass links cleanly.
-# A clean cache or cargo rebuild both need this.
+# We also nuke the cached sherpa-rs-sys build artifact between passes so
+# cargo re-invokes the linker with the now-thin archives (otherwise it
+# short-circuits on the cached failure state).
+echo "[voxsynth] slicer path: $SLICER" >&2
 if [ -x "$SLICER" ]; then
+  echo "[voxsynth] first cargokit pass (expected fat-archive failure)" >&2
   sh "$BASEDIR/run_build_tool.sh" build-pod "$@" || true
-  bash "$SLICER" || true
+  echo "[voxsynth] slicing sherpa-rs cache" >&2
+  bash "$SLICER" >&2 || true
+  # Evict cached sherpa-rs-sys artifacts so the linker retries with thin libs.
+  if [ -n "$CARGOKIT_TARGET_TEMP_DIR" ]; then
+    find "$CARGOKIT_TARGET_TEMP_DIR" -type d -name 'sherpa-rs-sys-*' -exec rm -rf {} + 2>/dev/null || true
+    find "$CARGOKIT_TARGET_TEMP_DIR" -type f -name 'libsherpa_rs_sys-*' -delete 2>/dev/null || true
+  fi
+  echo "[voxsynth] second cargokit pass (should succeed)" >&2
 fi
 
 sh "$BASEDIR/run_build_tool.sh" build-pod "$@"

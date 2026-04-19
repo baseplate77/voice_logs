@@ -22,8 +22,11 @@ A new Flutter FFI plugin project.
   s.dependency 'Flutter'
   s.platform = :ios, '11.0'
 
-  # Flutter.framework does not contain a i386 slice.
-  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386' }
+  # Flutter.framework does not contain an i386 slice. We also exclude x86_64
+  # for the simulator because sherpa-rs-sys 0.6.8's build.rs misses the -L
+  # search path for the x86_64-apple-ios target — and with Apple Silicon
+  # everywhere, nobody runs iOS simulators on Intel. Revisit if needed.
+  s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386 x86_64' }
   s.swift_version = '5.0'
 
   s.script_phase = {
@@ -38,8 +41,20 @@ A new Flutter FFI plugin project.
   }
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
-    # Flutter.framework does not contain a i386 slice.
-    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386',
-    'OTHER_LDFLAGS' => '-force_load ${BUILT_PRODUCTS_DIR}/libvoxsynth_asr.a',
+    'EXCLUDED_ARCHS[sdk=iphonesimulator*]' => 'i386 x86_64',
   }
+  # Force the Rust staticlib into the consuming app's link step. With
+  # static pod linkage, voxsynth_asr.framework is just an .a bundled into
+  # a framework directory — no linking happens at pod-build time, so a
+  # pod_target_xcconfig -force_load is a no-op. user_target_xcconfig
+  # pushes it into Runner's OTHER_LDFLAGS, which works.
+  #
+  # -lc++: sherpa-onnx (bundled inside libvoxsynth_asr.a) is C++. Earlier
+  # builds got libc++ for free via flutter_gemma's MediaPipe pods; we
+  # declare it explicitly so the ASR path doesn't depend on Gemma being
+  # in the Podfile.
+  s.user_target_xcconfig = {
+    'OTHER_LDFLAGS' => '-force_load ${PODS_CONFIGURATION_BUILD_DIR}/voxsynth_asr/libvoxsynth_asr.a -lc++',
+  }
+  s.libraries = 'c++'
 end
