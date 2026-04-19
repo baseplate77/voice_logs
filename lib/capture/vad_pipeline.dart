@@ -14,10 +14,8 @@ import 'vad_segmenter.dart';
 /// [FakeVadRunner]. [VadWorkerIsolate] wraps one of these inside an
 /// isolate for production use.
 class VadPipeline {
-  VadPipeline({
-    required this.runner,
-    VadSegmenter? segmenter,
-  }) : segmenter = segmenter ?? VadSegmenter();
+  VadPipeline({required this.runner, VadSegmenter? segmenter})
+    : segmenter = segmenter ?? VadSegmenter();
 
   final VadRunner runner;
   final VadSegmenter segmenter;

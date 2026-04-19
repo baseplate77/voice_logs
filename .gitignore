@@ -57,6 +57,11 @@ assets/models/*.bin
 assets/models/*.task
 assets/models/*.gguf
 assets/models/*.tflite
+assets/models/parakeet/
+
+# Rust build output
+/rust/**/target/
+/rust_builder/cargokit/**/Cargo.lock
 
 # Generated code (committed is optional; safer to regenerate locally)
 lib/**/*.g.dart

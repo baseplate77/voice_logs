@@ -19,8 +19,7 @@ void main() {
       expect(r.isErr, isTrue);
     });
 
-    test('reframes arbitrarily sized chunks into 512-sample windows',
-        () async {
+    test('reframes arbitrarily sized chunks into 512-sample windows', () async {
       final runner = FakeVadRunner(probabilities: const <double>[0.9]);
       final pipeline = VadPipeline(runner: runner);
       await pipeline.load();
@@ -38,10 +37,8 @@ void main() {
 
     test('emits segments driven by scripted probabilities', () async {
       // 15 voiced frames then silence: should emit one segment.
-      final probs = List<double>.generate(
-        15,
-        (_) => 0.9,
-      )..addAll(List<double>.generate(20, (_) => 0.0));
+      final probs = List<double>.generate(15, (_) => 0.9)
+        ..addAll(List<double>.generate(20, (_) => 0.0));
 
       final runner = FakeVadRunner(probabilities: probs);
       final pipeline = VadPipeline(runner: runner);

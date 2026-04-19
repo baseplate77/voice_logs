@@ -21,12 +21,15 @@ void main() {
       log.error('e');
 
       final levels = capture.events.map((e) => e.level).toList();
-      expect(levels, containsAll(<pkg.Level>[
-        pkg.Level.debug,
-        pkg.Level.info,
-        pkg.Level.warning,
-        pkg.Level.error,
-      ]));
+      expect(
+        levels,
+        containsAll(<pkg.Level>[
+          pkg.Level.debug,
+          pkg.Level.info,
+          pkg.Level.warning,
+          pkg.Level.error,
+        ]),
+      );
     });
 
     test('respects level filter (info suppresses debug)', () {

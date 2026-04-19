@@ -60,10 +60,17 @@ dependencies:
   # Logging
   logger: ^2.5.0
 
+  # ASR — Rust crate (sherpa-rs + Parakeet) bridged via flutter_rust_bridge.
+  voxsynth_asr:
+    path: rust_builder
+  flutter_rust_bridge: 2.11.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  integration_test:
+    sdk: flutter
 
   # Codegen
   build_runner: ^2.4.13

@@ -1,0 +1,16 @@
+[package]
+name = "voxsynth_asr"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+flutter_rust_bridge = "=2.11.1"
+# sherpa-rs wraps the C++ sherpa-onnx runtime. Handles Parakeet-TDT
+# encoder/decoder/joiner inference + transducer beam search for us.
+sherpa-rs = "0.6"
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

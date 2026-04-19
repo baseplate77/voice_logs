@@ -86,9 +86,7 @@ class FakeVadRunner implements VadRunner {
     }
     if (frame.length != frameSize) {
       return Err<double, AppError>(
-        UnknownError(
-          'frame length ${frame.length} != frameSize $frameSize',
-        ),
+        UnknownError('frame length ${frame.length} != frameSize $frameSize'),
       );
     }
     final prob = probabilities[_cursor % probabilities.length];

@@ -19,10 +19,7 @@ void main() {
     test('never emits for pure silence', () {
       final seg = VadSegmenter();
       for (var i = 0; i < 100; i++) {
-        expect(
-          seg.feed(probability: 0.0, framePcmBytes: _framePcm()),
-          isNull,
-        );
+        expect(seg.feed(probability: 0.0, framePcmBytes: _framePcm()), isNull);
       }
       expect(seg.flush(), isNull);
     });
@@ -32,10 +29,7 @@ void main() {
       // 300 ms threshold ÷ 32 ms/frame ≈ 10 frames. Give it 5 voiced frames
       // (160 ms) followed by enough silence to close.
       for (var i = 0; i < 5; i++) {
-        expect(
-          seg.feed(probability: 0.9, framePcmBytes: _framePcm()),
-          isNull,
-        );
+        expect(seg.feed(probability: 0.9, framePcmBytes: _framePcm()), isNull);
       }
       SpeechSegment? emitted;
       for (var i = 0; i < 20; i++) {
@@ -48,10 +42,7 @@ void main() {
       final seg = VadSegmenter();
       // 15 voiced frames ≈ 480 ms (> 300 ms).
       for (var i = 0; i < 15; i++) {
-        expect(
-          seg.feed(probability: 0.95, framePcmBytes: _framePcm()),
-          isNull,
-        );
+        expect(seg.feed(probability: 0.95, framePcmBytes: _framePcm()), isNull);
       }
       // Then silence until the 500 ms threshold closes the segment.
       SpeechSegment? emitted;
@@ -162,10 +153,7 @@ void main() {
       final seg = VadSegmenter();
       // Exactly 0.5 counts as voiced.
       for (var i = 0; i < 15; i++) {
-        seg.feed(
-          probability: kSpeechThreshold,
-          framePcmBytes: _framePcm(),
-        );
+        seg.feed(probability: kSpeechThreshold, framePcmBytes: _framePcm());
       }
       SpeechSegment? emitted;
       for (var i = 0; i < 20; i++) {

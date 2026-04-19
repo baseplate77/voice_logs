@@ -36,8 +36,9 @@ void main() {
     });
 
     test('reset rewinds the cursor', () async {
-      final runner =
-          FakeVadRunner(probabilities: const <double>[0.9, 0.1, 0.9]);
+      final runner = FakeVadRunner(
+        probabilities: const <double>[0.9, 0.1, 0.9],
+      );
       await runner.load();
       final f = Float32List(512);
       await runner.detect(f);
@@ -57,8 +58,7 @@ void main() {
       expect(r.isErr, isTrue);
     });
 
-    test('exposes Silero-compatible frame size and sample rate by default',
-        () {
+    test('exposes Silero-compatible frame size and sample rate by default', () {
       final runner = FakeVadRunner(probabilities: const <double>[0.5]);
       expect(runner.frameSize, 512);
       expect(runner.sampleRate, 16000);

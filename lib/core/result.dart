@@ -18,39 +18,39 @@ sealed class Result<T, E> {
 
   /// Returns the [Ok] value, or `null` if this is an [Err].
   T? get okOrNull => switch (this) {
-        Ok<T, E>(:final value) => value,
-        Err<T, E>() => null,
-      };
+    Ok<T, E>(:final value) => value,
+    Err<T, E>() => null,
+  };
 
   /// Returns the [Err] value, or `null` if this is an [Ok].
   E? get errOrNull => switch (this) {
-        Ok<T, E>() => null,
-        Err<T, E>(:final error) => error,
-      };
+    Ok<T, E>() => null,
+    Err<T, E>(:final error) => error,
+  };
 
   /// Transforms the [Ok] value, leaves [Err] unchanged.
   Result<U, E> map<U>(U Function(T) f) => switch (this) {
-        Ok<T, E>(:final value) => Ok<U, E>(f(value)),
-        Err<T, E>(:final error) => Err<U, E>(error),
-      };
+    Ok<T, E>(:final value) => Ok<U, E>(f(value)),
+    Err<T, E>(:final error) => Err<U, E>(error),
+  };
 
   /// Transforms the [Err] value, leaves [Ok] unchanged.
   Result<T, F> mapErr<F>(F Function(E) f) => switch (this) {
-        Ok<T, E>(:final value) => Ok<T, F>(value),
-        Err<T, E>(:final error) => Err<T, F>(f(error)),
-      };
+    Ok<T, E>(:final value) => Ok<T, F>(value),
+    Err<T, E>(:final error) => Err<T, F>(f(error)),
+  };
 
   /// Monadic bind: chain a fallible operation.
   Result<U, E> flatMap<U>(Result<U, E> Function(T) f) => switch (this) {
-        Ok<T, E>(:final value) => f(value),
-        Err<T, E>(:final error) => Err<U, E>(error),
-      };
+    Ok<T, E>(:final value) => f(value),
+    Err<T, E>(:final error) => Err<U, E>(error),
+  };
 
   /// Collapse into a single value by handling both branches.
   R fold<R>(R Function(T) onOk, R Function(E) onErr) => switch (this) {
-        Ok<T, E>(:final value) => onOk(value),
-        Err<T, E>(:final error) => onErr(error),
-      };
+    Ok<T, E>(:final value) => onOk(value),
+    Err<T, E>(:final error) => onErr(error),
+  };
 }
 
 /// The success variant.

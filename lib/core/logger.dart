@@ -14,16 +14,16 @@ import 'package:logger/logger.dart' as pkg;
 /// construct a [AppLogger] directly with a test [pkg.LogOutput].
 class AppLogger {
   AppLogger({pkg.Level? level, pkg.LogOutput? output})
-      : _inner = pkg.Logger(
-          level: level,
-          printer: pkg.PrettyPrinter(
-            methodCount: 0,
-            lineLength: 100,
-            printEmojis: false,
-            dateTimeFormat: pkg.DateTimeFormat.onlyTimeAndSinceStart,
-          ),
-          output: output,
-        );
+    : _inner = pkg.Logger(
+        level: level,
+        printer: pkg.PrettyPrinter(
+          methodCount: 0,
+          lineLength: 100,
+          printEmojis: false,
+          dateTimeFormat: pkg.DateTimeFormat.onlyTimeAndSinceStart,
+        ),
+        output: output,
+      );
 
   final pkg.Logger _inner;
 

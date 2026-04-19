@@ -138,9 +138,7 @@ class _FailingPcmSource implements PcmSource {
 
   @override
   Future<Result<Stream<Uint8List>, AppError>> start() async =>
-      const Err<Stream<Uint8List>, AppError>(
-        UnknownError('mic hardware busy'),
-      );
+      const Err<Stream<Uint8List>, AppError>(UnknownError('mic hardware busy'));
 
   @override
   Future<void> stop() async {}
@@ -173,8 +171,7 @@ void main() {
       await svc.dispose();
     });
 
-    test('emits state transitions idle -> starting -> recording',
-        () async {
+    test('emits state transitions idle -> starting -> recording', () async {
       final pcm = _FakePcmSource();
       final vad = _ScriptedVadProcessor(scriptedSegments: const []);
       final svc = MicCaptureService(
@@ -192,49 +189,54 @@ void main() {
       // Drain microtasks.
       await Future<void>.delayed(Duration.zero);
 
-      expect(seen, containsAllInOrder(<CaptureState>[
-        CaptureState.starting,
-        CaptureState.recording,
-      ]));
+      expect(
+        seen,
+        containsAllInOrder(<CaptureState>[
+          CaptureState.starting,
+          CaptureState.recording,
+        ]),
+      );
 
       await sub.cancel();
       await svc.dispose();
     });
 
-    test('forwards segments from the VAD processor to the public stream',
-        () async {
-      final sampleSegment = SpeechSegment(
-        startMs: 0,
-        endMs: 480,
-        pcm16kMono: Uint8List.fromList(const <int>[1, 2, 3, 4]),
-      );
-      final pcm = _FakePcmSource();
-      final vad = _ScriptedVadProcessor(
-        scriptedSegments: <SpeechSegment>[sampleSegment],
-        framesPerSegment: 10,
-      );
-      final svc = MicCaptureService(
-        pcmSource: pcm,
-        vadProcessor: vad,
-        tempDirProvider: _tmpProvider,
-        idGenerator: () => 'test-3',
-      );
+    test(
+      'forwards segments from the VAD processor to the public stream',
+      () async {
+        final sampleSegment = SpeechSegment(
+          startMs: 0,
+          endMs: 480,
+          pcm16kMono: Uint8List.fromList(const <int>[1, 2, 3, 4]),
+        );
+        final pcm = _FakePcmSource();
+        final vad = _ScriptedVadProcessor(
+          scriptedSegments: <SpeechSegment>[sampleSegment],
+          framesPerSegment: 10,
+        );
+        final svc = MicCaptureService(
+          pcmSource: pcm,
+          vadProcessor: vad,
+          tempDirProvider: _tmpProvider,
+          idGenerator: () => 'test-3',
+        );
 
-      final received = <SpeechSegment>[];
-      final sub = svc.segments.listen(received.add);
+        final received = <SpeechSegment>[];
+        final sub = svc.segments.listen(received.add);
 
-      await svc.start();
-      // Feed 10 frames → should trigger one scripted segment.
-      for (var i = 0; i < 10; i++) {
-        pcm.push(_frame());
-      }
-      await Future<void>.delayed(const Duration(milliseconds: 20));
+        await svc.start();
+        // Feed 10 frames → should trigger one scripted segment.
+        for (var i = 0; i < 10; i++) {
+          pcm.push(_frame());
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 20));
 
-      expect(received, <SpeechSegment>[sampleSegment]);
+        expect(received, <SpeechSegment>[sampleSegment]);
 
-      await sub.cancel();
-      await svc.dispose();
-    });
+        await sub.cancel();
+        await svc.dispose();
+      },
+    );
 
     test('stop finalizes a WAV file that matches the bytes fed', () async {
       final pcm = _FakePcmSource();
@@ -290,8 +292,7 @@ void main() {
       await svc.dispose();
     });
 
-    test('start twice without stop returns an error the second time',
-        () async {
+    test('start twice without stop returns an error the second time', () async {
       final pcm = _FakePcmSource();
       final vad = _ScriptedVadProcessor(scriptedSegments: const []);
       final svc = MicCaptureService(

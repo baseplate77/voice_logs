@@ -45,6 +45,24 @@ fetch "ggml-small-q8_0.bin" \
 fetch "multilingual-e5-small-int8.onnx" \
   "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/onnx/model_qint8_avx512_vnni.onnx"
 
+# Parakeet-TDT-0.6B-v2 (sherpa-onnx int8 export). ~482 MB compressed,
+# expands into assets/models/parakeet/ with encoder/decoder/joiner/tokens.
+PARAKEET_DIR="$MODELS_DIR/parakeet"
+PARAKEET_TAR="$MODELS_DIR/parakeet.tar.bz2"
+if [[ -f "$PARAKEET_DIR/encoder.int8.onnx" ]]; then
+  echo "[skip] Parakeet already extracted at $PARAKEET_DIR"
+else
+  echo "[fetch] sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8 (~482 MB)"
+  curl -L --fail --progress-bar -o "$PARAKEET_TAR.partial" \
+    "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2"
+  mv "$PARAKEET_TAR.partial" "$PARAKEET_TAR"
+  echo "[extract] parakeet.tar.bz2 -> $PARAKEET_DIR/"
+  mkdir -p "$PARAKEET_DIR"
+  tar -xjf "$PARAKEET_TAR" -C "$PARAKEET_DIR" --strip-components=1
+  rm "$PARAKEET_TAR"
+  echo "[done] Parakeet model extracted ($(du -sh "$PARAKEET_DIR" | cut -f1))"
+fi
+
 echo ""
 echo "Gemma (gemma-4-it-int4.task) requires Kaggle auth — place manually."
 echo "See assets/models/README.md."

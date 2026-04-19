@@ -22,6 +22,10 @@ analyzer:
     - "**/*.drift.dart"
     - "lib/objectbox-model.json"
     - "lib/objectbox.g.dart"
+    # frb / sherpa-rs-sys vendor Dart code into Cargo build outputs. Not ours.
+    - "rust/**/target/**"
+    - "rust_builder/**"
+    - "lib/src/rust/**"
 
 linter:
   rules:

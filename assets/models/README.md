@@ -8,7 +8,8 @@ These files are **not** in git (see `.gitignore` — total size ~3 GB). Run
 | File | Size | Used by | Source |
 |---|---|---|---|
 | `silero_vad.onnx` | ~2 MB | Phase 1 (`lib/capture/`) | https://github.com/snakers4/silero-vad |
-| `ggml-small-q8_0.bin` | ~460 MB | Phase 2 (`lib/asr/`) | https://huggingface.co/ggerganov/whisper.cpp |
+| `parakeet/{encoder,decoder,joiner}.int8.onnx` + `tokens.txt` | ~500 MB extracted | Phase 2 (`lib/asr/`) | sherpa-onnx releases (k2-fsa) |
+| `ggml-small-q8_0.bin` | ~460 MB | (retired) | https://huggingface.co/ggerganov/whisper.cpp |
 | `multilingual-e5-small-int8.onnx` | ~120 MB | Phase 4 (`lib/embed/`) | https://huggingface.co/intfloat/multilingual-e5-small |
 | `gemma-4-it-int4.task` | ~2.5 GB | Phases 3/6/7 (`lib/llm/`) | Kaggle — requires auth |
 

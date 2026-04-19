@@ -85,10 +85,7 @@ class VadWorkerIsolate {
     try {
       _isolate = await Isolate.spawn<_SpawnArgs>(
         _entry,
-        _SpawnArgs(
-          sendPort: rp.sendPort,
-          modelPath: sileroModelPath,
-        ),
+        _SpawnArgs(sendPort: rp.sendPort, modelPath: sileroModelPath),
         debugName: 'voxsynth-vad-worker',
       );
     } on Object catch (e, st) {
@@ -162,14 +159,11 @@ class VadWorkerIsolate {
     await for (final msg in rp) {
       if (msg is _FeedMsg) {
         final r = await pipeline.feed(msg.pcm);
-        r.fold(
-          (segs) {
-            for (final s in segs) {
-              args.sendPort.send(_SegmentMsg(segment: s));
-            }
-          },
-          (err) => args.sendPort.send(_ErrorMsg(error: err)),
-        );
+        r.fold((segs) {
+          for (final s in segs) {
+            args.sendPort.send(_SegmentMsg(segment: s));
+          }
+        }, (err) => args.sendPort.send(_ErrorMsg(error: err)));
       } else if (msg is _FlushMsg) {
         final tail = pipeline.flush();
         if (tail != null) {

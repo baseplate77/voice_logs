@@ -24,11 +24,8 @@ sealed class AppError {
 
 /// The user or OS denied a required permission.
 final class PermissionDeniedError extends AppError {
-  const PermissionDeniedError(
-    this.permission, {
-    super.cause,
-    super.stackTrace,
-  }) : super('Permission denied: $permission');
+  const PermissionDeniedError(this.permission, {super.cause, super.stackTrace})
+    : super('Permission denied: $permission');
 
   final String permission;
 }
@@ -47,27 +44,15 @@ final class ModelLoadError extends AppError {
 
 /// A storage backend (SQLite, ObjectBox, filesystem) reported an error.
 final class StorageError extends AppError {
-  const StorageError(
-    super.message, {
-    super.cause,
-    super.stackTrace,
-  });
+  const StorageError(super.message, {super.cause, super.stackTrace});
 }
 
 /// A background isolate crashed or failed to start.
 final class IsolateError extends AppError {
-  const IsolateError(
-    super.message, {
-    super.cause,
-    super.stackTrace,
-  });
+  const IsolateError(super.message, {super.cause, super.stackTrace});
 }
 
 /// Generic catch-all. Prefer a specific subtype when possible.
 final class UnknownError extends AppError {
-  const UnknownError(
-    super.message, {
-    super.cause,
-    super.stackTrace,
-  });
+  const UnknownError(super.message, {super.cause, super.stackTrace});
 }

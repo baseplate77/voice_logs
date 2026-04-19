@@ -151,11 +151,7 @@ class VadSegmenter {
     _silenceTrailingSamples = 0;
 
     if (durationMs < minSpeechDuration.inMilliseconds) return null;
-    return SpeechSegment(
-      startMs: startMs,
-      endMs: endMs,
-      pcm16kMono: keptBytes,
-    );
+    return SpeechSegment(startMs: startMs, endMs: endMs, pcm16kMono: keptBytes);
   }
 
   /// Clear all state. Call at the start of a fresh recording.

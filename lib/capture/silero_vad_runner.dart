@@ -85,9 +85,7 @@ class SileroVadRunner implements VadRunner {
     }
     if (frame.length != frameSize) {
       return Err<double, AppError>(
-        UnknownError(
-          'frame length ${frame.length} != frameSize $frameSize',
-        ),
+        UnknownError('frame length ${frame.length} != frameSize $frameSize'),
       );
     }
 
@@ -96,14 +94,15 @@ class SileroVadRunner implements VadRunner {
     OrtValueTensor? srTensor;
     List<OrtValue?>? outputs;
     try {
-      inputTensor = OrtValueTensor.createTensorWithDataList(
-        frame,
-        <int>[1, frameSize],
-      );
-      stateTensor = OrtValueTensor.createTensorWithDataList(
-        _state,
-        <int>[2, 1, 128],
-      );
+      inputTensor = OrtValueTensor.createTensorWithDataList(frame, <int>[
+        1,
+        frameSize,
+      ]);
+      stateTensor = OrtValueTensor.createTensorWithDataList(_state, <int>[
+        2,
+        1,
+        128,
+      ]);
       srTensor = OrtValueTensor.createTensorWithData(sampleRate);
 
       outputs = await session.runAsync(runOptions, <String, OrtValue>{
@@ -132,11 +131,7 @@ class SileroVadRunner implements VadRunner {
       return Ok<double, AppError>(prob);
     } on Object catch (e, st) {
       return Err<double, AppError>(
-        UnknownError(
-          'Silero VAD inference failed',
-          cause: e,
-          stackTrace: st,
-        ),
+        UnknownError('Silero VAD inference failed', cause: e, stackTrace: st),
       );
     } finally {
       inputTensor?.release();

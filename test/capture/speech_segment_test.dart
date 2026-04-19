@@ -36,11 +36,7 @@ void main() {
 
     test('asserts endMs >= startMs', () {
       expect(
-        () => SpeechSegment(
-          startMs: 500,
-          endMs: 100,
-          pcm16kMono: Uint8List(0),
-        ),
+        () => SpeechSegment(startMs: 500, endMs: 100, pcm16kMono: Uint8List(0)),
         throwsA(isA<AssertionError>()),
       );
     });

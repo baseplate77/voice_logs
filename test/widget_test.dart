@@ -4,9 +4,7 @@ import 'package:voxsynth/app.dart';
 
 void main() {
   testWidgets('VoxSynthApp boots and shows bootstrap message', (tester) async {
-    await tester.pumpWidget(
-      const ProviderScope(child: VoxSynthApp()),
-    );
+    await tester.pumpWidget(const ProviderScope(child: VoxSynthApp()));
     await tester.pumpAndSettle();
 
     expect(find.text('VoxSynth'), findsOneWidget);

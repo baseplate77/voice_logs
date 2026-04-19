@@ -66,7 +66,7 @@ abstract class VadProcessor {
 /// signed-16-bit little-endian PCM.
 class RecordPcmSource implements PcmSource {
   RecordPcmSource({rec.AudioRecorder? recorder})
-      : _recorder = recorder ?? rec.AudioRecorder();
+    : _recorder = recorder ?? rec.AudioRecorder();
 
   final rec.AudioRecorder _recorder;
 
@@ -96,11 +96,7 @@ class RecordPcmSource implements PcmSource {
       return Ok<Stream<Uint8List>, AppError>(stream);
     } on Object catch (e, st) {
       return Err<Stream<Uint8List>, AppError>(
-        UnknownError(
-          'failed to start audio stream',
-          cause: e,
-          stackTrace: st,
-        ),
+        UnknownError('failed to start audio stream', cause: e, stackTrace: st),
       );
     }
   }
@@ -119,7 +115,7 @@ class RecordPcmSource implements PcmSource {
 /// Production [VadProcessor] backed by a [VadWorkerIsolate].
 class IsolateVadProcessor implements VadProcessor {
   IsolateVadProcessor({required this.sileroModelPath})
-      : _worker = VadWorkerIsolate(sileroModelPath: sileroModelPath);
+    : _worker = VadWorkerIsolate(sileroModelPath: sileroModelPath);
 
   final String sileroModelPath;
   final VadWorkerIsolate _worker;
@@ -152,11 +148,11 @@ class MicCaptureService implements CaptureService {
     Future<Directory> Function()? tempDirProvider,
     String Function()? idGenerator,
     DateTime Function()? clock,
-  })  : _pcm = pcmSource,
-        _vad = vadProcessor,
-        _tempDir = tempDirProvider ?? getTemporaryDirectory,
-        _genId = idGenerator ?? _defaultId,
-        _now = clock ?? DateTime.now;
+  }) : _pcm = pcmSource,
+       _vad = vadProcessor,
+       _tempDir = tempDirProvider ?? getTemporaryDirectory,
+       _genId = idGenerator ?? _defaultId,
+       _now = clock ?? DateTime.now;
 
   final PcmSource _pcm;
   final VadProcessor _vad;
@@ -202,9 +198,7 @@ class MicCaptureService implements CaptureService {
     }
     if (permission.okOrNull != true) {
       _setState(CaptureState.error);
-      return const Err<void, AppError>(
-        PermissionDeniedError('microphone'),
-      );
+      return const Err<void, AppError>(PermissionDeniedError('microphone'));
     }
 
     final vadStart = await _vad.start();
