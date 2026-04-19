@@ -1,0 +1,80 @@
+name: voxsynth
+description: "Local-first voice-log synthesizer. Everything on-device."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.24.0"
+
+# NOTE: caret ranges used at bootstrap. After `flutter pub get`, pubspec.lock
+# is the source of truth for exact versions. Per IMPLEMENTATION_PLAN.md §0,
+# do not let a phase upgrade packages silently — review lock diffs.
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # State, data, plumbing
+  flutter_riverpod: ^2.6.1
+  freezed_annotation: ^2.4.4
+  json_annotation: ^4.9.0
+  collection: ^1.19.0
+  meta: ^1.16.0
+  path: ^1.9.0
+  path_provider: ^2.1.5
+
+  # Audio capture
+  record: ^5.2.0
+
+  # ONNX (VAD + e5 embeddings)
+  onnxruntime: ^1.4.1
+
+  # LLM
+  flutter_gemma: ^0.9.0
+
+  # FFI (Whisper)
+  ffi: ^2.1.3
+
+  # Storage — Drift (SQLite + FTS5) with SQLCipher
+  drift: ^2.20.3
+  drift_flutter: ^0.2.4
+  sqflite: ^2.4.1
+  sqlcipher_flutter_libs: ^0.6.5
+
+  # Storage — ObjectBox (vector index)
+  objectbox: ^4.0.3
+  objectbox_flutter_libs: ^4.0.3
+
+  # Secrets at rest (DB keys)
+  flutter_secure_storage: ^9.2.2
+
+  # Background jobs
+  workmanager: ^0.5.2
+
+  # Runtime permissions
+  permission_handler: ^11.3.1
+
+  # Logging
+  logger: ^2.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # Codegen
+  build_runner: ^2.4.13
+  drift_dev: ^2.20.3
+  freezed: ^2.5.7
+  json_serializable: ^6.8.0
+  objectbox_generator: ^4.0.3
+
+  # Test utils
+  mocktail: ^1.0.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/models/
+    - assets/fixtures/

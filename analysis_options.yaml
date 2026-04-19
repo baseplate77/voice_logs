@@ -1,0 +1,48 @@
+# VoxSynth analyzer config.
+#
+# Extends flutter_lints with stricter rules per CLAUDE.md (no print, always
+# return types, trailing commas, etc.).
+#
+# TODO (not a merge-blocker): CLAUDE.md requires "no http/dio/websocket
+# imports outside `lib/sync/`". Until we wire custom_lint + analyzer_plugin,
+# this rule is enforced by code review. See IMPLEMENTATION_PLAN.md §1.
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    avoid_print: error
+    unawaited_futures: error
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/*.drift.dart"
+    - "lib/objectbox-model.json"
+    - "lib/objectbox.g.dart"
+
+linter:
+  rules:
+    prefer_single_quotes: true
+    always_declare_return_types: true
+    avoid_print: true
+    require_trailing_commas: true
+    unawaited_futures: true
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_declarations: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_final_locals: true
+    prefer_final_in_for_each: true
+    avoid_dynamic_calls: true
+    avoid_redundant_argument_values: true
+    cancel_subscriptions: true
+    close_sinks: true
+    directives_ordering: true
+    no_adjacent_strings_in_list: true
+    sort_pub_dependencies: false  # grouped semantically in pubspec.yaml
+    unnecessary_await_in_return: true
+    unnecessary_lambdas: true
+    use_super_parameters: true
