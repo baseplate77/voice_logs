@@ -470,6 +470,100 @@ class VoiceLogRepository {
     }
   }
 
+  /// Chunks whose `createdAt` falls in the inclusive `[from, to]`
+  /// range, ordered deterministically (`createdAt ASC, id ASC`) so
+  /// Phase 7 background jobs produce identical output on retry.
+  Future<Result<List<ChunkRecord>, AppError>> chunksInRange({
+    required DateTime from,
+    required DateTime to,
+    int limit = 10_000,
+  }) async {
+    try {
+      final rows = await (_db.select(_db.transcriptChunks)
+            ..where((c) =>
+                c.createdAt.isBiggerOrEqualValue(from.millisecondsSinceEpoch) &
+                c.createdAt.isSmallerOrEqualValue(to.millisecondsSinceEpoch))
+            ..orderBy([
+              (c) => OrderingTerm.asc(c.createdAt),
+              (c) => OrderingTerm.asc(c.id),
+            ])
+            ..limit(limit))
+          .get();
+      return Ok<List<ChunkRecord>, AppError>(
+        rows.map(_toChunkRecord).toList(growable: false),
+      );
+    } on Object catch (e, st) {
+      return Err<List<ChunkRecord>, AppError>(
+        StorageError('chunksInRange failed', cause: e, stackTrace: st),
+      );
+    }
+  }
+
+  /// Persist a [SynthesisRecord]-shaped row. Jobs call this after they
+  /// successfully generate a brief / themes / shifts payload. Returns
+  /// the newly-assigned row id.
+  Future<Result<int, AppError>> insertSynthesis({
+    required String kind,
+    required DateTime periodStart,
+    required DateTime periodEnd,
+    required String payloadJson,
+    DateTime? createdAt,
+  }) async {
+    try {
+      final now = createdAt ?? DateTime.now();
+      final id = await _db.into(_db.syntheses).insert(
+            SynthesesCompanion(
+              kind: Value(kind),
+              periodStart: Value(periodStart.millisecondsSinceEpoch),
+              periodEnd: Value(periodEnd.millisecondsSinceEpoch),
+              payloadJson: Value(payloadJson),
+              createdAt: Value(now.millisecondsSinceEpoch),
+            ),
+          );
+      return Ok<int, AppError>(id);
+    } on Object catch (e, st) {
+      return Err<int, AppError>(
+        StorageError('insertSynthesis failed', cause: e, stackTrace: st),
+      );
+    }
+  }
+
+  /// Syntheses of [kind], newest-first, optionally bounded to
+  /// `[from, to]` by `createdAt`. Used by [MonthlyShiftsJob] to fetch
+  /// the last 30 days of briefs + themes to diff against.
+  Future<Result<List<SynthesisRecord>, AppError>> listSyntheses({
+    String? kind,
+    DateTime? from,
+    DateTime? to,
+    int limit = 100,
+  }) async {
+    try {
+      final q = _db.select(_db.syntheses);
+      if (kind != null) {
+        q.where((s) => s.kind.equals(kind));
+      }
+      if (from != null) {
+        q.where((s) =>
+            s.createdAt.isBiggerOrEqualValue(from.millisecondsSinceEpoch));
+      }
+      if (to != null) {
+        q.where((s) =>
+            s.createdAt.isSmallerOrEqualValue(to.millisecondsSinceEpoch));
+      }
+      q
+        ..orderBy([(s) => OrderingTerm.desc(s.createdAt)])
+        ..limit(limit);
+      final rows = await q.get();
+      return Ok<List<SynthesisRecord>, AppError>(
+        rows.map(_toSynthesisRecord).toList(growable: false),
+      );
+    } on Object catch (e, st) {
+      return Err<List<SynthesisRecord>, AppError>(
+        StorageError('listSyntheses failed', cause: e, stackTrace: st),
+      );
+    }
+  }
+
   /// Bulk listing used by UI + debug screens. Paginated by
   /// `started_at DESC` so newest first.
   Future<Result<List<VoiceLogRecord>, AppError>> listLogs({
@@ -495,6 +589,15 @@ class VoiceLogRepository {
       );
     }
   }
+
+  SynthesisRecord _toSynthesisRecord(SynthesisRow r) => SynthesisRecord(
+        id: r.id,
+        kind: r.kind,
+        periodStart: DateTime.fromMillisecondsSinceEpoch(r.periodStart),
+        periodEnd: DateTime.fromMillisecondsSinceEpoch(r.periodEnd),
+        payloadJson: r.payloadJson,
+        createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt),
+      );
 
   ChunkRecord _toChunkRecord(ChunkRow r) => ChunkRecord(
         id: r.id,

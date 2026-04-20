@@ -17,12 +17,18 @@ part 'app_database.g.dart';
 /// Construct via [AppDatabase.connect] from the companion
 /// `database_factory.dart` — that's where the SQLCipher key handshake
 /// lives.
-@DriftDatabase(tables: [VoiceLogs, TranscriptChunks, Entities, ChunkEntities])
+@DriftDatabase(tables: [
+  VoiceLogs,
+  TranscriptChunks,
+  Entities,
+  ChunkEntities,
+  Syntheses,
+])
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -31,7 +37,12 @@ class AppDatabase extends _$AppDatabase {
           await _createFtsTableAndTriggers(m);
         },
         onUpgrade: (m, from, to) async {
-          // No upgrades yet. Future migrations append here.
+          // v1 → v2: Phase 7 adds the syntheses table. Its rows are
+          // produced only by background jobs so there's no backfill;
+          // a fresh empty table is the correct initial state.
+          if (from < 2) {
+            await m.createTable(syntheses);
+          }
         },
       );
 

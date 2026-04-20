@@ -121,3 +121,34 @@ class ChunkEntities extends Table {
   @override
   Set<Column<Object>> get primaryKey => {chunkId, entityId};
 }
+
+/// Output of one Phase 7 background-synthesis job — a daily brief, a
+/// weekly themes roll-up, or a monthly shift digest.
+///
+/// Stored as an opaque JSON payload so the schema doesn't need a
+/// migration every time the job output evolves. The `kind` column
+/// picks the payload's type; see `lib/synth/background/models/` for
+/// the freezed classes each kind deserialises into.
+@DataClassName('SynthesisRow')
+class Syntheses extends Table {
+  IntColumn get id => integer().autoIncrement()();
+
+  /// One of the [SynthesisKind] string values — 'daily_brief',
+  /// 'weekly_themes', 'monthly_shifts'. Stored as text so future jobs
+  /// can widen the set without a schema migration.
+  TextColumn get kind => text()();
+
+  /// Inclusive ms-since-epoch bounds of the time range this synthesis
+  /// summarises. Used by [MonthlyShiftsJob] to find the prior-period
+  /// synthesis to diff against.
+  IntColumn get periodStart => integer()();
+  IntColumn get periodEnd => integer()();
+
+  /// Serialised payload. Parsed via the matching freezed fromJson on
+  /// read; callers must not poke at this raw JSON.
+  TextColumn get payloadJson => text()();
+
+  /// ms-since-epoch at which the job produced this row. Jobs are
+  /// idempotent so duplicates on retry are harmless but visible here.
+  IntColumn get createdAt => integer()();
+}
