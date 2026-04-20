@@ -103,3 +103,30 @@ final class ChunkRecord {
   String toString() =>
       'ChunkRecord(#$id, ${text.length} chars, "$topicHint")';
 }
+
+/// Background-job output row as the repository exposes it. Callers
+/// parse [payloadJson] via the matching freezed type (keyed on
+/// [kind]); see `lib/synth/background/models/`.
+@immutable
+final class SynthesisRecord {
+  const SynthesisRecord({
+    required this.id,
+    required this.kind,
+    required this.periodStart,
+    required this.periodEnd,
+    required this.payloadJson,
+    required this.createdAt,
+  });
+
+  final int id;
+  final String kind;
+  final DateTime periodStart;
+  final DateTime periodEnd;
+  final String payloadJson;
+  final DateTime createdAt;
+
+  @override
+  String toString() =>
+      'SynthesisRecord(#$id $kind ${periodStart.toIso8601String()}'
+      '..${periodEnd.toIso8601String()})';
+}
