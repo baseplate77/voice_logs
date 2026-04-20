@@ -4,6 +4,8 @@ import 'package:workmanager/workmanager.dart' as wm;
 import '../../core/errors.dart';
 import '../../core/logger.dart';
 import '../../core/result.dart';
+import '../../memory/background/memory_consolidation_job.dart';
+import '../../memory/background/profile_refresh_job.dart';
 import 'daily_brief_job.dart';
 import 'models/synthesis_kind.dart';
 import 'monthly_shifts_job.dart';
@@ -33,6 +35,12 @@ const Duration kBackgroundJobMaxRuntime = Duration(seconds: 90);
 const Duration kDailyBriefFrequency = Duration(days: 1);
 const Duration kWeeklyThemesFrequency = Duration(days: 7);
 const Duration kMonthlyShiftsFrequency = Duration(days: 30);
+
+/// Phase 8 — weekly memory sweep.
+const Duration kMemoryConsolidationFrequency = Duration(days: 7);
+
+/// Phase 8 — daily profile rebuild when stale.
+const Duration kProfileRefreshFrequency = Duration(days: 1);
 
 /// Constraints on a periodic job — abstracted over the underlying
 /// platform scheduler. Maps 1:1 to `workmanager`'s `Constraints` on
@@ -189,16 +197,17 @@ class FakeJobQueue implements JobQueue {
   }
 }
 
-/// Top-level background-jobs coordinator. Holds the three job
-/// instances + the queue, exposes `registerAll()` (called once on
-/// app startup) and `runOnce(name)` (dev hook — wired behind a dev
-/// menu button).
+/// Top-level background-jobs coordinator. Holds Phase 7 + optional
+/// Phase 8 job instances + the queue, exposes `registerAll()` (called
+/// once on app startup) and `runOnce(name)` (dev hook).
 class BackgroundScheduler {
   BackgroundScheduler({
     required this.queue,
     required this.dailyBrief,
     required this.weeklyThemes,
     required this.monthlyShifts,
+    this.memoryConsolidation,
+    this.profileRefresh,
     AppLogger? logger,
   }) : _logger = logger ?? AppLogger();
 
@@ -206,30 +215,51 @@ class BackgroundScheduler {
   final DailyBriefJob dailyBrief;
   final WeeklyThemesJob weeklyThemes;
   final MonthlyShiftsJob monthlyShifts;
+
+  /// Phase 8 — nullable so callers that haven't wired the memory
+  /// subsystem (simpler bootstraps, tests) can still construct the
+  /// scheduler. When null the job isn't registered.
+  final MemoryConsolidationJob? memoryConsolidation;
+
+  /// Phase 8 — nullable like [memoryConsolidation].
+  final ProfileRefreshJob? profileRefresh;
+
   final AppLogger _logger;
 
-  /// All three Phase 7 jobs, with their cadences + constraints.
-  /// Surfaced as a getter so tests can assert the set without running
-  /// [registerAll].
-  List<JobRegistration> get jobs => const <JobRegistration>[
-        JobRegistration(
+  /// All registered jobs with cadences + constraints. Phase 8 jobs
+  /// are included only when their corresponding job instance was
+  /// supplied to the constructor.
+  List<JobRegistration> get jobs => <JobRegistration>[
+        const JobRegistration(
           name: kSynthesisKindDailyBrief,
           frequency: kDailyBriefFrequency,
           constraints: kBackgroundJobConstraints,
         ),
-        JobRegistration(
+        const JobRegistration(
           name: kSynthesisKindWeeklyThemes,
           frequency: kWeeklyThemesFrequency,
           constraints: kBackgroundJobConstraints,
         ),
-        JobRegistration(
+        const JobRegistration(
           name: kSynthesisKindMonthlyShifts,
           frequency: kMonthlyShiftsFrequency,
           constraints: kBackgroundJobConstraints,
         ),
+        if (memoryConsolidation != null)
+          const JobRegistration(
+            name: kJobKindMemoryConsolidation,
+            frequency: kMemoryConsolidationFrequency,
+            constraints: kBackgroundJobConstraints,
+          ),
+        if (profileRefresh != null)
+          const JobRegistration(
+            name: kJobKindProfileRefresh,
+            frequency: kProfileRefreshFrequency,
+            constraints: kBackgroundJobConstraints,
+          ),
       ];
 
-  /// Register all three jobs with the underlying [queue]. Idempotent
+  /// Register all known jobs with the underlying [queue]. Idempotent
   /// (the queue's register() replaces existing entries by name).
   Future<Result<void, AppError>> registerAll() => queue.register(jobs);
 
@@ -255,6 +285,28 @@ class BackgroundScheduler {
             : Err<void, AppError>(r.errOrNull!);
       case kSynthesisKindMonthlyShifts:
         final r = await monthlyShifts.run();
+        return r.isOk
+            ? const Ok<void, AppError>(null)
+            : Err<void, AppError>(r.errOrNull!);
+      case kJobKindMemoryConsolidation:
+        final job = memoryConsolidation;
+        if (job == null) {
+          return const Err<void, AppError>(
+            UnknownError('memory consolidation job not configured'),
+          );
+        }
+        final r = await job.run();
+        return r.isOk
+            ? const Ok<void, AppError>(null)
+            : Err<void, AppError>(r.errOrNull!);
+      case kJobKindProfileRefresh:
+        final job = profileRefresh;
+        if (job == null) {
+          return const Err<void, AppError>(
+            UnknownError('profile refresh job not configured'),
+          );
+        }
+        final r = await job.run();
         return r.isOk
             ? const Ok<void, AppError>(null)
             : Err<void, AppError>(r.errOrNull!);

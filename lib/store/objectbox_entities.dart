@@ -34,3 +34,35 @@ class ChunkVector {
   @HnswIndex(dimensions: 384, distanceType: VectorDistanceType.cosine)
   List<double> embedding;
 }
+
+/// A 384-dimensional, L2-normalised embedding for one memory record
+/// (Phase 8).
+///
+/// Sibling of [ChunkVector] — separate box so memory retrieval doesn't
+/// need to filter chunk vectors out on every query, and so supersedence
+/// / archive states can be reflected by presence/absence rather than a
+/// SQL join. The [memoryId] is the `memories.id` TEXT primary key; kept
+/// denormalised here so `removeByMemoryId` is a single-store operation.
+@Entity()
+class MemoryVector {
+  MemoryVector({
+    this.id = 0,
+    required this.memoryId,
+    required this.embedding,
+  });
+
+  /// ObjectBox-assigned id when 0 → auto-assign on put. Stored back
+  /// into `memories.objectbox_id`.
+  @Id()
+  int id;
+
+  /// `memories.id` (UUID/ULID string). Indexed so delete-by-id is
+  /// cheap.
+  @Index()
+  String memoryId;
+
+  /// 384-dim vector from multilingual-e5-small.
+  @Property(type: PropertyType.floatVector)
+  @HnswIndex(dimensions: 384, distanceType: VectorDistanceType.cosine)
+  List<double> embedding;
+}

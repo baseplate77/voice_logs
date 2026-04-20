@@ -1,6 +1,8 @@
 import '../core/logger.dart';
 import '../llm/llm_runner.dart';
 import '../llm/prompt_templates.dart';
+import '../memory/models/profile_summary.dart';
+import '../memory/models/ranked_memory.dart';
 import '../retrieve/hybrid_retriever.dart';
 import '../retrieve/models/ranked_chunk.dart';
 import 'citation_formatter.dart';
@@ -13,15 +15,19 @@ import 'temporal_trigger.dart';
 /// k drops too much context. Plan §7 pins it at 5.
 const int kSynthSimpleChunkLimit = 5;
 
+/// Optional memory + profile context block injected into the prompt.
+/// Phase 6's default `answer()` renders this as the empty string; Phase
+/// 8's `answerWithContext()` fills it with the profile summary and
+/// ranked `[Mn]` memories.
 const PromptTemplate _simpleTemplate = PromptTemplate(
   name: 'synth_simple',
   body: '''
 You are VoxSynth, a personal voice-log assistant. Answer the user's
 question using ONLY the source snippets below. Every non-trivial claim
-must be followed by a `[Cn]` citation matching one of the source
-labels. If none of the sources answer the question, say so briefly in
-one sentence — do not fabricate.
-
+must be followed by a citation: `[Cn]` for transcript chunks, `[Mn]`
+for memory records. If none of the sources answer the question, say so
+briefly in one sentence — do not fabricate.
+{{memory_context}}
 Sources:
 {{sources}}
 
@@ -29,17 +35,18 @@ Question: {{question}}
 
 Answer:
 ''',
-  requiredVariables: <String>['sources', 'question'],
+  requiredVariables: <String>['memory_context', 'sources', 'question'],
 );
 
 const PromptTemplate _simpleRetryTemplate = PromptTemplate(
   name: 'synth_simple_retry',
   body: '''
-Your previous answer did not include any `[Cn]` citation markers. That
-is not acceptable. Answer the question again using ONLY the sources
-below. Every sentence must end with at least one `[Cn]` marker that
-matches a source label (e.g. "The pricing decision was made [C2].").
-
+Your previous answer did not include any `[Cn]` or `[Mn]` citation
+markers. That is not acceptable. Answer the question again using ONLY
+the sources below. Every sentence must end with at least one `[Cn]` /
+`[Mn]` marker matching a source label (e.g. "The pricing decision was
+made [C2].").
+{{memory_context}}
 Sources:
 {{sources}}
 
@@ -47,7 +54,7 @@ Question: {{question}}
 
 Answer:
 ''',
-  requiredVariables: <String>['sources', 'question'],
+  requiredVariables: <String>['memory_context', 'sources', 'question'],
 );
 
 const PromptTemplate _temporalTemplate = PromptTemplate(
@@ -57,9 +64,10 @@ You are VoxSynth, a personal voice-log assistant. The user is asking a
 question about how a topic has evolved over time. Below are sources
 grouped by week, oldest week first. Narrate the evolution
 chronologically — week by week — citing each week's sources with
-`[Cn]` markers. If a week has no noteworthy change, it is fine to skip
-it. Do not fabricate.
-
+`[Cn]` markers. Memory records (`[Mn]`) may also be cited when
+relevant. If a week has no noteworthy change, it is fine to skip it.
+Do not fabricate.
+{{memory_context}}
 Sources (oldest → newest):
 {{sources}}
 
@@ -67,16 +75,17 @@ Question: {{question}}
 
 Answer:
 ''',
-  requiredVariables: <String>['sources', 'question'],
+  requiredVariables: <String>['memory_context', 'sources', 'question'],
 );
 
 const PromptTemplate _temporalRetryTemplate = PromptTemplate(
   name: 'synth_temporal_retry',
   body: '''
-Your previous answer did not include any `[Cn]` citation markers. Try
-again. Narrate the evolution chronologically, and end every sentence
-with at least one `[Cn]` marker that matches a source label.
-
+Your previous answer did not include any `[Cn]` or `[Mn]` citation
+markers. Try again. Narrate the evolution chronologically, and end
+every sentence with at least one `[Cn]` / `[Mn]` marker that matches a
+source label.
+{{memory_context}}
 Sources (oldest → newest):
 {{sources}}
 
@@ -84,7 +93,7 @@ Question: {{question}}
 
 Answer:
 ''',
-  requiredVariables: <String>['sources', 'question'],
+  requiredVariables: <String>['memory_context', 'sources', 'question'],
 );
 
 /// Streaming RAG answerer. Bridges [HybridRetriever] +
@@ -116,14 +125,33 @@ class QuerySynthesizer {
   final bool Function(String) temporalTrigger;
   final AppLogger _logger;
 
-  /// Stream an answer for [question].
-  ///
-  /// - `forceTemporal`: bypasses [temporalTrigger] and takes the
-  ///   multi-hop path. Used by background jobs that already know the
-  ///   question is time-shaped.
+  /// Stream an answer for [question]. Equivalent to
+  /// [answerWithContext] with no profile and no memory context —
+  /// existing callers are unchanged.
   Stream<SynthesisEvent> answer(
     String question, {
     bool? forceTemporal,
+  }) =>
+      answerWithContext(question, forceTemporal: forceTemporal);
+
+  /// Stream an answer, optionally grounded in a pre-computed
+  /// [ProfileSummary] and a list of [RankedMemory]s (Phase 8).
+  ///
+  /// - When both are null/empty, behaviour matches the pre-Phase-8
+  ///   `answer()` — prompt carries chunk sources only and `[Cn]` tags.
+  /// - When memories or profile are provided, they render above the
+  ///   chunk sources and the prompt instructs the LLM to cite `[Mn]`
+  ///   where appropriate. Citations in the final answer are parsed
+  ///   with a unified `[Cn]` / `[Mn]` namespace.
+  ///
+  /// This is the single additive touchpoint to Phase 6 from Phase 8 —
+  /// the `MemoryAwareQuerySynthesizer` facade in `lib/memory/` calls
+  /// this method after running [MemoryRetriever] + [ProfileBuilder].
+  Stream<SynthesisEvent> answerWithContext(
+    String question, {
+    bool? forceTemporal,
+    ProfileSummary? profile,
+    List<RankedMemory> memories = const <RankedMemory>[],
   }) async* {
     yield const RetrievalStarted();
     final trimmed = question.trim();
@@ -134,9 +162,9 @@ class QuerySynthesizer {
     final useTemporal = forceTemporal ?? temporalTrigger(trimmed);
     try {
       if (useTemporal) {
-        yield* _temporalPath(trimmed);
+        yield* _temporalPath(trimmed, profile: profile, memories: memories);
       } else {
-        yield* _simplePath(trimmed);
+        yield* _simplePath(trimmed, profile: profile, memories: memories);
       }
     } on Object catch (e, st) {
       _logger.error('synthesis failed', error: e, stackTrace: st);
@@ -147,7 +175,11 @@ class QuerySynthesizer {
     }
   }
 
-  Stream<SynthesisEvent> _simplePath(String question) async* {
+  Stream<SynthesisEvent> _simplePath(
+    String question, {
+    required ProfileSummary? profile,
+    required List<RankedMemory> memories,
+  }) async* {
     // kSynthSimpleChunkLimit matches HybridRetriever.retrieve's default
     // limit; kept named so changes land in both places.
     assert(kSynthSimpleChunkLimit == 5,
@@ -162,26 +194,38 @@ class QuerySynthesizer {
     }
     final chunks = r.okOrNull!;
     yield RetrievalComplete(chunks: chunks);
-    if (chunks.isEmpty) {
+    if (chunks.isEmpty && memories.isEmpty) {
       yield const SynthesisComplete(answer: '', citations: <Citation>[]);
       return;
     }
     final formatted = formatChunksForPrompt(chunks);
+    final memoryBlock = formatMemoriesForPrompt(memories);
+    final memoryContext = _buildMemoryContext(
+      profile: profile,
+      memoriesBlock: memoryBlock.block,
+    );
     final prompt = _simpleTemplate.render(<String, String>{
+      'memory_context': memoryContext,
       'sources': formatted.block,
       'question': question,
     });
     yield* _streamWithCitationRetry(
       prompt: prompt,
       tagToChunkId: formatted.tagToChunkId,
+      tagToMemoryId: memoryBlock.tagToMemoryId,
       retryBuilder: () => _simpleRetryTemplate.render(<String, String>{
+        'memory_context': memoryContext,
         'sources': formatted.block,
         'question': question,
       }),
     );
   }
 
-  Stream<SynthesisEvent> _temporalPath(String question) async* {
+  Stream<SynthesisEvent> _temporalPath(
+    String question, {
+    required ProfileSummary? profile,
+    required List<RankedMemory> memories,
+  }) async* {
     final r = await multiHopRetriever.retrieveTemporal(question);
     if (r.isErr) {
       yield SynthesisFailed(
@@ -195,7 +239,7 @@ class QuerySynthesizer {
     // Temporal trigger is a cheap classifier — not every "changed"
     // question actually has a week-structured corpus behind it.
     if (weeks.isEmpty) {
-      yield* _simplePath(question);
+      yield* _simplePath(question, profile: profile, memories: memories);
       return;
     }
     // Flatten clusters into RankedChunks (chronological) for the
@@ -207,18 +251,52 @@ class QuerySynthesizer {
     }
     yield RetrievalComplete(chunks: flat);
     final formatted = formatWeekClustersForPrompt(weeks);
+    final memoryBlock = formatMemoriesForPrompt(memories);
+    final memoryContext = _buildMemoryContext(
+      profile: profile,
+      memoriesBlock: memoryBlock.block,
+    );
     final prompt = _temporalTemplate.render(<String, String>{
+      'memory_context': memoryContext,
       'sources': formatted.block,
       'question': question,
     });
     yield* _streamWithCitationRetry(
       prompt: prompt,
       tagToChunkId: formatted.tagToChunkId,
+      tagToMemoryId: memoryBlock.tagToMemoryId,
       retryBuilder: () => _temporalRetryTemplate.render(<String, String>{
+        'memory_context': memoryContext,
         'sources': formatted.block,
         'question': question,
       }),
     );
+  }
+
+  /// Assemble the optional profile + memories block that sits above
+  /// the "Sources:" section. Returns an empty string when both inputs
+  /// are empty, so pre-Phase-8 prompts render identical to before.
+  static String _buildMemoryContext({
+    required ProfileSummary? profile,
+    required String memoriesBlock,
+  }) {
+    final hasProfile = profile != null && profile.summary.trim().isNotEmpty;
+    final hasMemories = memoriesBlock.trim().isNotEmpty;
+    if (!hasProfile && !hasMemories) return '';
+    final buf = StringBuffer('\n');
+    if (hasProfile) {
+      buf
+        ..write('About the user:\n')
+        ..write(profile.summary.trim())
+        ..write('\n\n');
+    }
+    if (hasMemories) {
+      buf
+        ..write('Relevant memories:\n')
+        ..write(memoriesBlock)
+        ..write('\n\n');
+    }
+    return buf.toString();
   }
 
   /// Stream [prompt] through the LLM, emit [TokenGenerated] for each
@@ -237,6 +315,7 @@ class QuerySynthesizer {
     required String prompt,
     required Map<String, int> tagToChunkId,
     required String Function() retryBuilder,
+    Map<String, String> tagToMemoryId = const <String, String>{},
   }) async* {
     final firstBuf = StringBuffer();
     try {
@@ -249,7 +328,11 @@ class QuerySynthesizer {
       return;
     }
     var answer = firstBuf.toString();
-    if (!answerHasCitations(answer, tagToChunkId)) {
+    if (!answerHasCitations(
+      answer,
+      tagToChunkId,
+      tagToMemoryId: tagToMemoryId,
+    )) {
       _logger.warn('synth: no citations in first pass, retrying');
       final retryPrompt = retryBuilder();
       final retryBuf = StringBuffer();
@@ -268,13 +351,21 @@ class QuerySynthesizer {
       // Only replace the answer if the retry produced citations —
       // otherwise the first pass is at least a real attempt.
       final retryAnswer = retryBuf.toString();
-      if (answerHasCitations(retryAnswer, tagToChunkId)) {
+      if (answerHasCitations(
+        retryAnswer,
+        tagToChunkId,
+        tagToMemoryId: tagToMemoryId,
+      )) {
         answer = retryAnswer;
       }
     }
     yield SynthesisComplete(
       answer: answer,
-      citations: parseCitations(answer, tagToChunkId),
+      citations: parseCitations(
+        answer,
+        tagToChunkId,
+        tagToMemoryId: tagToMemoryId,
+      ),
     );
   }
 }

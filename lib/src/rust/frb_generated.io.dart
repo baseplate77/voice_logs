@@ -5,7 +5,6 @@
 
 import 'api/asr.dart';
 import 'api/embed.dart';
-import 'api/llm.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ffi' as ffi;

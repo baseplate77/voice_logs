@@ -14,3 +14,12 @@ const String kSynthesisKindWeeklyThemes = 'weekly_themes';
 
 /// Matches [MonthlyShifts] payload.
 const String kSynthesisKindMonthlyShifts = 'monthly_shifts';
+
+/// Phase 8 — periodic sweep over the memory store to catch duplicate /
+/// contradiction pairs the on-ingest consolidator missed.
+const String kJobKindMemoryConsolidation = 'memory_consolidation';
+
+/// Phase 8 — rebuild the always-on profile summary when the stale
+/// flag is set. Runs daily; the profile also rebuilds lazily on the
+/// next query so this is just "make it not block the user".
+const String kJobKindProfileRefresh = 'profile_refresh';

@@ -152,3 +152,110 @@ class Syntheses extends Table {
   /// idempotent so duplicates on retry are harmless but visible here.
   IntColumn get createdAt => integer()();
 }
+
+/// One distilled memory row — Phase 8's semantic layer on top of
+/// chunks/entities. Four kinds share this table (fact, decision,
+/// episode, goal); kind-specific fields hang off nullable columns.
+///
+/// Named `memory` / `memories` per the plan. `id` is a TEXT UUID so
+/// supersedence links can be inserted before the replacement row
+/// commits (vs. an autoincrement that'd need a second round trip).
+@DataClassName('MemoryRow')
+class Memories extends Table {
+  /// UUID / ULID assigned by the repository before insert.
+  TextColumn get id => text()();
+
+  /// One of `fact` | `decision` | `episode` | `goal`. Stored as text
+  /// so future kinds can widen the enum without a schema migration.
+  TextColumn get kind => text()();
+
+  /// ~10-word retrieval-friendly handle. Indexed in FTS.
+  TextColumn get title => text()();
+
+  /// 1–3 sentence canonical phrasing. Also FTS-indexed. Column is
+  /// named `body` (not `content`) because the FTS5 table below uses
+  /// `content='memories'` which would shadow a same-named column.
+  TextColumn get body => text()();
+
+  /// `active` | `superseded` | `resolved` | `archived`.
+  TextColumn get status => text().withDefault(const Constant('active'))();
+
+  /// Extractor-assigned confidence, in [0, 1].
+  RealColumn get confidence => real()();
+
+  IntColumn get createdAt => integer()();
+  IntColumn get updatedAt => integer()();
+
+  /// When `status = superseded`, points to the replacement memory id.
+  TextColumn get supersededById => text().nullable()();
+
+  /// When did the memorable event happen — populated for decisions /
+  /// episodes, null for facts and goals.
+  IntColumn get occurredAt => integer().nullable()();
+
+  /// Goal-only. ms-since-epoch target date.
+  IntColumn get dueAt => integer().nullable()();
+
+  /// Goal-only. `open` | `in_progress` | `done` | `abandoned`.
+  TextColumn get goalState => text().nullable()();
+
+  /// ObjectBox row id for the memory's embedding vector. 0 = no
+  /// vector stored yet.
+  IntColumn get objectboxId =>
+      integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}
+
+/// Join table linking a memory to the transcript chunks it was
+/// extracted from. Provenance is first-class — UI can surface "this
+/// memory came from recording X".
+@DataClassName('MemorySourceRow')
+class MemorySources extends Table {
+  TextColumn get memoryId => text().references(Memories, #id)();
+
+  /// Matches `transcript_chunks.id`.
+  IntColumn get chunkId => integer().references(TranscriptChunks, #id)();
+
+  /// How strongly this chunk supported the memory (0..1). The
+  /// extractor sets it from text-overlap length; consolidator updates
+  /// on merge.
+  RealColumn get weight => real().withDefault(const Constant(1.0))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {memoryId, chunkId};
+}
+
+/// Join table linking a memory to known canonical entities.
+@DataClassName('MemoryEntityRow')
+class MemoryEntities extends Table {
+  TextColumn get memoryId => text().references(Memories, #id)();
+  IntColumn get entityId => integer().references(Entities, #id)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {memoryId, entityId};
+}
+
+/// Single-row cache of the always-on "about me" summary. Rebuilt
+/// lazily by [ProfileBuilder] whenever [isStale] == 1.
+@DataClassName('ProfileSummaryRow')
+class ProfileSummaries extends Table {
+  /// Always row id 1; we only keep one summary at a time.
+  IntColumn get id => integer()();
+
+  TextColumn get summary => text().withDefault(const Constant(''))();
+  IntColumn get updatedAt => integer()();
+
+  /// JSON array of memory ids whose content contributed to the current
+  /// summary. Stored as JSON so the schema doesn't bloat with a join.
+  TextColumn get sourceMemoryIdsJson =>
+      text().withDefault(const Constant('[]'))();
+
+  /// 1 when the next `current()` call should rebuild. Phase 8 jobs and
+  /// the ingestion coordinator set this.
+  IntColumn get isStale => integer().withDefault(const Constant(0))();
+
+  @override
+  Set<Column<Object>> get primaryKey => {id};
+}

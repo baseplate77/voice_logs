@@ -1,3 +1,5 @@
+import '../memory/models/memory.dart';
+import '../memory/models/ranked_memory.dart';
 import '../retrieve/models/ranked_chunk.dart';
 import '../store/models/voice_log_record.dart';
 import 'models/synthesis_event.dart';
@@ -106,34 +108,100 @@ const String _chunkSeparator = '\n\n';
   return (block: buf.toString(), tagToChunkId: tagToChunkId);
 }
 
-/// Pattern matching `[Cn]` where `n` is one or more digits. Used for
-/// parsing citations out of the LLM's answer text.
-final RegExp _citationRegex = RegExp(r'\[(C\d+)\]');
+/// Build the memory block for a RAG prompt. Each memory is tagged
+/// `[M1]`, `[M2]`, ...; the tag → memory-id map is returned alongside
+/// so the caller can pass it to [parseCitations] later.
+///
+/// Format mirrors the chunk block (same tag/content spacing) but
+/// prefixes each entry with a kind + date hint so the LLM has enough
+/// structure to cite correctly.
+({String block, Map<String, String> tagToMemoryId})
+    formatMemoriesForPrompt(List<RankedMemory> memories) {
+  final buf = StringBuffer();
+  final tagToMemoryId = <String, String>{};
+  for (var i = 0; i < memories.length; i++) {
+    final tag = 'M${i + 1}';
+    final m = memories[i].memory;
+    tagToMemoryId[tag] = m.id.raw;
+    if (buf.isNotEmpty) buf.write(_chunkSeparator);
+    buf
+      ..write('[')
+      ..write(tag)
+      ..write('] ')
+      ..write(_memoryHeader(m))
+      ..write(' ')
+      ..write(m.content);
+  }
+  return (block: buf.toString(), tagToMemoryId: tagToMemoryId);
+}
 
-/// Parse `[Cn]` markers from the answer text into resolved
+String _memoryHeader(Memory m) {
+  switch (m) {
+    case FactMemory():
+      return '(fact)';
+    case DecisionMemory():
+      return '(decision, ${_ymd(m.occurredAt)})';
+    case EpisodeMemory():
+      return '(episode, ${_ymd(m.occurredAt)})';
+    case GoalMemory():
+      final state = switch (m.state) {
+        GoalState.open => 'open',
+        GoalState.inProgress => 'in progress',
+        GoalState.done => 'done',
+        GoalState.abandoned => 'abandoned',
+      };
+      final due = m.dueAt == null ? '' : ', due ${_ymd(m.dueAt!)}';
+      return '(goal, $state$due)';
+  }
+}
+
+String _ymd(DateTime d) =>
+    '${d.year.toString().padLeft(4, '0')}-'
+    '${d.month.toString().padLeft(2, '0')}-'
+    '${d.day.toString().padLeft(2, '0')}';
+
+/// Pattern matching `[Cn]` or `[Mn]` where `n` is one or more digits.
+/// Used for parsing citations out of the LLM's answer text.
+final RegExp _citationRegex = RegExp(r'\[([CM]\d+)\]');
+
+/// Parse `[Cn]` / `[Mn]` markers from the answer text into resolved
 /// [Citation] objects.
 ///
-/// Tags that don't appear in [tagToChunkId] are silently skipped —
-/// the LLM sometimes hallucinates `[C9]` when there are only 5
-/// chunks. The caller can compare `chunks.length` vs
-/// `citations.length` to detect that.
+/// Tags that don't appear in [tagToChunkId] or [tagToMemoryId] are
+/// silently skipped — the LLM sometimes hallucinates `[C9]` when there
+/// are only 5 chunks. The caller can compare counts to detect that.
 List<Citation> parseCitations(
   String answer,
-  Map<String, int> tagToChunkId,
-) {
+  Map<String, int> tagToChunkId, {
+  Map<String, String> tagToMemoryId = const <String, String>{},
+}) {
   final out = <Citation>[];
   for (final match in _citationRegex.allMatches(answer)) {
     final tag = match.group(1)!;
-    final chunkId = tagToChunkId[tag];
-    if (chunkId == null) continue;
-    out.add(
-      Citation(
-        tag: tag,
-        chunkId: chunkId,
-        spanStart: match.start,
-        spanEnd: match.end,
-      ),
-    );
+    if (tag.startsWith('C')) {
+      final chunkId = tagToChunkId[tag];
+      if (chunkId == null) continue;
+      out.add(
+        Citation(
+          tag: tag,
+          chunkId: chunkId,
+          spanStart: match.start,
+          spanEnd: match.end,
+        ),
+      );
+    } else {
+      final memoryId = tagToMemoryId[tag];
+      if (memoryId == null) continue;
+      out.add(
+        Citation(
+          tag: tag,
+          memoryId: memoryId,
+          sourceKind: CitationSourceKind.memory,
+          spanStart: match.start,
+          spanEnd: match.end,
+        ),
+      );
+    }
   }
   return out;
 }
@@ -141,5 +209,13 @@ List<Citation> parseCitations(
 /// Fast bool: "does this answer contain at least one valid citation?".
 /// The synthesizer uses this to decide whether to retry with a
 /// stricter prompt.
-bool answerHasCitations(String answer, Map<String, int> tagToChunkId) =>
-    parseCitations(answer, tagToChunkId).isNotEmpty;
+bool answerHasCitations(
+  String answer,
+  Map<String, int> tagToChunkId, {
+  Map<String, String> tagToMemoryId = const <String, String>{},
+}) =>
+    parseCitations(
+      answer,
+      tagToChunkId,
+      tagToMemoryId: tagToMemoryId,
+    ).isNotEmpty;

@@ -1,72 +1,47 @@
 // coverage:ignore-file
 //
-// GemmaRunner bridges the Dart-side LlmRunner interface to Gemma 3
-// running inside voxsynth_asr (candle-transformers). Cannot be
-// exercised under `flutter test` — requires the Rust dylib plus the
-// real GGUF model on disk. Unit tests use FakeLlmRunner; this is
-// covered end-to-end by the host integration test at
-// `test/llm/gemma_runner_integration_test.dart`.
+// Placeholder [LlmRunner] left in place after the Rust/candle Gemma
+// implementation was removed. The next iteration wires this class to
+// `flutter_gemma` (MediaPipe) — until then, every method returns a
+// clear "pending" error so the cleanup stage in DebugRunNotifier
+// surfaces the gap instead of silently failing or crashing.
+//
+// The file intentionally keeps the `GemmaRunner(modelPath, tokenizerPath)`
+// constructor shape so the call sites (lib/ui/debug/debug_run_notifier.dart
+// and the Phase 3 CleanupPipeline) don't need to change. When flutter_gemma
+// lands, `modelPath` will point to a `.task` bundle and `tokenizerPath`
+// will be ignored (MediaPipe packs the tokenizer into the bundle).
 
 import '../core/errors.dart';
 import '../core/result.dart';
-import '../src/rust/api/llm.dart' as rust;
-import '../src/rust/frb_generated.dart' as frb;
 import 'llm_runner.dart';
 
-/// Production [LlmRunner] that delegates to the Rust crate.
-///
-/// Gemma 3 chat format expects prompts wrapped in
-/// `<start_of_turn>user … <end_of_turn><start_of_turn>model`. We keep
-/// that wrapping at the caller — [CleanupPipeline] could add it once
-/// we confirm Gemma 3 1B IT needs it, but the prompt templates as
-/// written work fine without (the model treats them as completion-style
-/// prompts and emits the right JSON).
+const _pendingReason =
+    'Gemma inference is pending the flutter_gemma swap. The Rust/candle '
+    'implementation was removed; place a gemma3-270m-it-*.task file under '
+    'assets/models/gemma/ and wire flutter_gemma to finish the migration.';
+
+/// Stub [LlmRunner]. Always returns [ModelLoadError] so the cleanup
+/// stage fails with a readable message.
 class GemmaRunner implements LlmRunner {
   GemmaRunner({required this.modelPath, required this.tokenizerPath});
 
-  /// Absolute path to the GGUF weights file.
+  /// Kept for interface compatibility. Pointed at a `.gguf` today, will
+  /// point at a `.task` once flutter_gemma is wired.
   final String modelPath;
 
-  /// Absolute path to `tokenizer.json`.
+  /// Kept for interface compatibility. Unused once flutter_gemma lands
+  /// (MediaPipe bundles the tokenizer inside the `.task` file).
   final String tokenizerPath;
-
-  int _maxTokens = 2048;
-  double _temperature = 0.3;
-  bool _loaded = false;
-  bool _disposed = false;
 
   @override
   Future<Result<void, AppError>> load({
     int maxTokens = 2048,
     double temperature = 0.3,
   }) async {
-    if (_disposed) {
-      return const Err<void, AppError>(
-        ModelLoadError('gemma', reason: 'runner already disposed'),
-      );
-    }
-    _maxTokens = maxTokens;
-    _temperature = temperature;
-    try {
-      if (!frb.RustLib.instance.initialized) {
-        await frb.RustLib.init();
-      }
-      await rust.loadGemma(
-        modelPath: modelPath,
-        tokenizerPath: tokenizerPath,
-      );
-      _loaded = true;
-      return const Ok<void, AppError>(null);
-    } on Object catch (e, st) {
-      return Err<void, AppError>(
-        ModelLoadError(
-          modelPath,
-          reason: 'Rust loadGemma failed',
-          cause: e,
-          stackTrace: st,
-        ),
-      );
-    }
+    return const Err<void, AppError>(
+      ModelLoadError('gemma', reason: _pendingReason),
+    );
   }
 
   @override
@@ -74,18 +49,7 @@ class GemmaRunner implements LlmRunner {
     String prompt, {
     double? temperatureOverride,
   }) async* {
-    // The Rust side does not expose streaming yet — emit the full
-    // completion as one chunk. The LlmRunner contract allows this; it
-    // just means callers relying on intermediate tokens will see
-    // latency but the full text arrives.
-    final r = await generateSync(
-      prompt,
-      temperatureOverride: temperatureOverride,
-    );
-    if (r.isErr) {
-      throw StateError('GemmaRunner.generate failed: ${r.errOrNull}');
-    }
-    yield r.okOrNull!;
+    throw StateError(_pendingReason);
   }
 
   @override
@@ -93,42 +57,11 @@ class GemmaRunner implements LlmRunner {
     String prompt, {
     double? temperatureOverride,
   }) async {
-    if (_disposed) {
-      return const Err<String, AppError>(
-        UnknownError('GemmaRunner already disposed'),
-      );
-    }
-    if (!_loaded) {
-      return const Err<String, AppError>(
-        ModelLoadError('gemma', reason: 'generate called before load'),
-      );
-    }
-    try {
-      final text = await rust.generateSync(
-        prompt: prompt,
-        maxTokens: _maxTokens,
-        temperature: temperatureOverride ?? _temperature,
-      );
-      return Ok<String, AppError>(text);
-    } on Object catch (e, st) {
-      return Err<String, AppError>(
-        UnknownError(
-          'Gemma generateSync failed',
-          cause: e,
-          stackTrace: st,
-        ),
-      );
-    }
+    return const Err<String, AppError>(UnknownError(_pendingReason));
   }
 
   @override
   Future<void> dispose() async {
-    _disposed = true;
-    _loaded = false;
-    try {
-      await rust.disposeLlm();
-    } on Object catch (_) {
-      // best-effort — native side drops on shutdown anyway.
-    }
+    // nothing to release — no model was ever loaded.
   }
 }

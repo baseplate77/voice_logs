@@ -37,7 +37,7 @@ flutter_rust_bridge::frb_generated_boilerplate!(
     default_rust_auto_opaque = RustAutoOpaqueMoi,
 );
 pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_VERSION: &str = "2.11.1";
-pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1054322795;
+pub(crate) const FLUTTER_RUST_BRIDGE_CODEGEN_CONTENT_HASH: i32 = -1606999245;
 
 // Section: executor
 
@@ -113,40 +113,6 @@ fn wire__crate__api__embed__dispose_embedder_impl(
         },
     )
 }
-fn wire__crate__api__llm__dispose_llm_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "dispose_llm",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok = Result::<_, ()>::Ok({
-                        crate::api::llm::dispose_llm();
-                    })?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 fn wire__crate__api__embed__embed_batch_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -174,45 +140,6 @@ fn wire__crate__api__embed__embed_batch_impl(
             move |context| {
                 transform_result_sse::<_, String>((move || {
                     let output_ok = crate::api::embed::embed_batch(api_texts)?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__llm__generate_sync_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "generate_sync",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_prompt = <String>::sse_decode(&mut deserializer);
-            let api_max_tokens = <i32>::sse_decode(&mut deserializer);
-            let api_temperature = <f32>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, String>((move || {
-                    let output_ok = crate::api::llm::generate_sync(
-                        api_prompt,
-                        api_max_tokens,
-                        api_temperature,
-                    )?;
                     Ok(output_ok)
                 })())
             }
@@ -285,38 +212,6 @@ fn wire__crate__api__embed__is_e5_loaded_impl(
         },
     )
 }
-fn wire__crate__api__llm__is_gemma_loaded_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "is_gemma_loaded",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, ()>((move || {
-                    let output_ok = Result::<_, ()>::Ok(crate::api::llm::is_gemma_loaded())?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
 fn wire__crate__api__asr__is_loaded_impl(
     port_: flutter_rust_bridge::for_generated::MessagePort,
     ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
@@ -382,41 +277,6 @@ fn wire__crate__api__embed__load_e5_impl(
                         api_config_path,
                         api_tokenizer_path,
                     )?;
-                    Ok(output_ok)
-                })())
-            }
-        },
-    )
-}
-fn wire__crate__api__llm__load_gemma_impl(
-    port_: flutter_rust_bridge::for_generated::MessagePort,
-    ptr_: flutter_rust_bridge::for_generated::PlatformGeneralizedUint8ListPtr,
-    rust_vec_len_: i32,
-    data_len_: i32,
-) {
-    FLUTTER_RUST_BRIDGE_HANDLER.wrap_normal::<flutter_rust_bridge::for_generated::SseCodec, _, _>(
-        flutter_rust_bridge::for_generated::TaskInfo {
-            debug_name: "load_gemma",
-            port: Some(port_),
-            mode: flutter_rust_bridge::for_generated::FfiCallMode::Normal,
-        },
-        move || {
-            let message = unsafe {
-                flutter_rust_bridge::for_generated::Dart2RustMessageSse::from_wire(
-                    ptr_,
-                    rust_vec_len_,
-                    data_len_,
-                )
-            };
-            let mut deserializer =
-                flutter_rust_bridge::for_generated::SseDeserializer::new(message);
-            let api_model_path = <String>::sse_decode(&mut deserializer);
-            let api_tokenizer_path = <String>::sse_decode(&mut deserializer);
-            deserializer.end();
-            move |context| {
-                transform_result_sse::<_, String>((move || {
-                    let output_ok =
-                        crate::api::llm::load_gemma(api_model_path, api_tokenizer_path)?;
                     Ok(output_ok)
                 })())
             }
@@ -605,17 +465,13 @@ fn pde_ffi_dispatcher_primary_impl(
     match func_id {
         1 => wire__crate__api__asr__dispose_impl(port, ptr, rust_vec_len, data_len),
         2 => wire__crate__api__embed__dispose_embedder_impl(port, ptr, rust_vec_len, data_len),
-        3 => wire__crate__api__llm__dispose_llm_impl(port, ptr, rust_vec_len, data_len),
-        4 => wire__crate__api__embed__embed_batch_impl(port, ptr, rust_vec_len, data_len),
-        5 => wire__crate__api__llm__generate_sync_impl(port, ptr, rust_vec_len, data_len),
-        6 => wire__crate__api__init__init_app_impl(port, ptr, rust_vec_len, data_len),
-        7 => wire__crate__api__embed__is_e5_loaded_impl(port, ptr, rust_vec_len, data_len),
-        8 => wire__crate__api__llm__is_gemma_loaded_impl(port, ptr, rust_vec_len, data_len),
-        9 => wire__crate__api__asr__is_loaded_impl(port, ptr, rust_vec_len, data_len),
-        10 => wire__crate__api__embed__load_e5_impl(port, ptr, rust_vec_len, data_len),
-        11 => wire__crate__api__llm__load_gemma_impl(port, ptr, rust_vec_len, data_len),
-        12 => wire__crate__api__asr__load_parakeet_impl(port, ptr, rust_vec_len, data_len),
-        13 => wire__crate__api__asr__transcribe_pcm_s16le_impl(port, ptr, rust_vec_len, data_len),
+        3 => wire__crate__api__embed__embed_batch_impl(port, ptr, rust_vec_len, data_len),
+        4 => wire__crate__api__init__init_app_impl(port, ptr, rust_vec_len, data_len),
+        5 => wire__crate__api__embed__is_e5_loaded_impl(port, ptr, rust_vec_len, data_len),
+        6 => wire__crate__api__asr__is_loaded_impl(port, ptr, rust_vec_len, data_len),
+        7 => wire__crate__api__embed__load_e5_impl(port, ptr, rust_vec_len, data_len),
+        8 => wire__crate__api__asr__load_parakeet_impl(port, ptr, rust_vec_len, data_len),
+        9 => wire__crate__api__asr__transcribe_pcm_s16le_impl(port, ptr, rust_vec_len, data_len),
         _ => unreachable!(),
     }
 }

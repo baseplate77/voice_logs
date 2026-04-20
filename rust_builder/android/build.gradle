@@ -54,3 +54,62 @@ cargokit {
     manifestDir = "../../rust/voxsynth_asr"
     libname = "voxsynth_asr"
 }
+
+// sherpa-rs-sys builds libsherpa-onnx-c-api.so and libonnxruntime.so next to
+// libvoxsynth_asr.so, and libvoxsynth_asr.so is dynamically linked against
+// them. Cargokit only copies the primary cdylib (libvoxsynth_asr.so) into
+// jniLibs, so at runtime dlopen fails with
+// `library "libsherpa-onnx-c-api.so" not found`. Copy the transitive
+// native deps into the same jniLibs/<abi>/ dir before merge*NativeLibs runs.
+def sherpaExtraLibs = ["libsherpa-onnx-c-api.so", "libonnxruntime.so"]
+def rustTripleToAbi = [
+    "armv7-linux-androideabi": "armeabi-v7a",
+    "aarch64-linux-android"  : "arm64-v8a",
+    "i686-linux-android"     : "x86",
+    "x86_64-linux-android"   : "x86_64",
+]
+
+android.libraryVariants.all { variant ->
+    def buildType = variant.buildType.name
+    def buildTypeCap = buildType.capitalize()
+    def cargoBuildDir = "${project.buildDir}/build"
+    def cargoOutputDir = "${project.buildDir}/jniLibs/${buildType}"
+
+    def copyTask = project.tasks.register("cargokitCopySherpaDeps${buildTypeCap}") {
+        doLast {
+            rustTripleToAbi.each { rustTriple, abi ->
+                def srcDir = new File("${cargoBuildDir}/${rustTriple}/${buildType}")
+                if (!srcDir.exists()) {
+                    return
+                }
+                def destDir = new File("${cargoOutputDir}/${abi}")
+                destDir.mkdirs()
+                sherpaExtraLibs.each { libFile ->
+                    def srcFile = new File(srcDir, libFile)
+                    if (srcFile.exists()) {
+                        java.nio.file.Files.copy(
+                            srcFile.toPath(),
+                            new File(destDir, libFile).toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    def cargoTaskName = "cargokitCargoBuildVoxsynth_asr${buildTypeCap}"
+    def mergeTaskName = "merge${buildTypeCap}NativeLibs"
+
+    def wire = { newTask ->
+        if (newTask.name == cargoTaskName) {
+            copyTask.configure { dependsOn newTask }
+        }
+        if (newTask.name == mergeTaskName) {
+            newTask.dependsOn copyTask
+            newTask.outputs.upToDateWhen { false }
+        }
+    }
+    project.tasks.each wire
+    project.tasks.whenTaskAdded wire
+}

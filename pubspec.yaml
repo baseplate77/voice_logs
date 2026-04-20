@@ -101,5 +101,17 @@ dependency_overrides:
 flutter:
   uses-material-design: true
   assets:
-    - assets/models/
+    # Flutter's asset handling is *not* recursive — listing a directory
+    # only bundles files directly inside it, not subdirectories. The
+    # Rust-backed runners (Parakeet, e5, Gemma) each live in their own
+    # subdir, so those must be enumerated separately.
+    #
+    # The top-level `assets/models/` is intentionally *not* listed: the
+    # files sitting there (silero_vad.onnx, multilingual-e5-small-int8.onnx,
+    # ggml-small-q8_0.bin) are unused — Silero is a stub (see
+    # push_to_talk_processor.dart), and e5/whisper models are served
+    # from their own subdirs.
+    - assets/models/parakeet/
+    - assets/models/e5/
+    - assets/models/gemma/
     - assets/fixtures/

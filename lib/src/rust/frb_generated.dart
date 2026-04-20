@@ -5,7 +5,6 @@
 
 import 'api/asr.dart';
 import 'api/embed.dart';
-import 'api/llm.dart';
 import 'dart:async';
 import 'dart:convert';
 import 'frb_generated.dart';
@@ -68,7 +67,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.11.1';
 
   @override
-  int get rustContentHash => -1054322795;
+  int get rustContentHash => -1606999245;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -83,34 +82,19 @@ abstract class RustLibApi extends BaseApi {
 
   Future<void> crateApiEmbedDisposeEmbedder();
 
-  Future<void> crateApiLlmDisposeLlm();
-
   Future<List<Float32List>> crateApiEmbedEmbedBatch({
     required List<String> texts,
-  });
-
-  Future<String> crateApiLlmGenerateSync({
-    required String prompt,
-    required int maxTokens,
-    required double temperature,
   });
 
   Future<void> crateApiInitInitApp();
 
   Future<bool> crateApiEmbedIsE5Loaded();
 
-  Future<bool> crateApiLlmIsGemmaLoaded();
-
   Future<bool> crateApiAsrIsLoaded();
 
   Future<void> crateApiEmbedLoadE5({
     required String weightsPath,
     required String configPath,
-    required String tokenizerPath,
-  });
-
-  Future<void> crateApiLlmLoadGemma({
-    required String modelPath,
     required String tokenizerPath,
   });
 
@@ -185,33 +169,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "dispose_embedder", argNames: []);
 
   @override
-  Future<void> crateApiLlmDisposeLlm() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 3,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateApiLlmDisposeLlmConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiLlmDisposeLlmConstMeta =>
-      const TaskConstMeta(debugName: "dispose_llm", argNames: []);
-
-  @override
   Future<List<Float32List>> crateApiEmbedEmbedBatch({
     required List<String> texts,
   }) {
@@ -223,7 +180,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 4,
+            funcId: 3,
             port: port_,
           );
         },
@@ -242,42 +199,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "embed_batch", argNames: ["texts"]);
 
   @override
-  Future<String> crateApiLlmGenerateSync({
-    required String prompt,
-    required int maxTokens,
-    required double temperature,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(prompt, serializer);
-          sse_encode_i_32(maxTokens, serializer);
-          sse_encode_f_32(temperature, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 5,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_String,
-          decodeErrorData: sse_decode_String,
-        ),
-        constMeta: kCrateApiLlmGenerateSyncConstMeta,
-        argValues: [prompt, maxTokens, temperature],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiLlmGenerateSyncConstMeta => const TaskConstMeta(
-    debugName: "generate_sync",
-    argNames: ["prompt", "maxTokens", "temperature"],
-  );
-
-  @override
   Future<void> crateApiInitInitApp() {
     return handler.executeNormal(
       NormalTask(
@@ -286,7 +207,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 6,
+            funcId: 4,
             port: port_,
           );
         },
@@ -313,7 +234,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 7,
+            funcId: 5,
             port: port_,
           );
         },
@@ -332,33 +253,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       const TaskConstMeta(debugName: "is_e5_loaded", argNames: []);
 
   @override
-  Future<bool> crateApiLlmIsGemmaLoaded() {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 8,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_bool,
-          decodeErrorData: null,
-        ),
-        constMeta: kCrateApiLlmIsGemmaLoadedConstMeta,
-        argValues: [],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiLlmIsGemmaLoadedConstMeta =>
-      const TaskConstMeta(debugName: "is_gemma_loaded", argNames: []);
-
-  @override
   Future<bool> crateApiAsrIsLoaded() {
     return handler.executeNormal(
       NormalTask(
@@ -367,7 +261,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 9,
+            funcId: 6,
             port: port_,
           );
         },
@@ -401,7 +295,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 10,
+            funcId: 7,
             port: port_,
           );
         },
@@ -422,40 +316,6 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
-  Future<void> crateApiLlmLoadGemma({
-    required String modelPath,
-    required String tokenizerPath,
-  }) {
-    return handler.executeNormal(
-      NormalTask(
-        callFfi: (port_) {
-          final serializer = SseSerializer(generalizedFrbRustBinding);
-          sse_encode_String(modelPath, serializer);
-          sse_encode_String(tokenizerPath, serializer);
-          pdeCallFfi(
-            generalizedFrbRustBinding,
-            serializer,
-            funcId: 11,
-            port: port_,
-          );
-        },
-        codec: SseCodec(
-          decodeSuccessData: sse_decode_unit,
-          decodeErrorData: sse_decode_String,
-        ),
-        constMeta: kCrateApiLlmLoadGemmaConstMeta,
-        argValues: [modelPath, tokenizerPath],
-        apiImpl: this,
-      ),
-    );
-  }
-
-  TaskConstMeta get kCrateApiLlmLoadGemmaConstMeta => const TaskConstMeta(
-    debugName: "load_gemma",
-    argNames: ["modelPath", "tokenizerPath"],
-  );
-
-  @override
   Future<void> crateApiAsrLoadParakeet({
     required String modelDir,
     required int numThreads,
@@ -469,7 +329,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 12,
+            funcId: 8,
             port: port_,
           );
         },
@@ -501,7 +361,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 13,
+            funcId: 9,
             port: port_,
           );
         },
