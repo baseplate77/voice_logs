@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/db/providers.dart';
 import '../detail/log_detail_screen.dart';
 import '../record/record_screen.dart';
+import '../search/search_screen.dart';
+import '../settings/settings_screen.dart';
 import 'log_row.dart';
 
-/// Reverse-chronological list of voice logs. Tapping the FAB pushes the
-/// record screen; tapping a row pushes the detail screen.
+/// Reverse-chronological list of voice logs with search + settings
+/// entry points in the app bar and a large Record FAB.
 class HomeListScreen extends ConsumerWidget {
   const HomeListScreen({super.key});
 
@@ -15,12 +17,26 @@ class HomeListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final logs = ref.watch(voiceLogsStreamProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('VoxSynth')),
+      appBar: AppBar(
+        title: const Text('VoxSynth'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SearchScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+        ],
+      ),
       body: logs.when(
         data: (rows) {
-          if (rows.isEmpty) {
-            return const _EmptyState();
-          }
+          if (rows.isEmpty) return const _EmptyState();
           return ListView.separated(
             itemCount: rows.length,
             separatorBuilder: (_, _) => const Divider(height: 1),
@@ -28,13 +44,11 @@ class HomeListScreen extends ConsumerWidget {
               final row = rows[i];
               return LogRow(
                 log: row,
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => LogDetailScreen(logId: row.id),
-                    ),
-                  );
-                },
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => LogDetailScreen(logId: row.id),
+                  ),
+                ),
               );
             },
           );
@@ -44,11 +58,9 @@ class HomeListScreen extends ConsumerWidget {
         error: (e, _) => Center(child: Text('Error: $e')),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.of(
-            context,
-          ).push(MaterialPageRoute<void>(builder: (_) => const RecordScreen()));
-        },
+        onPressed: () => Navigator.of(
+          context,
+        ).push(MaterialPageRoute<void>(builder: (_) => const RecordScreen())),
         icon: const Icon(Icons.mic),
         label: const Text('Record'),
       ),

@@ -169,6 +169,58 @@ class VoiceLogRepository {
     }
   }
 
+  /// Delete a single log and its dependent rows (mentions, segments).
+  /// FTS5 is cleaned up alongside.
+  Future<Result<void, VoiceLogStorageError>> delete(String id) async {
+    try {
+      await _db.transaction(() async {
+        await _fts.remove(id);
+        await (_db.delete(
+          _db.entityMentions,
+        )..where((t) => t.logId.equals(id))).go();
+        await (_db.delete(
+          _db.voiceLogSegments,
+        )..where((t) => t.logId.equals(id))).go();
+        await (_db.delete(
+          _db.processingJobs,
+        )..where((t) => t.logId.equals(id))).go();
+        await (_db.delete(_db.voiceLogs)..where((t) => t.id.equals(id))).go();
+      });
+      return const Ok(null);
+    } on Object catch (e, s) {
+      return Err(
+        VoiceLogStorageError(
+          message: 'Failed to delete log: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+  }
+
+  /// Wipe every voice log and dependent row. Used by Settings → Delete all.
+  Future<Result<void, VoiceLogStorageError>> deleteAll() async {
+    try {
+      await _db.transaction(() async {
+        await _db.customStatement('DELETE FROM voice_logs_fts');
+        await _db.delete(_db.entityMentions).go();
+        await _db.delete(_db.voiceLogSegments).go();
+        await _db.delete(_db.canonicalEntities).go();
+        await _db.delete(_db.processingJobs).go();
+        await _db.delete(_db.voiceLogs).go();
+      });
+      return const Ok(null);
+    } on Object catch (e, s) {
+      return Err(
+        VoiceLogStorageError(
+          message: 'Failed to delete all: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+  }
+
   /// Record a pipeline failure with a human-readable reason.
   Future<Result<void, VoiceLogStorageError>> markFailed({
     required String id,

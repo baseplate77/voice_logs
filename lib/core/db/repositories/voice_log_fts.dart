@@ -31,6 +31,15 @@ class VoiceLogFts {
     );
   }
 
+  /// Drop the FTS row for [logId] if one exists.
+  Future<void> remove(String logId) async {
+    final rowid = await _findRowid(logId);
+    if (rowid == null) return;
+    await _db.customStatement('DELETE FROM voice_logs_fts WHERE rowid = ?', [
+      rowid,
+    ]);
+  }
+
   Future<int?> _findRowid(String logId) async {
     final rows = await _db
         .customSelect(
