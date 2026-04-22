@@ -6,8 +6,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:voxsynth/core/db/database.dart';
+import 'package:voxsynth/core/db/job_state.dart';
 import 'package:voxsynth/core/db/repositories/voice_log_repository.dart';
 import 'package:voxsynth/core/result.dart';
+import 'package:voxsynth/core/worker/job_queue.dart';
 import 'package:voxsynth/features/record/audio_recorder.dart';
 import 'package:voxsynth/features/record/recording_providers.dart';
 import 'package:voxsynth/features/record/speech_recognizer.dart';
@@ -87,6 +89,7 @@ void main() {
       recorder: recorder,
       repository: repo,
       recognizerFuture: Future.value(recognizer),
+      jobQueue: JobQueue(db),
     );
     addTearDown(controller.dispose);
 
@@ -103,6 +106,11 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.first.rawTranscript, 'hello there');
     expect(controller.state, isA<RecordingIdle>());
+
+    // A refine job should have been enqueued.
+    final claimed = await JobQueue(db).claimNext();
+    expect(claimed, isNotNull);
+    expect(claimed!.jobType, JobType.refine);
   });
 
   test('stop without start is a no-op', () async {
@@ -113,6 +121,7 @@ void main() {
       recorder: _FakeRecorder(),
       repository: repo,
       recognizerFuture: Future.value(_FakeRecognizer('')),
+      jobQueue: JobQueue(db),
     );
     addTearDown(controller.dispose);
 

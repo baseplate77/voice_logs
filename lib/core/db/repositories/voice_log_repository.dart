@@ -117,4 +117,75 @@ class VoiceLogRepository {
     )..where((t) => t.id.equals(id))).getSingleOrNull();
     return row == null ? null : VoiceLogView.fromRow(row);
   }
+
+  /// Record a successful refine: `cleaned_text` is filled and the state
+  /// transitions to [ProcessingState.refined].
+  Future<Result<void, VoiceLogStorageError>> markRefined({
+    required String id,
+    required String cleanedText,
+  }) async {
+    try {
+      await (_db.update(_db.voiceLogs)..where((t) => t.id.equals(id))).write(
+        VoiceLogsCompanion(
+          cleanedText: Value(cleanedText),
+          processingState: Value(ProcessingState.refined.wire),
+          errorMessage: const Value(null),
+        ),
+      );
+      return const Ok(null);
+    } on Object catch (e, s) {
+      return Err(
+        VoiceLogStorageError(
+          message: 'Failed to mark refined: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+  }
+
+  /// Record a successful embed run.
+  Future<Result<void, VoiceLogStorageError>> markEmbedded(String id) async {
+    try {
+      await (_db.update(_db.voiceLogs)..where((t) => t.id.equals(id))).write(
+        VoiceLogsCompanion(
+          processingState: Value(ProcessingState.embedded.wire),
+          errorMessage: const Value(null),
+        ),
+      );
+      return const Ok(null);
+    } on Object catch (e, s) {
+      return Err(
+        VoiceLogStorageError(
+          message: 'Failed to mark embedded: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+  }
+
+  /// Record a pipeline failure with a human-readable reason.
+  Future<Result<void, VoiceLogStorageError>> markFailed({
+    required String id,
+    required String errorMessage,
+  }) async {
+    try {
+      await (_db.update(_db.voiceLogs)..where((t) => t.id.equals(id))).write(
+        VoiceLogsCompanion(
+          processingState: Value(ProcessingState.failed.wire),
+          errorMessage: Value(errorMessage),
+        ),
+      );
+      return const Ok(null);
+    } on Object catch (e, s) {
+      return Err(
+        VoiceLogStorageError(
+          message: 'Failed to mark failed: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+  }
 }

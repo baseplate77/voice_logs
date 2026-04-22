@@ -5,11 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/db/job_state.dart';
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 import '../../core/logger.dart';
 import '../../core/model_bootstrap.dart';
 import '../../core/result.dart';
+import '../../core/worker/job_queue.dart';
+import '../../core/worker/providers.dart';
 import 'audio_recorder.dart';
 import 'parakeet_runner.dart';
 import 'speech_recognizer.dart';
@@ -80,14 +83,17 @@ class RecordingController extends StateNotifier<RecordingState> {
     required AudioRecorder recorder,
     required VoiceLogRepository repository,
     required Future<SpeechRecognizer> recognizerFuture,
+    required JobQueue jobQueue,
   }) : _recorder = recorder,
        _repository = repository,
        _recognizerFuture = recognizerFuture,
+       _jobQueue = jobQueue,
        super(const RecordingIdle());
 
   final AudioRecorder _recorder;
   final VoiceLogRepository _repository;
   final Future<SpeechRecognizer> _recognizerFuture;
+  final JobQueue _jobQueue;
   final _log = Logger('recording_controller');
 
   Timer? _elapsedTimer;
@@ -165,13 +171,16 @@ class RecordingController extends StateNotifier<RecordingState> {
       audioPath: relPath,
       rawTranscript: rawTranscript,
     );
+    final String logId;
     switch (inserted) {
-      case Ok():
-        break;
+      case Ok(:final value):
+        logId = value.id;
       case Err(:final error):
         state = RecordingFailed(error.message);
         return;
     }
+
+    await _jobQueue.enqueue(logId: logId, type: JobType.refine);
 
     _startedAt = null;
     state = const RecordingIdle();
@@ -190,9 +199,11 @@ final recordingControllerProvider =
       final recorder = ref.watch(audioRecorderProvider);
       final repo = ref.watch(voiceLogRepositoryProvider);
       final recognizerFuture = ref.watch(speechRecognizerProvider.future);
+      final queue = ref.watch(jobQueueProvider);
       return RecordingController(
         recorder: recorder,
         repository: repo,
         recognizerFuture: recognizerFuture,
+        jobQueue: queue,
       );
     });

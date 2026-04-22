@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'core/worker/providers.dart';
 import 'features/list/home_list_screen.dart';
 
 /// Root widget of the VoxSynth app.
 ///
-/// Phase 0 renders a single placeholder screen; feature navigation lands
-/// in later phases.
-class VoxSynthApp extends StatelessWidget {
+/// Reading [workerProvider] here guarantees the background job worker
+/// starts as soon as the app mounts, without a dedicated init screen.
+class VoxSynthApp extends ConsumerWidget {
   const VoxSynthApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Force-initialize the worker. Return value unused.
+    ref.watch(workerProvider);
     return MaterialApp(
       title: 'VoxSynth',
       theme: ThemeData(
