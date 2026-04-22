@@ -1,58 +1,29 @@
-/// App-wide logging. Never `print`.
-///
-/// Exposed via a Riverpod provider per CLAUDE.md ("no singletons, use
-/// providers"). Wraps the `logger` package with a VoxSynth-specific default
-/// configuration: short timestamps, no emoji, no stack traces at info level.
-library;
-
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart' as pkg;
 
-/// VoxSynth's app logger. Thin facade over `package:logger`.
+/// Tagged logger used in place of `print` throughout the app.
 ///
-/// Prefer obtaining one via [appLoggerProvider] in app code. Unit tests may
-/// construct a [AppLogger] directly with a test [pkg.LogOutput].
-class AppLogger {
-  AppLogger({pkg.Level? level, pkg.LogOutput? output})
-    : _inner = pkg.Logger(
-        level: level,
-        printer: pkg.PrettyPrinter(
-          methodCount: 0,
-          lineLength: 100,
-          printEmojis: false,
-          dateTimeFormat: pkg.DateTimeFormat.onlyTimeAndSinceStart,
-        ),
-        output: output,
-      );
+/// Wraps `package:logger` with a namespace tag so log lines are attributable
+/// to a subsystem. `print` is banned by lint; use this instead.
+final class Logger {
+  /// Create a logger scoped to [tag].
+  Logger(this.tag)
+    : _impl = pkg.Logger(printer: pkg.PrettyPrinter(methodCount: 0));
 
-  final pkg.Logger _inner;
+  /// Subsystem tag, prefixed to every line.
+  final String tag;
+  final pkg.Logger _impl;
 
-  void debug(String message, {Object? error, StackTrace? stackTrace}) =>
-      _inner.d(message, error: error, stackTrace: stackTrace);
+  /// Debug-level message.
+  void d(String message) => _impl.d('[$tag] $message');
 
-  void info(String message, {Object? error, StackTrace? stackTrace}) =>
-      _inner.i(message, error: error, stackTrace: stackTrace);
+  /// Info-level message.
+  void i(String message) => _impl.i('[$tag] $message');
 
-  void warn(String message, {Object? error, StackTrace? stackTrace}) =>
-      _inner.w(message, error: error, stackTrace: stackTrace);
+  /// Warning with optional cause.
+  void w(String message, {Object? error, StackTrace? stack}) =>
+      _impl.w('[$tag] $message', error: error, stackTrace: stack);
 
-  void error(String message, {Object? error, StackTrace? stackTrace}) =>
-      _inner.e(message, error: error, stackTrace: stackTrace);
-
-  /// Releases underlying resources. Call from provider dispose.
-  void close() => _inner.close();
+  /// Error with optional cause.
+  void e(String message, {Object? error, StackTrace? stack}) =>
+      _impl.e('[$tag] $message', error: error, stackTrace: stack);
 }
-
-/// App-wide logger provider.
-///
-/// Override in tests:
-/// ```dart
-/// ProviderScope(overrides: [
-///   appLoggerProvider.overrideWithValue(AppLogger(output: TestOutput())),
-/// ])
-/// ```
-final Provider<AppLogger> appLoggerProvider = Provider<AppLogger>((ref) {
-  final logger = AppLogger();
-  ref.onDispose(logger.close);
-  return logger;
-});

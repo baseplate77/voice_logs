@@ -1,4 +1,4 @@
-# VoxSynth model files
+# VoxSynth model files (v2)
 
 These files are **not** in git (see `.gitignore` — total size ~3 GB). Run
 `scripts/fetch_models.sh` from repo root to populate this directory.
@@ -7,11 +7,26 @@ These files are **not** in git (see `.gitignore` — total size ~3 GB). Run
 
 | File | Size | Used by | Source |
 |---|---|---|---|
-| `silero_vad.onnx` | ~2 MB | Phase 1 (`lib/capture/`) | https://github.com/snakers4/silero-vad |
-| `parakeet/{encoder,decoder,joiner}.int8.onnx` + `tokens.txt` | ~500 MB extracted | Phase 2 (`lib/asr/`) | sherpa-onnx releases (k2-fsa) |
-| `gemma/gemma-4-E2B-it.litertlm` | ~2.58 GB | Phases 3/6/7 (`lib/llm/`) | litert-community HF mirror (public) |
-| `ggml-small-q8_0.bin` | ~460 MB | (retired) | https://huggingface.co/ggerganov/whisper.cpp |
-| `multilingual-e5-small-int8.onnx` | ~120 MB | Phase 4 (`lib/embed/`) | https://huggingface.co/intfloat/multilingual-e5-small |
+| `silero_vad.onnx` | ~2 MB | optional (endpointing) | https://github.com/snakers4/silero-vad |
+| `e5/model_opt2_QInt8.onnx` | ~33 MB | Phase 3 (`lib/features/search/embed/`) — bundled in app | https://huggingface.co/nixiesearch/e5-small-v2-onnx |
+| `e5/tokenizer.json` | ~450 KB | Phase 3 (tokenizer shipped alongside ONNX) | same HF repo |
+| `parakeet/{encoder,decoder,joiner}.int8.onnx` + `tokens.txt` | ~500 MB extracted | Phase 1 STT | https://github.com/k2-fsa/sherpa-onnx/releases (`asr-models`) |
+| `gemma/gemma-4-E2B-it.litertlm` | ~2.58 GB | Phase 4 refinement | litert-community HF mirror (public) |
+
+## E5
+
+`e5-small-v2` is loaded via `flutter_onnxruntime`. The file sitting in
+`assets/models/e5/` ships inside the APK/IPA (listed in `pubspec.yaml`
+assets) — it is **not downloaded at runtime**. Prompt prefixes
+(`"query: "` / `"passage: "`), mean pooling over `last_hidden_state` with
+the attention mask, and L2 normalization all happen in Dart.
+
+## Parakeet
+
+k2-fsa/sherpa-onnx's Parakeet-TDT-0.6B-v2 int8 export. Consumed by the
+`sherpa_onnx` pub package at runtime. The four files in
+`assets/models/parakeet/` (`encoder.int8.onnx`, `decoder.int8.onnx`,
+`joiner.int8.onnx`, `tokens.txt`) are bundled via pubspec assets.
 
 ## Gemma
 

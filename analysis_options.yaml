@@ -1,11 +1,10 @@
 # VoxSynth analyzer config.
 #
 # Extends flutter_lints with stricter rules per CLAUDE.md (no print, always
-# return types, trailing commas, etc.).
-#
-# TODO (not a merge-blocker): CLAUDE.md requires "no http/dio/websocket
-# imports outside `lib/sync/`". Until we wire custom_lint + analyzer_plugin,
-# this rule is enforced by code review. See IMPLEMENTATION_PLAN.md §1.
+# return types, trailing commas, etc.). The "no network imports outside
+# lib/sync/" non-negotiable is enforced at test time by
+# test/no_network_test.dart — a pure-lint rule would need custom_lint, which
+# is deferred.
 include: package:flutter_lints/flutter.yaml
 
 analyzer:
@@ -20,13 +19,7 @@ analyzer:
     - "**/*.g.dart"
     - "**/*.freezed.dart"
     - "**/*.drift.dart"
-    - "lib/objectbox-model.json"
-    - "lib/objectbox.g.dart"
-    # frb / sherpa-rs-sys vendor Dart code into Cargo build outputs. Not ours.
-    - "rust/**/target/**"
     - "build/**"
-    - "rust_builder/**"
-    - "lib/src/rust/**"
 
 linter:
   rules:

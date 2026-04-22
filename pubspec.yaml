@@ -7,9 +7,9 @@ environment:
   sdk: ^3.10.0
   flutter: ">=3.24.0"
 
-# NOTE: caret ranges used at bootstrap. After `flutter pub get`, pubspec.lock
-# is the source of truth for exact versions. Per IMPLEMENTATION_PLAN.md §0,
-# do not let a phase upgrade packages silently — review lock diffs.
+# Caret ranges at bootstrap. After `flutter pub get`, pubspec.lock is the
+# source of truth for exact versions. Per CLAUDE.md, do not let a phase
+# upgrade packages silently — review lock diffs.
 dependencies:
   flutter:
     sdk: flutter
@@ -27,42 +27,31 @@ dependencies:
   # Audio capture
   record: ^5.2.0
 
-  # ONNX inference is routed through the Rust crate (voxsynth_asr) via
-  # sherpa-rs → sherpa-onnx → ORT. Adding the `onnxruntime` pub.dev plugin
-  # alongside that causes 21 duplicate-symbol errors at iOS link time
-  # because both ship the full ORT C++/ObjC runtime. Silero VAD + e5
-  # embeddings will be exposed through voxsynth_asr once we wire them.
+  # STT — Parakeet via k2-fsa/sherpa-onnx Flutter bindings. Native libs
+  # ship with the plugin; model files in assets/models/parakeet/.
+  sherpa_onnx: ^1.12.39
 
-  # LLM — flutter_gemma (MediaPipe) drives Gemma 3 inference. Model is
-  # downloaded on first use from the litert-community HF repo via the
-  # plugin's own ModelFileManager; no .task file is bundled in assets.
-  # Historical note: when this file also bundled sherpa-onnx-iOS via
-  # flutter_rust_bridge, both pods statically linked abseil and
-  # segfaulted during static init. Not a concern on Android; iOS fix
-  # if we re-enable that platform is `:abseil_shared` or vendored pods.
-  flutter_gemma: ^0.13.5
+  # Embeddings — e5-small-v2 QInt8 ONNX via flutter_onnxruntime. Bundled
+  # model at assets/models/e5/model_opt2_QInt8.onnx (~33 MB).
+  flutter_onnxruntime: ^1.7.0
 
-  # FFI (Whisper)
-  ffi: ^2.1.3
+  # LLM — flutter_gemma (MediaPipe / LiteRT-LM). GPU-accelerated on
+  # mobile; explicit user choice over fllama's CPU path. Gemma 4 E2B IT
+  # .litertlm bundle at assets/models/gemma/gemma-4-E2B-it.litertlm.
+  flutter_gemma: ^0.13.6
 
   # Storage — Drift (SQLite + FTS5) with SQLCipher via SQLite3MultipleCiphers.
-  # `sqlite3` 3.x uses Dart build hooks (see the top-level `hooks:` block)
-  # to bundle the native library — `sqlcipher_flutter_libs` is gone
-  # (end-of-life at 0.7.0). `drift_flutter` and `sqflite` are still
-  # excluded: neither is needed now that sqlite3 ships its own binaries.
+  # `sqlite3` 3.x uses Dart build hooks (see `hooks:` block below) to bundle
+  # the native library. sqlite-vec extension loading is deferred to Phase 3
+  # (see IMPLEMENTATION_PLAN.md) — no vec dep in Phase 0.
   drift: ^2.32.0
   sqlite3: ^3.1.0
-
-  # Storage — ObjectBox (vector index)
-  objectbox: ^5.3.0
-  objectbox_flutter_libs: ^5.3.0
 
   # Secrets at rest (DB keys)
   flutter_secure_storage: ^9.2.2
 
-  # Background jobs. 0.5.2 still uses Flutter v1 Android embedding
-  # (ShimPluginRegistry / PluginRegistrantCallback), which Flutter 3.29+
-  # removed — bump to 0.9.x for v2 embedding.
+  # Background jobs — workmanager on Android, BGTaskScheduler via platform
+  # channel on iOS (channel wired in Phase 6).
   workmanager: ^0.9.0
 
   # Runtime permissions
@@ -70,11 +59,6 @@ dependencies:
 
   # Logging
   logger: ^2.5.0
-
-  # ASR — Rust crate (sherpa-rs + Parakeet) bridged via flutter_rust_bridge.
-  voxsynth_asr:
-    path: rust_builder
-  flutter_rust_bridge: 2.11.1
 
 dev_dependencies:
   flutter_test:
@@ -88,24 +72,23 @@ dev_dependencies:
   drift_dev: ^2.32.0
   freezed: ^3.2.5
   json_serializable: ^6.8.0
-  objectbox_generator: ^5.3.0
 
   # Test utils
   mocktail: ^1.0.4
 
 # record 5.2.1 resolves record_linux 0.7.2, which predates
 # record_platform_interface 1.5.0 and is missing `startStream`. VoxSynth
-# doesn't target Linux, but Flutter still analyzes all platform
+# targets iOS+Android only, but Flutter still analyzes all platform
 # implementations — force a compatible record_linux.
 dependency_overrides:
   record_linux: ^1.0.0
 
-# `package:sqlite3` 3.x uses Dart build hooks to bundle its native
-# library instead of the old `sqlcipher_flutter_libs` plugin. Selecting
-# `sqlite3mc` swaps plain SQLite for SQLite3MultipleCiphers, which
-# speaks the SQLCipher wire format — keeping our existing on-disk
-# database files and `PRAGMA key` flow intact (the `cipher = 'sqlcipher'`
-# pragma is now set explicitly in `lib/store/database_factory.dart`).
+# `package:sqlite3` 3.x uses Dart build hooks to bundle its native library
+# instead of a separate Flutter plugin. Selecting `sqlite3mc` swaps plain
+# SQLite for SQLite3MultipleCiphers, which speaks the SQLCipher wire format
+# — the v2 encryption plan (keys via flutter_secure_storage) lives on top
+# of this. Wiring arrives in Phase 2; the hook is declared here so the
+# build picks the right binary from day one.
 hooks:
   user_defines:
     sqlite3:
@@ -114,23 +97,13 @@ hooks:
 flutter:
   uses-material-design: true
   assets:
-    # Flutter's asset handling is *not* recursive — listing a directory
-    # only bundles files directly inside it, not subdirectories. The
-    # Rust-backed runners (Parakeet, e5, Gemma) each live in their own
-    # subdir, so those must be enumerated separately.
-    #
-    # The top-level `assets/models/` is intentionally *not* listed: the
-    # files sitting there (silero_vad.onnx, multilingual-e5-small-int8.onnx,
-    # ggml-small-q8_0.bin) are unused — Silero is a stub (see
-    # push_to_talk_processor.dart), and e5/whisper models are served
-    # from their own subdirs.
+    # Flutter asset handling is not recursive — listing a directory only
+    # bundles files directly inside it. Each model subdir is enumerated
+    # separately.
+    - assets/models/silero_vad.onnx
     - assets/models/parakeet/
     - assets/models/e5/
-    # Gemma 4 E2B lives in assets now — HF CDN downloads at 2.58 GB
-    # hit WorkManager's task-timeout ceiling on device. The file is
-    # git-ignored (see .gitignore line 62) so each dev drops it in
-    # manually. flutter_gemma copies it out of the APK on first run
-    # via its AssetSourceHandler (same path the Parakeet/E5 copy uses
-    # in `model_bootstrap.dart`).
+    # Gemma 4 E2B lives in assets — HF CDN downloads at 2.58 GB hit
+    # WorkManager's task-timeout ceiling on device. File is git-ignored
+    # (see .gitignore); each dev runs scripts/fetch_models.sh to populate.
     - assets/models/gemma/gemma-4-E2B-it.litertlm
-    - assets/fixtures/

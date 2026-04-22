@@ -57,14 +57,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.0.5"
-  build_cli_annotations:
-    dependency: transitive
-    description:
-      name: build_cli_annotations
-      sha256: e563c2e01de8974566a1998410d3f6f03521788160a02503b0b1f1a46c7b3d95
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.1.1"
   build_config:
     dependency: transitive
     description:
@@ -234,7 +226,7 @@ packages:
     source: hosted
     version: "1.3.3"
   ffi:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: ffi
       sha256: "6d7fd89431262d8f3125e81b50d3847a091d846eafcd4fdb88dd06f36d705a45"
@@ -257,14 +249,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
-  flat_buffers:
-    dependency: transitive
-    description:
-      name: flat_buffers
-      sha256: "7c1de2d6eb5f3e61e5c50040841109f509deaaf2b12ec0d57b92456d9ea50345"
-      url: "https://pub.dev"
-    source: hosted
-    version: "25.9.23"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -279,10 +263,10 @@ packages:
     dependency: "direct main"
     description:
       name: flutter_gemma
-      sha256: "0bf39e165c34e9df38f1c4ed346d07e5b8e7bf14019abe994e88303a53edadf6"
+      sha256: "72485d8a319bb4c0c00262b1c0e901eb0f0a6f61db5cae7ebfc80e3b5983567a"
       url: "https://pub.dev"
     source: hosted
-    version: "0.13.5"
+    version: "0.13.6"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -291,6 +275,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.0.0"
+  flutter_onnxruntime:
+    dependency: "direct main"
+    description:
+      name: flutter_onnxruntime
+      sha256: "72fad60739e01f2278c266f4ec386b392c5ecdfc33d44b4a155c609366f6ece5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.7.0"
   flutter_riverpod:
     dependency: "direct main"
     description:
@@ -299,14 +291,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.6.1"
-  flutter_rust_bridge:
-    dependency: "direct main"
-    description:
-      name: flutter_rust_bridge
-      sha256: "37ef40bc6f863652e865f0b2563ea07f0d3c58d8efad803cc01933a4b2ee067e"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.11.1"
   flutter_secure_storage:
     dependency: "direct main"
     description:
@@ -639,30 +623,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.17.6"
-  objectbox:
-    dependency: "direct main"
-    description:
-      name: objectbox
-      sha256: "83d58e0ab5c4180a2f67086c449a4f2d1475932b31819271923dfc82a76f73c6"
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.3.1"
-  objectbox_flutter_libs:
-    dependency: "direct main"
-    description:
-      name: objectbox_flutter_libs
-      sha256: fd4e8ed03e2b2bfeb8aa965435d7c5523ec7e962f1ffecf6e7da6c1f4d170419
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.3.1"
-  objectbox_generator:
-    dependency: "direct dev"
-    description:
-      name: objectbox_generator
-      sha256: daa95f21c7140c619ffc1abee2465541d4f0317b8c3bbf2141be1a9e5c507a1d
-      url: "https://pub.dev"
-    source: hosted
-    version: "5.3.1"
   objective_c:
     dependency: transitive
     description:
@@ -799,14 +759,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
-  pointycastle:
-    dependency: transitive
-    description:
-      name: pointycastle
-      sha256: "92aa3841d083cc4b0f4709b5c74fd6409a3e6ba833ffc7dc6a8fee096366acf5"
-      url: "https://pub.dev"
-    source: hosted
-    version: "4.0.0"
   pool:
     dependency: transitive
     description:
@@ -991,6 +943,78 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "3.0.0"
+  sherpa_onnx:
+    dependency: "direct main"
+    description:
+      name: sherpa_onnx
+      sha256: "0fd9f0296e69ceb5911793e1f0fabf1c9254a0be610d436b77942eac704e860e"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.12.39"
+  sherpa_onnx_android_arm64:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_arm64
+      sha256: "6ae855fd193662b2054f7d9c5f4629df55581dcb64efe75d59582376a6c78736"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.12.39"
+  sherpa_onnx_android_armeabi:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_armeabi
+      sha256: f30c27ee7c3bced6517fb160227a5ddad268d0c76dde94a2cff1c5d7045ef633
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.12.39"
+  sherpa_onnx_android_x86:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_x86
+      sha256: "0eddb01c75a5aa5e9bfa4103c2e8b3de6ad11029a8c6ab406d92abdfbaf7e898"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.12.39"
+  sherpa_onnx_android_x86_64:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_android_x86_64
+      sha256: "9513a5e43bc9d7a7537e59ba7f4fdd37b17ef45971b135f300d11f48e987b0e8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.12.39"
+  sherpa_onnx_ios:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_ios
+      sha256: "30786d19ae61d58909fa8b7df0b4338687d0ae464f5dd71692e50d0d6d33cd50"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.12.39"
+  sherpa_onnx_linux:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_linux
+      sha256: decf961ec8c89a3c41d12af77ed9771eecd1ebccf1f65c4e7739fe76f4a78705
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.12.39"
+  sherpa_onnx_macos:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_macos
+      sha256: e7a802824554ead73dafd3dc9331243bcfdbefe854ce5b8d50f6f080a15b9379
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.12.39"
+  sherpa_onnx_windows:
+    dependency: transitive
+    description:
+      name: sherpa_onnx_windows
+      sha256: "7624edc6608de559b5be29b30f8ad2162529bacbc3d268789c4c5199612e5a14"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.12.39"
   sky_engine:
     dependency: transitive
     description: flutter
@@ -1132,13 +1156,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "15.1.0"
-  voxsynth_asr:
-    dependency: "direct main"
-    description:
-      path: rust_builder
-      relative: true
-    source: path
-    version: "0.0.1"
   watcher:
     dependency: transitive
     description:

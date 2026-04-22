@@ -30,32 +30,21 @@ fetch() {
   echo "[done] $name ($(du -h "$dest" | cut -f1))"
 }
 
-# Silero VAD — ONNX, tiny.
+# Silero VAD — ONNX, tiny. Optional in v2 (Parakeet is streaming), but kept
+# for endpointing / barge-in detection if we want it in record flow later.
 fetch "silero_vad.onnx" \
   "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx"
 
-# Whisper small, q8_0 quantized GGML. ~460 MB.
-fetch "ggml-small-q8_0.bin" \
-  "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small-q8_0.bin"
-
-# multilingual-e5-small, int8 ONNX. ~118 MB.
-# The upstream repo only ships a VNNI-quantized int8 file; ONNX Runtime falls
-# back to non-VNNI kernels on ARM. If this proves too slow on target devices,
-# swap for model.onnx (470 MB fp32) in Phase 4.
-fetch "multilingual-e5-small-int8.onnx" \
-  "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/onnx/model_qint8_avx512_vnni.onnx"
-
-# multilingual-e5-small — XLM-RoBERTa base weights for candle. Prefer
-# safetensors (clean load) over pytorch_model.bin. The int8 ONNX we used
-# to download is no longer needed — we embed via candle in Phase 4.
+# e5-small-v2 graph-optimized QInt8 ONNX from nixiesearch. ~33 MB. Bundled
+# at build time (listed in pubspec.yaml) — loaded by flutter_onnxruntime.
+# Prompt prefixes (`query: `, `passage: `), mean pooling, and L2 normalize
+# are applied in Dart (see lib/embed/).
 E5_DIR="$MODELS_DIR/e5"
 mkdir -p "$E5_DIR"
-fetch "e5/model.safetensors" \
-  "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/model.safetensors"
-fetch "e5/config.json" \
-  "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/config.json"
+fetch "e5/model_opt2_QInt8.onnx" \
+  "https://huggingface.co/nixiesearch/e5-small-v2-onnx/resolve/main/model_opt2_QInt8.onnx"
 fetch "e5/tokenizer.json" \
-  "https://huggingface.co/intfloat/multilingual-e5-small/resolve/main/tokenizer.json"
+  "https://huggingface.co/nixiesearch/e5-small-v2-onnx/resolve/main/tokenizer.json"
 
 # Parakeet-TDT-0.6B-v2 (sherpa-onnx int8 export). ~482 MB compressed,
 # expands into assets/models/parakeet/ with encoder/decoder/joiner/tokens.
@@ -79,8 +68,8 @@ echo ""
 
 # Gemma 4 E2B IT — LiteRT-LM bundle consumed by flutter_gemma at runtime.
 # ~2.58 GB on disk, ~676 MB resident on GPU. The litert-community mirror is
-# public (no Kaggle / HF auth required). See lib/llm/gemma_runner.dart for
-# the asset path that must match what lands here.
+# public (no Kaggle / HF auth required). flutter_gemma loads it via its
+# AssetSourceHandler; see Phase 4 code once wired.
 GEMMA_DIR="$MODELS_DIR/gemma"
 mkdir -p "$GEMMA_DIR"
 fetch "gemma/gemma-4-E2B-it.litertlm" \

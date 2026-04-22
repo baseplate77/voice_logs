@@ -21,8 +21,9 @@ android {
 
     defaultConfig {
         applicationId = "com.nj.voxsynth"
-        // VoxSynth needs modern mic APIs and foreground service types.
-        minSdk = 24
+        // Spec targets Android 10+ (API 29). Required for FOREGROUND_SERVICE
+        // service-type manifest entries and scoped storage for audio files.
+        minSdk = 29
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

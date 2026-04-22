@@ -63,16 +63,10 @@ assets/models/gemma/
 assets/models/e5/
 assets/models/*.safetensors
 
-# Rust build output
-/rust/**/target/
-/rust_builder/cargokit/**/Cargo.lock
-
-# Generated code (committed is optional; safer to regenerate locally)
+# Generated code (regenerated via `make codegen`)
 lib/**/*.g.dart
 lib/**/*.freezed.dart
 lib/**/*.drift.dart
-lib/objectbox.g.dart
-lib/objectbox-model.json
 
 # Test fixtures (large audio)
 assets/fixtures/*.wav
