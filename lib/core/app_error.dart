@@ -3,7 +3,11 @@
 /// Feature-specific errors extend this (e.g. `StorageError`, `AsrError`,
 /// `LlmError`). Errors always carry a human-readable [message]; [cause] and
 /// [stack] are optional, for chaining a source exception when one exists.
-sealed class AppError {
+///
+/// `abstract` rather than `sealed` because subclasses live in feature
+/// folders; the sealing happens at the feature level (e.g. `CaptureError`
+/// is sealed and exhaustive over its variants).
+abstract class AppError {
   const AppError({required this.message, this.cause, this.stack});
 
   /// Human-readable error description. Safe to show to the user.

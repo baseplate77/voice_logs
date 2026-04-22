@@ -1,22 +1,73 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Reverse-chronological list of voice logs. Phase 0 scaffold — empty state
-/// only; real rows arrive in Phase 1 once recording is wired.
-class HomeListScreen extends StatelessWidget {
+import '../../core/db/providers.dart';
+import '../detail/log_detail_screen.dart';
+import '../record/record_screen.dart';
+import 'log_row.dart';
+
+/// Reverse-chronological list of voice logs. Tapping the FAB pushes the
+/// record screen; tapping a row pushes the detail screen.
+class HomeListScreen extends ConsumerWidget {
   const HomeListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final logs = ref.watch(voiceLogsStreamProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('VoxSynth')),
-      body: const Center(
-        child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
-            'Your journal gets smarter as you record more.',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 18),
-          ),
+      body: logs.when(
+        data: (rows) {
+          if (rows.isEmpty) {
+            return const _EmptyState();
+          }
+          return ListView.separated(
+            itemCount: rows.length,
+            separatorBuilder: (_, _) => const Divider(height: 1),
+            itemBuilder: (_, i) {
+              final row = rows[i];
+              return LogRow(
+                log: row,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => LogDetailScreen(logId: row.id),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+        loading: () =>
+            const Center(child: CircularProgressIndicator.adaptive()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.of(
+            context,
+          ).push(MaterialPageRoute<void>(builder: (_) => const RecordScreen()));
+        },
+        icon: const Icon(Icons.mic),
+        label: const Text('Record'),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Your journal gets smarter as you record more.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 18),
         ),
       ),
     );
