@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../features/refine/dummy_refiner.dart';
+import '../../features/refine/gemma_refiner.dart';
+import '../../features/refine/gemma_runner.dart';
+import '../../features/refine/llm_runner.dart';
 import '../db/job_state.dart';
 import '../db/providers.dart';
 import 'job_handler.dart';
@@ -13,12 +15,27 @@ final jobQueueProvider = Provider<JobQueue>((ref) {
   return JobQueue(db);
 });
 
-/// Handler for the `refine` job type. Phase 2 uses [DummyRefiner]; Phase
-/// 4 will swap in the real Gemma pipeline via this same provider.
+/// Long-lived Gemma runner — one model per session.
+final llmRunnerProvider = Provider<LlmRunner>((ref) {
+  final runner = GemmaRunner();
+  ref.onDispose(runner.dispose);
+  return runner;
+});
+
+/// Handler for the `refine` job type. Phase 4 uses [GemmaRefiner]; load
+/// failures bubble back into the worker's retry/fail path so absence of
+/// the model asset doesn't crash the app.
 final refineHandlerProvider = Provider<JobHandler>((ref) {
   final repo = ref.watch(voiceLogRepositoryProvider);
+  final mentions = ref.watch(entityMentionRepositoryProvider);
   final queue = ref.watch(jobQueueProvider);
-  return DummyRefiner(repository: repo, queue: queue);
+  final runner = ref.watch(llmRunnerProvider);
+  return GemmaRefiner(
+    runner: runner,
+    voiceLogs: repo,
+    mentions: mentions,
+    queue: queue,
+  );
 });
 
 /// Handler for the `embed` job type. Wired in Phase 3; Phase 4's Gemma
