@@ -21,6 +21,10 @@ class CanonicalEntities extends Table {
   /// Unix milliseconds when the canonical entity was first created.
   IntColumn get createdAt => integer()();
 
+  /// L2-normalized e5 embedding of the first mention that produced this
+  /// canonical entity. Future mentions match against this vector.
+  BlobColumn get embedding => blob()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

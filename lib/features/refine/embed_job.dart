@@ -3,6 +3,7 @@ import '../../core/db/job_state.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 import '../../core/result.dart';
 import '../../core/worker/job_handler.dart';
+import '../../core/worker/job_queue.dart';
 import '../search/embedder.dart';
 import '../search/segment_repository.dart';
 import '../search/segmenter.dart';
@@ -18,12 +19,14 @@ class EmbedJobHandler implements JobHandler {
     required this.repository,
     required this.segmentRepository,
     required this.vecStore,
+    required this.queue,
   });
 
   final Embedder embedder;
   final VoiceLogRepository repository;
   final SegmentRepository segmentRepository;
   final VecStore vecStore;
+  final JobQueue queue;
 
   @override
   JobType get type => JobType.embed;
@@ -37,6 +40,7 @@ class EmbedJobHandler implements JobHandler {
     final text = log.cleanedText ?? log.rawTranscript;
     if (text.trim().isEmpty) {
       await repository.markEmbedded(ctx.logId);
+      await queue.enqueue(logId: ctx.logId, type: JobType.canonicalize);
       return const Ok(JobSucceeded());
     }
 
@@ -68,6 +72,7 @@ class EmbedJobHandler implements JobHandler {
               fresh.where((s) => s.logId == ctx.logId).toList(),
             );
             await repository.markEmbedded(ctx.logId);
+            await queue.enqueue(logId: ctx.logId, type: JobType.canonicalize);
             return const Ok(JobSucceeded());
           case Err(:final error):
             return Err(error);

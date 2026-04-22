@@ -40,12 +40,12 @@ final refineHandlerProvider = Provider<JobHandler>((ref) {
 
 /// Handler for the `embed` job type. Wired in Phase 3; Phase 4's Gemma
 /// path replaces the refine handler but leaves this one untouched.
-final embedHandlerProvider = Provider<JobHandler?>((ref) {
-  // Embed requires the full e5 stack (model bootstrap + tokenizer).
-  // Phase 3 wires it up when the model assets are present; absence is
-  // handled by omitting the handler from the worker's dispatch map.
-  return null;
-});
+/// Null when the e5 stack isn't wired (unit tests / absent asset).
+final embedHandlerProvider = Provider<JobHandler?>((ref) => null);
+
+/// Handler for the `canonicalize` job type. Phase 5 wires it; null
+/// falls back to not-wired (mentions stay unlinked, no harm).
+final canonicalizeHandlerProvider = Provider<JobHandler?>((ref) => null);
 
 /// The live worker. Kept alive for the session so background jobs keep
 /// ticking even when no screen is subscribed.
@@ -53,10 +53,12 @@ final workerProvider = Provider<Worker>((ref) {
   ref.keepAlive();
   final queue = ref.watch(jobQueueProvider);
   final embedHandler = ref.watch(embedHandlerProvider);
+  final canonHandler = ref.watch(canonicalizeHandlerProvider);
   final handlers = <JobType, JobHandler>{
     JobType.refine: ref.watch(refineHandlerProvider),
   };
   if (embedHandler != null) handlers[JobType.embed] = embedHandler;
+  if (canonHandler != null) handlers[JobType.canonicalize] = canonHandler;
   final worker = Worker(queue: queue, handlers: handlers);
   // Fire-and-forget start — polling begins on first read.
   worker.start();

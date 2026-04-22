@@ -19,6 +19,8 @@ part 'database.g.dart';
 /// - v1 (Phase 0): VoiceLogs, EntityMentions, CanonicalEntities,
 ///   ProcessingJobs + FTS5 virtual table.
 /// - v2 (Phase 3): + VoiceLogSegments (blob embedding).
+/// - v3 (Phase 5): CanonicalEntities gains an embedding blob for
+///   similarity-based mention linking.
 ///
 /// `sqlite-vec` virtual table for native vector search is deferred; the
 /// Phase 3 retriever does brute-force cosine over the blob column in
@@ -37,7 +39,7 @@ class VoxSynthDatabase extends _$VoxSynthDatabase {
   VoxSynthDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -51,6 +53,9 @@ class VoxSynthDatabase extends _$VoxSynthDatabase {
     onUpgrade: (m, from, to) async {
       if (from < 2) {
         await m.createTable(voiceLogSegments);
+      }
+      if (from < 3) {
+        await m.addColumn(canonicalEntities, canonicalEntities.embedding);
       }
     },
   );
