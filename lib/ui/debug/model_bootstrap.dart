@@ -19,16 +19,18 @@ class ModelPaths {
     required this.e5Weights,
     required this.e5Config,
     required this.e5Tokenizer,
-    required this.gemmaModel,
-    required this.gemmaTokenizer,
   });
 
   final String parakeetDir;
   final String e5Weights;
   final String e5Config;
   final String e5Tokenizer;
-  final String gemmaModel;
-  final String gemmaTokenizer;
+
+  // Gemma is not tracked here: flutter_gemma caches its bundle inside
+  // the plugin's own storage, not under app documents. The download
+  // itself is now driven at startup by `gemmaWarmUpProvider`
+  // (see lib/ui/debug/debug_providers.dart) — completion of that
+  // provider is what flips `coreRuntimeProvider` to ready.
 }
 
 /// Progress callback fired as each bundled model is copied out of the APK.
@@ -48,14 +50,12 @@ const _assetFiles = <String>[
   'assets/models/e5/model.safetensors',
   'assets/models/e5/config.json',
   'assets/models/e5/tokenizer.json',
-  'assets/models/gemma/gemma-3-270m-it-Q4_K_M.gguf',
-  'assets/models/gemma/tokenizer.json',
 ];
 
 /// Copy every bundled model into `{app-documents}/models/...` if it isn't
 /// already there, and return the absolute paths so services can load them.
 ///
-/// **Runs on a background isolate.** The Gemma file alone is ~240 MB;
+/// **Runs on a background isolate.** The e5 weights alone are ~450 MB;
 /// loading it into Dart memory as ByteData plus the subsequent disk
 /// write easily stalls the UI isolate for 10+ seconds. Pushing this off
 /// the root isolate keeps animations smooth during first-launch.
@@ -83,10 +83,7 @@ Future<ModelPaths> bootstrapModels({BootstrapProgress? onProgress}) async {
   });
 
   try {
-    final sendPort = progressPort.sendPort;
-    return await Isolate.run<ModelPaths>(
-      () => _bootstrapEntry(token, sendPort),
-    );
+    return await _spawnBootstrapIsolate(token, progressPort.sendPort);
   } on Object catch (e, st) {
     // Background-isolate bootstrap can fail on some Flutter/Dart
     // combinations (RootIsolateToken not yet propagated, missing
@@ -99,6 +96,21 @@ Future<ModelPaths> bootstrapModels({BootstrapProgress? onProgress}) async {
   } finally {
     progressPort.close();
   }
+}
+
+/// Spawns the bootstrap isolate in its own function so the closure
+/// captures *only* [token] and [sendPort]. Dart shares one context
+/// object across all nested closures of a function, so defining the
+/// `Isolate.run` call alongside the `progressPort.listen` callback
+/// would pull `onProgress` (and its Riverpod `ref`) into the sent
+/// closure and trigger "object is unsendable".
+Future<ModelPaths> _spawnBootstrapIsolate(
+  RootIsolateToken token,
+  SendPort sendPort,
+) {
+  return Isolate.run<ModelPaths>(
+    () => _bootstrapEntry(token, sendPort),
+  );
 }
 
 /// Top-level isolate entry-point. Flutter's background-isolate messenger
@@ -145,8 +157,5 @@ Future<ModelPaths> _bootstrap(BootstrapProgress? onProgress) async {
     e5Weights: p.join(modelsRoot.path, 'e5', 'model.safetensors'),
     e5Config: p.join(modelsRoot.path, 'e5', 'config.json'),
     e5Tokenizer: p.join(modelsRoot.path, 'e5', 'tokenizer.json'),
-    gemmaModel:
-        p.join(modelsRoot.path, 'gemma', 'gemma-3-270m-it-Q4_K_M.gguf'),
-    gemmaTokenizer: p.join(modelsRoot.path, 'gemma', 'tokenizer.json'),
   );
 }

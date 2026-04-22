@@ -14,6 +14,11 @@ import 'topic_chunker.dart';
 /// [LlmRunner]: cleanup → boundaries → entities (with one retry on bad
 /// JSON) → tags.
 ///
+/// All four calls run strictly sequentially. An earlier version fired
+/// cleanup/entities/tags concurrently, but holding three live Gemma
+/// sessions at once blew through mobile-device memory and crashed the
+/// app — flutter_gemma's KV cache is per-session on GPU. Stay serial.
+///
 /// The pipeline is deliberately LLM-backend-agnostic — swap in any
 /// [LlmRunner] (Gemma, llama.cpp, a fake) without touching this class.
 ///
@@ -33,9 +38,8 @@ class CleanupPipeline {
   final TopicChunker _chunker;
 
   /// Clean [raw] and return a structured view. Runs the four LLM calls
-  /// sequentially; nothing is parallelised yet because each step's
-  /// prompt depends on the previous step's output. (Parallelising
-  /// entities+tags is a tiny win deferred to a later phase.)
+  /// one after the other on the cleaned text — see the class-level doc
+  /// for why concurrency is off the table.
   Future<Result<CleanedTranscript, AppError>> clean(Transcript raw) async {
     if (raw.text.isEmpty) {
       return const Ok<CleanedTranscript, AppError>(CleanedTranscript.empty);

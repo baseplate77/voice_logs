@@ -8,8 +8,17 @@ import '../core/result.dart';
 /// Lifecycle: [load] once, [generate] or [generateSync] many times, then
 /// [dispose]. The runner owns the model weights; callers own prompts.
 abstract class LlmRunner {
-  /// Load the model. `maxTokens` is a soft output cap; `temperature` is
-  /// the default sampling temperature, overridable per call.
+  /// Load the model. `maxTokens` is the total context window
+  /// (prompt + output) the runner is prepared to accept; `temperature`
+  /// is the default sampling temperature, overridable per call.
+  ///
+  /// Default is 2048 — the hard ceiling baked into
+  /// `litert-community/gemma-4-E2B-it-litert-lm`. Asking for more
+  /// fails inside LiteRT-LM's engine constructor with
+  /// `Failed to create engine: INTERNAL: ERROR`. If a future model
+  /// drop raises this ceiling, bump it here; callers that need more
+  /// headroom should shrink the prompt or chunk long inputs rather
+  /// than exceed the compiled max.
   Future<Result<void, AppError>> load({
     int maxTokens = 2048,
     double temperature = 0.3,
@@ -32,21 +41,38 @@ abstract class LlmRunner {
 
 /// Scripted LLM for unit tests.
 ///
-/// Each [generateSync] call returns the next entry in [responses] (cycles
-/// when exhausted); [generate] emits each response chunk-by-chunk (every 8
-/// characters) to simulate streaming. Pass an empty `responses` and every
-/// call returns an empty string. Pass `errorAfter: N` and every call after
-/// the Nth returns an [Err] — useful for testing retry paths.
+/// Two dispatch modes, picked at construction time:
+///
+/// 1. **Positional** (default): each [generateSync] call returns the
+///    next entry in [responses] (cycles when exhausted). Simple but
+///    fragile once the pipeline runs calls concurrently — microtask
+///    ordering leaks into test setup.
+/// 2. **Keyed** (pass `keyedResponses`): each call is matched against
+///    the first keyword whose substring appears in the prompt, and the
+///    next response from that key's queue is returned. Cursors are
+///    per-key so `["bad", "good"]` still models a retry. This mode is
+///    robust to concurrent kick-off since response selection depends on
+///    prompt content, not order.
+///
+/// [generate] emits each response chunk-by-chunk (every 8 characters)
+/// to simulate streaming. Pass `errorAfter: N` to turn the (N+1)th call
+/// and later into an [Err] — useful for testing retry paths.
 class FakeLlmRunner implements LlmRunner {
   FakeLlmRunner({
     this.responses = const <String>[],
     this.errorAfter,
     this.streamChunkSize = 8,
-  });
+    Map<String, List<String>>? keyedResponses,
+  }) : _keyedResponses = keyedResponses;
 
   final List<String> responses;
   final int? errorAfter;
   final int streamChunkSize;
+
+  /// Keyword → ordered response list. A prompt matches the first
+  /// keyword whose substring is present; `null` means positional mode.
+  final Map<String, List<String>>? _keyedResponses;
+  final Map<String, int> _keyedCursors = <String, int>{};
 
   int _cursor = 0;
   bool _loaded = false;
@@ -56,7 +82,20 @@ class FakeLlmRunner implements LlmRunner {
   /// assertions about retry counts.
   int get callCount => _cursor;
 
-  String _nextResponse() {
+  String _nextResponse([String? prompt]) {
+    final keyed = _keyedResponses;
+    if (keyed != null && prompt != null) {
+      for (final entry in keyed.entries) {
+        if (prompt.contains(entry.key)) {
+          final list = entry.value;
+          if (list.isEmpty) return '';
+          final idx = _keyedCursors[entry.key] ?? 0;
+          _keyedCursors[entry.key] = idx + 1;
+          return list[idx % list.length];
+        }
+      }
+      return '';
+    }
     if (responses.isEmpty) return '';
     return responses[_cursor % responses.length];
   }
@@ -85,7 +124,7 @@ class FakeLlmRunner implements LlmRunner {
         'FakeLlmRunner.generate called before load or after dispose',
       );
     }
-    final response = _nextResponse();
+    final response = _nextResponse(prompt);
     final shouldErr = errorAfter != null && _cursor >= errorAfter!;
     _cursor++;
     if (shouldErr) {
@@ -113,7 +152,7 @@ class FakeLlmRunner implements LlmRunner {
         ModelLoadError('<fake>', reason: 'generateSync called before load'),
       );
     }
-    final response = _nextResponse();
+    final response = _nextResponse(prompt);
     final shouldErr = errorAfter != null && _cursor >= errorAfter!;
     _cursor++;
     if (shouldErr) {

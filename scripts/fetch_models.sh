@@ -3,8 +3,8 @@
 # file already present. Run from anywhere; paths are resolved relative to the
 # repo root detected from this script's location.
 #
-# Gemma is intentionally omitted: it requires Kaggle auth and manual placement.
-# See assets/models/README.md.
+# All artifacts — including the Gemma 4 E2B .litertlm bundle — are fetched
+# from public HuggingFace mirrors; no Kaggle auth required.
 
 set -euo pipefail
 
@@ -77,15 +77,14 @@ fi
 
 echo ""
 
-# Gemma 3 1B IT — Q4_K_M GGUF + matching tokenizer.
-# The official google/gemma-3-* repos are gated; bartowski mirrors the
-# quantized weights and unsloth mirrors the tokenizer without auth.
+# Gemma 4 E2B IT — LiteRT-LM bundle consumed by flutter_gemma at runtime.
+# ~2.58 GB on disk, ~676 MB resident on GPU. The litert-community mirror is
+# public (no Kaggle / HF auth required). See lib/llm/gemma_runner.dart for
+# the asset path that must match what lands here.
 GEMMA_DIR="$MODELS_DIR/gemma"
 mkdir -p "$GEMMA_DIR"
-fetch "gemma/gemma-3-1b-it-Q4_K_M.gguf" \
-  "https://huggingface.co/bartowski/google_gemma-3-1b-it-GGUF/resolve/main/google_gemma-3-1b-it-Q4_K_M.gguf"
-fetch "gemma/tokenizer.json" \
-  "https://huggingface.co/unsloth/gemma-3-1b-it/resolve/main/tokenizer.json"
+fetch "gemma/gemma-4-E2B-it.litertlm" \
+  "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm"
 echo ""
 echo "Done. Files in $MODELS_DIR:"
 ls -lh "$MODELS_DIR" | grep -v '^total' | grep -v 'README.md'

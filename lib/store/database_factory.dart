@@ -16,10 +16,17 @@ import 'database_key.dart';
 /// database file under the app's documents directory, keyed from
 /// [DatabaseKeyManager].
 ///
+/// Encryption is provided by SQLite3MultipleCiphers, bundled via
+/// `package:sqlite3` 3.x build hooks (see the `hooks:` block in
+/// pubspec.yaml selecting `source: sqlite3mc`). The old
+/// `sqlcipher_flutter_libs` plugin is gone — no dynamic-library
+/// override, no platform-specific dlopen dance. sqlite3mc speaks the
+/// SQLCipher wire format when the `cipher = 'sqlcipher'` pragma is
+/// set before the key, so existing on-disk databases open unchanged.
+///
 /// Tests should use [openInMemoryAppDatabase] instead — it builds a
-/// Drift database on an ephemeral in-memory SQLite without touching
-/// SQLCipher (whose native `libsqlcipher` isn't loaded in the
-/// `flutter test` harness).
+/// Drift database on an ephemeral in-memory SQLite without the
+/// encryption handshake.
 Future<Result<AppDatabase, AppError>> openAppDatabase({
   required DatabaseKeyManager keyManager,
   String fileName = 'voxsynth.db',
@@ -37,16 +44,20 @@ Future<Result<AppDatabase, AppError>> openAppDatabase({
     final executor = NativeDatabase(
       File(path),
       setup: (db) {
-        // PRAGMA key is the SQLCipher handshake. `x'...'` expects raw
-        // hex bytes (the DatabaseKeyManager already stores hex). This
-        // must run before any other statement — sqlcipher_flutter_libs
-        // takes over libsqlite3's symbol so plain `sqlite3.open` is
-        // actually opening an encrypted DB when this pragma fires.
+        // The SQLite3MultipleCiphers handshake: select the cipher
+        // scheme *before* supplying the key. `legacy = 4` matches
+        // SQLCipher 4's page-format defaults (HMAC-SHA512, 256k
+        // PBKDF2 iters), which is what `sqlcipher_flutter_libs`
+        // used — keeps existing .db files readable across the
+        // migration.
+        db.execute("PRAGMA cipher = 'sqlcipher'");
+        db.execute('PRAGMA legacy = 4');
+        // `x'...'` supplies the 256-bit key as raw hex bytes; the
+        // DatabaseKeyManager already stores hex.
         db.execute("PRAGMA key = \"x'$keyHex'\"");
-        // Harden a couple of knobs that matter for mobile use:
-        // - `PRAGMA cipher_memory_security = OFF`: sqlcipher zeroes
-        //   freed memory which is *nice* but wrecks throughput; our
-        //   threat model is lost-device, not live memory scraping.
+        // - `cipher_memory_security = OFF`: sqlcipher zeroes freed
+        //   memory which is nice but wrecks throughput; our threat
+        //   model is lost-device, not live memory scraping.
         db.execute('PRAGMA cipher_memory_security = OFF');
         // - Plain sqlite pragmas for durability vs speed.
         db.execute('PRAGMA journal_mode = WAL');
@@ -91,7 +102,7 @@ Future<Store> openInMemoryObjectBoxStore() {
 }
 
 /// Opens an [AppDatabase] on an in-memory SQLite instance. Used by
-/// repository tests — no file I/O, no SQLCipher, no secure-storage.
+/// repository tests — no file I/O, no encryption handshake.
 AppDatabase openInMemoryAppDatabase() {
   final executor = NativeDatabase.opened(
     sqlite3.openInMemory(),

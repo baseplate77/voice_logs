@@ -7,7 +7,7 @@ part 'weekly_themes.g.dart';
 /// recurring topics + contradictions that surfaced across 7 days of
 /// chunks. Round-trips through [SynthesisRecord.payloadJson].
 @freezed
-class WeeklyThemes with _$WeeklyThemes {
+sealed class WeeklyThemes with _$WeeklyThemes {
   const factory WeeklyThemes({
     /// Monday of the week covered, `YYYY-MM-DD` in local tz.
     required String weekStart,
@@ -29,7 +29,7 @@ class WeeklyThemes with _$WeeklyThemes {
 /// contributed, not just the top exemplar, so the UI can offer a
 /// "show all mentions" affordance.
 @freezed
-class WeeklyTheme with _$WeeklyTheme {
+sealed class WeeklyTheme with _$WeeklyTheme {
   const factory WeeklyTheme({
     required String title,
     required String summary,
@@ -42,7 +42,7 @@ class WeeklyTheme with _$WeeklyTheme {
 
 /// A position that shifted during the week.
 @freezed
-class WeeklyContradiction with _$WeeklyContradiction {
+sealed class WeeklyContradiction with _$WeeklyContradiction {
   const factory WeeklyContradiction({
     required String earlierPosition,
     required String laterPosition,

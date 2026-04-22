@@ -9,18 +9,17 @@ These files are **not** in git (see `.gitignore` — total size ~3 GB). Run
 |---|---|---|---|
 | `silero_vad.onnx` | ~2 MB | Phase 1 (`lib/capture/`) | https://github.com/snakers4/silero-vad |
 | `parakeet/{encoder,decoder,joiner}.int8.onnx` + `tokens.txt` | ~500 MB extracted | Phase 2 (`lib/asr/`) | sherpa-onnx releases (k2-fsa) |
-| `gemma/gemma-3-1b-it-Q4_K_M.gguf` + `tokenizer.json` | ~840 MB | Phase 3 (`lib/llm/`) | bartowski + unsloth HF mirrors |
+| `gemma/gemma-4-E2B-it.litertlm` | ~2.58 GB | Phases 3/6/7 (`lib/llm/`) | litert-community HF mirror (public) |
 | `ggml-small-q8_0.bin` | ~460 MB | (retired) | https://huggingface.co/ggerganov/whisper.cpp |
 | `multilingual-e5-small-int8.onnx` | ~120 MB | Phase 4 (`lib/embed/`) | https://huggingface.co/intfloat/multilingual-e5-small |
-| `gemma-4-it-int4.task` | ~2.5 GB | Phases 3/6/7 (`lib/llm/`) | Kaggle — requires auth |
 
-## Gemma caveat
+## Gemma
 
-`flutter_gemma` consumes the MediaPipe `.task` bundle. The LiteRT/MediaPipe
-distribution for Gemma lives on Kaggle and requires an account. If
-`scripts/fetch_models.sh` skips the Gemma file, download it manually from
-https://www.kaggle.com/models/google/gemma and drop it here. The pipeline
-will load lazily and surface a `ModelLoadError` until the file is present.
+`flutter_gemma` consumes the LiteRT-LM `.litertlm` bundle. The
+`litert-community` mirror on HuggingFace is public, so
+`scripts/fetch_models.sh` pulls it directly — no Kaggle / HF auth needed.
+The pipeline loads lazily and surfaces a `ModelLoadError` until the file
+is present at `assets/models/gemma/gemma-4-E2B-it.litertlm`.
 
 ## Verification
 

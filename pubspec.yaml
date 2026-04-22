@@ -17,7 +17,7 @@ dependencies:
 
   # State, data, plumbing
   flutter_riverpod: ^2.6.1
-  freezed_annotation: ^2.4.4
+  freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
   collection: ^1.19.0
   meta: ^1.16.0
@@ -33,27 +33,29 @@ dependencies:
   # because both ship the full ORT C++/ObjC runtime. Silero VAD + e5
   # embeddings will be exposed through voxsynth_asr once we wire them.
 
-  # LLM — flutter_gemma is deferred to Phase 3. Its MediaPipe pods ship
-  # abseil statically, which segfaults during static init when linked
-  # alongside sherpa-onnx's own abseil copy (FlagImpl::SetCallback null
-  # deref). We'll resolve the dual-abseil issue when we actually need
-  # Gemma inference; for now, get the ASR path shipping end-to-end.
-  # flutter_gemma: ^0.9.0
+  # LLM — flutter_gemma (MediaPipe) drives Gemma 3 inference. Model is
+  # downloaded on first use from the litert-community HF repo via the
+  # plugin's own ModelFileManager; no .task file is bundled in assets.
+  # Historical note: when this file also bundled sherpa-onnx-iOS via
+  # flutter_rust_bridge, both pods statically linked abseil and
+  # segfaulted during static init. Not a concern on Android; iOS fix
+  # if we re-enable that platform is `:abseil_shared` or vendored pods.
+  flutter_gemma: ^0.13.5
 
   # FFI (Whisper)
   ffi: ^2.1.3
 
-  # Storage — Drift (SQLite + FTS5) with SQLCipher.
-  # `drift_flutter` and `sqflite` are excluded: both pull sqlite3_flutter_libs,
-  # which collides with sqlcipher_flutter_libs (duplicate Sqlite3FlutterLibsPlugin
-  # on iOS). Open drift databases manually via NativeDatabase + sqlite3.
-  drift: ^2.20.3
-  sqlite3: ^2.4.0
-  sqlcipher_flutter_libs: ^0.6.5
+  # Storage — Drift (SQLite + FTS5) with SQLCipher via SQLite3MultipleCiphers.
+  # `sqlite3` 3.x uses Dart build hooks (see the top-level `hooks:` block)
+  # to bundle the native library — `sqlcipher_flutter_libs` is gone
+  # (end-of-life at 0.7.0). `drift_flutter` and `sqflite` are still
+  # excluded: neither is needed now that sqlite3 ships its own binaries.
+  drift: ^2.32.0
+  sqlite3: ^3.1.0
 
   # Storage — ObjectBox (vector index)
-  objectbox: ^4.0.3
-  objectbox_flutter_libs: ^4.0.3
+  objectbox: ^5.3.0
+  objectbox_flutter_libs: ^5.3.0
 
   # Secrets at rest (DB keys)
   flutter_secure_storage: ^9.2.2
@@ -83,10 +85,10 @@ dev_dependencies:
 
   # Codegen
   build_runner: ^2.4.13
-  drift_dev: ^2.20.3
-  freezed: ^2.5.7
+  drift_dev: ^2.32.0
+  freezed: ^3.2.5
   json_serializable: ^6.8.0
-  objectbox_generator: ^4.0.3
+  objectbox_generator: ^5.3.0
 
   # Test utils
   mocktail: ^1.0.4
@@ -97,6 +99,17 @@ dev_dependencies:
 # implementations — force a compatible record_linux.
 dependency_overrides:
   record_linux: ^1.0.0
+
+# `package:sqlite3` 3.x uses Dart build hooks to bundle its native
+# library instead of the old `sqlcipher_flutter_libs` plugin. Selecting
+# `sqlite3mc` swaps plain SQLite for SQLite3MultipleCiphers, which
+# speaks the SQLCipher wire format — keeping our existing on-disk
+# database files and `PRAGMA key` flow intact (the `cipher = 'sqlcipher'`
+# pragma is now set explicitly in `lib/store/database_factory.dart`).
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc
 
 flutter:
   uses-material-design: true
@@ -113,5 +126,11 @@ flutter:
     # from their own subdirs.
     - assets/models/parakeet/
     - assets/models/e5/
-    - assets/models/gemma/
+    # Gemma 4 E2B lives in assets now — HF CDN downloads at 2.58 GB
+    # hit WorkManager's task-timeout ceiling on device. The file is
+    # git-ignored (see .gitignore line 62) so each dev drops it in
+    # manually. flutter_gemma copies it out of the APK on first run
+    # via its AssetSourceHandler (same path the Parakeet/E5 copy uses
+    # in `model_bootstrap.dart`).
+    - assets/models/gemma/gemma-4-E2B-it.litertlm
     - assets/fixtures/

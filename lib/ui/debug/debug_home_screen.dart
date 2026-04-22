@@ -135,6 +135,20 @@ class _ControlSection extends ConsumerWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            if (run.gemmaDownloadPercent != null) ...[
+              const SizedBox(height: 8),
+              LinearProgressIndicator(
+                value: run.gemmaDownloadPercent! / 100.0,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'Downloading Gemma · ${run.gemmaDownloadPercent}%',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontFamily: 'monospace',
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ],
         ],
       ),
@@ -152,7 +166,7 @@ class _ControlSection extends ConsumerWidget {
       DebugSubphase.disposingAsr =>
         'Releasing Parakeet before the LLM loads — frees ~1.5 GB.',
       DebugSubphase.loadingLlm =>
-        'Mapping ~240 MB of Gemma 3 270M Q4 weights.',
+        'flutter_gemma mapping Gemma 4 E2B into memory (download happened at startup).',
       DebugSubphase.cleaning =>
         'Gemma running: cleanup → topic boundaries → entities → tags.',
       DebugSubphase.disposingLlm =>

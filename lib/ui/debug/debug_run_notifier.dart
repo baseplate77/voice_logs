@@ -149,6 +149,7 @@ class DebugRunState {
     this.embedMs,
     this.storedLogId,
     this.storedChunkCount,
+    this.gemmaDownloadPercent,
     this.errorMessage,
   });
 
@@ -163,6 +164,11 @@ class DebugRunState {
   final int? embedMs;
   final VoiceLogId? storedLogId;
   final int? storedChunkCount;
+
+  /// 0..100 while flutter_gemma is fetching the `.task` bundle over
+  /// HTTPS on first launch. Null when no download is in flight.
+  final int? gemmaDownloadPercent;
+
   final String? errorMessage;
 
   factory DebugRunState.initial() => const DebugRunState(
@@ -185,6 +191,8 @@ class DebugRunState {
     int? embedMs,
     VoiceLogId? storedLogId,
     int? storedChunkCount,
+    int? gemmaDownloadPercent,
+    bool clearGemmaDownloadPercent = false,
     String? errorMessage,
   }) {
     return DebugRunState(
@@ -197,6 +205,9 @@ class DebugRunState {
       cleanupMs: cleanupMs ?? this.cleanupMs,
       chunkPreviews: chunkPreviews ?? this.chunkPreviews,
       embedMs: embedMs ?? this.embedMs,
+      gemmaDownloadPercent: clearGemmaDownloadPercent
+          ? null
+          : (gemmaDownloadPercent ?? this.gemmaDownloadPercent),
       storedLogId: storedLogId ?? this.storedLogId,
       storedChunkCount: storedChunkCount ?? this.storedChunkCount,
       errorMessage: errorMessage ?? this.errorMessage,
@@ -428,15 +439,21 @@ class DebugRunNotifier extends Notifier<DebugRunState> {
 
   /// Load Gemma, run cleanup, dispose. Returns the cleaned transcript
   /// on success, null on failure.
+  ///
+  /// First invocation pays a one-time ~290 MB download cost; the
+  /// percentage is surfaced on [DebugRunState.gemmaDownloadPercent] so
+  /// the UI can render a progress bar instead of an opaque spinner.
   Future<CleanedTranscript?> _runCleanupStage(Transcript master) async {
-    final core = await ref.read(coreRuntimeProvider.future);
-
     state = state.copyWith(subphase: DebugSubphase.loadingLlm);
     final llm = GemmaRunner(
-      modelPath: core.paths.gemmaModel,
-      tokenizerPath: core.paths.gemmaTokenizer,
+      onInstallProgress: (percent) {
+        state = state.copyWith(gemmaDownloadPercent: percent);
+      },
     );
     final loaded = await llm.load();
+    // Clear the percent so the next render shows just the loading
+    // spinner, not a stale 100% bar.
+    state = state.copyWith(clearGemmaDownloadPercent: true);
     if (loaded.isErr) {
       await _tearDownStreams();
       state = state.copyWith(

@@ -7,7 +7,7 @@ part 'daily_brief.g.dart';
 /// single day's chunks. Round-trips through [SynthesisRecord.payloadJson]
 /// via `toJson` / `fromJson` generated here.
 @freezed
-class DailyBrief with _$DailyBrief {
+sealed class DailyBrief with _$DailyBrief {
   const factory DailyBrief({
     /// The day this brief covers, as `YYYY-MM-DD` in the user's local
     /// timezone. String rather than DateTime because the payload is
@@ -33,7 +33,7 @@ class DailyBrief with _$DailyBrief {
 /// One extracted action item with back-references to supporting
 /// chunks so the UI can jump the user to the source.
 @freezed
-class DailyActionItem with _$DailyActionItem {
+sealed class DailyActionItem with _$DailyActionItem {
   const factory DailyActionItem({
     required String text,
     required List<int> sourceChunkIds,
@@ -46,7 +46,7 @@ class DailyActionItem with _$DailyActionItem {
 /// A notable moment from the day — a decision, a realisation, a
 /// question that opened.
 @freezed
-class DailyKeyMoment with _$DailyKeyMoment {
+sealed class DailyKeyMoment with _$DailyKeyMoment {
   const factory DailyKeyMoment({
     required String description,
     required List<int> sourceChunkIds,

@@ -2,9 +2,16 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <!-- VoxSynth permissions. See IMPLEMENTATION_PLAN.md §0. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE"/>
+    <!-- Required on Android 14+ for background_downloader's foreground
+         service (used by flutter_gemma for any model > 500 MB, including
+         the Gemma 4 E2B 2.58 GB bundle). Without this, the download
+         never starts on modern devices. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
 

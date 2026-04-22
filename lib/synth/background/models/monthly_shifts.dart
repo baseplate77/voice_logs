@@ -7,7 +7,7 @@ part 'monthly_shifts.g.dart';
 /// about this month vs the last 30 days prior, based on the chunks +
 /// earlier syntheses.
 @freezed
-class MonthlyShifts with _$MonthlyShifts {
+sealed class MonthlyShifts with _$MonthlyShifts {
   const factory MonthlyShifts({
     /// First day of the covered month, `YYYY-MM-DD` local.
     required String monthStart,
@@ -29,7 +29,7 @@ class MonthlyShifts with _$MonthlyShifts {
 /// recurring question. `priorChunkIds` / `currentChunkIds` point at the
 /// source material on each side of the diff.
 @freezed
-class MonthlyShift with _$MonthlyShift {
+sealed class MonthlyShift with _$MonthlyShift {
   const factory MonthlyShift({
     required String topic,
     required String priorSummary,

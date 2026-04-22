@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:objectbox/objectbox.dart' show Store;
 
 import '../../core/errors.dart';
+import '../../llm/gemma_runner.dart';
 import '../../objectbox.g.dart' hide Entity;
 import '../../store/app_database.dart';
 import '../../store/database_factory.dart';
@@ -35,6 +36,10 @@ typedef BootstrapProgressState = ({
 final bootstrapProgressProvider =
     StateProvider<BootstrapProgressState?>((ref) => null);
 
+/// 0..100 during the Gemma 4 E2B download at startup. `null` before
+/// download starts and after it completes.
+final gemmaDownloadPercentProvider = StateProvider<int?>((ref) => null);
+
 /// Copies all bundled model files to the documents directory on first
 /// launch and returns their absolute paths. Subsequent runs short-circuit
 /// on the file-size check inside [bootstrapModels].
@@ -48,6 +53,22 @@ final modelPathsProvider = FutureProvider<ModelPaths>((ref) async {
       );
     },
   );
+});
+
+/// Copies the Gemma 4 E2B `.litertlm` bundle (~2.58 GB) out of the
+/// Flutter asset tree into flutter_gemma's on-device cache. Does NOT
+/// instantiate an [InferenceModel] — that happens lazily during the
+/// cleanup stage to keep the RAM budget "one heavy model at a time".
+/// Idempotent: once the file is cached, subsequent runs resolve in
+/// milliseconds.
+final gemmaWarmUpProvider = FutureProvider<void>((ref) async {
+  final result = await GemmaRunner.warmUp(
+    onInstallProgress: (percent) {
+      ref.read(gemmaDownloadPercentProvider.notifier).state = percent;
+    },
+  );
+  ref.read(gemmaDownloadPercentProvider.notifier).state = null;
+  _throwOnErr(result.errOrNull);
 });
 
 /// Manages the SQLCipher master key (iOS Keychain / Android
@@ -102,6 +123,11 @@ final coreRuntimeProvider = FutureProvider<CoreRuntime>((ref) async {
   final paths = await ref.watch(modelPathsProvider.future);
   final db = await ref.watch(appDatabaseProvider.future);
   final vectorIndex = await ref.watch(vectorIndexProvider.future);
+  // Block the record UI until Gemma is cached on device. The file is
+  // downloaded once (~2.58 GB) and resolves instantly on subsequent
+  // launches. No InferenceModel is held in RAM here — that happens
+  // later in the cleanup stage.
+  await ref.watch(gemmaWarmUpProvider.future);
   return CoreRuntime(
     paths: paths,
     db: db,

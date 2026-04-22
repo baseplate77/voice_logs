@@ -21,10 +21,12 @@ class BootstrapStatusView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final progress = ref.watch(bootstrapProgressProvider);
+    final gemmaPercent = ref.watch(gemmaDownloadPercentProvider);
     final paths = ref.watch(modelPathsProvider);
     final db = ref.watch(appDatabaseProvider);
     final objectbox = ref.watch(objectboxStoreProvider);
     final vectorIndex = ref.watch(vectorIndexProvider);
+    final gemma = ref.watch(gemmaWarmUpProvider);
 
     final modules = <_Module>[
       _Module(
@@ -47,6 +49,12 @@ class BootstrapStatusView extends ConsumerWidget {
         label: 'Vector index',
         value: vectorIndex,
         onRetry: () => ref.invalidate(vectorIndexProvider),
+      ),
+      _Module(
+        label: 'Gemma 4 E2B (2.58 GB asset copy, first run only)',
+        value: gemma,
+        onRetry: () => ref.invalidate(gemmaWarmUpProvider),
+        percent: gemma is AsyncData ? null : gemmaPercent,
       ),
     ];
 
@@ -71,9 +79,10 @@ class BootstrapStatusView extends ConsumerWidget {
               ),
               const SizedBox(height: 6),
               Text(
-                'First launch extracts ~2 GB of models. Heavy models '
-                '(Parakeet, Gemma, E5) are loaded on demand, one at a '
-                'time, during post-processing.',
+                'First launch extracts bundled models from the APK — '
+                '~2 GB Parakeet + E5 plus ~2.58 GB Gemma 4 E2B. After '
+                'this, Parakeet, Gemma and E5 are loaded on demand '
+                'during post-processing, one at a time.',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
@@ -95,7 +104,8 @@ class BootstrapStatusView extends ConsumerWidget {
                           ..invalidate(modelPathsProvider)
                           ..invalidate(appDatabaseProvider)
                           ..invalidate(objectboxStoreProvider)
-                          ..invalidate(vectorIndexProvider);
+                          ..invalidate(vectorIndexProvider)
+                          ..invalidate(gemmaWarmUpProvider);
                       }
                     : null,
               ),
@@ -113,18 +123,27 @@ class _Module {
     required this.value,
     required this.onRetry,
     this.progress,
+    this.percent,
   });
 
   _Module.empty()
       : label = '',
-        value = const AsyncLoading<Object>(),
+        value = const AsyncLoading<Object?>(),
         onRetry = _noop,
-        progress = null;
+        progress = null,
+        percent = null;
 
   final String label;
-  final AsyncValue<Object> value;
+  // Provider return types are heterogeneous (ModelPaths, AppDatabase,
+  // VectorIndex, void) — use the top type so a void future fits too.
+  final AsyncValue<Object?> value;
   final VoidCallback onRetry;
   final BootstrapProgressState? progress;
+
+  /// 0..100 when the module's progress is a single scalar (e.g. a
+  /// download percent). Mutually exclusive with [progress], which is a
+  /// per-file copy-out indicator.
+  final int? percent;
 }
 
 void _noop() {}
@@ -216,6 +235,29 @@ class _ModuleRow extends StatelessWidget {
                     '${module.progress!.currentFile} '
                     '(${module.progress!.fileIndex}/'
                     '${module.progress!.totalFiles})',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontFamily: 'monospace',
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else if (module.percent != null &&
+              module.value is! AsyncData &&
+              module.value is! AsyncError) ...[
+            const SizedBox(height: 4),
+            Padding(
+              padding: const EdgeInsets.only(left: 30),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  LinearProgressIndicator(
+                    value: (module.percent! / 100.0).clamp(0.0, 1.0),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'copying · ${module.percent}%',
                     style: theme.textTheme.labelSmall?.copyWith(
                       fontFamily: 'monospace',
                       color: theme.colorScheme.onSurfaceVariant,
