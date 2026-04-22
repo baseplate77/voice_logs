@@ -17,7 +17,17 @@ final jobQueueProvider = Provider<JobQueue>((ref) {
 /// 4 will swap in the real Gemma pipeline via this same provider.
 final refineHandlerProvider = Provider<JobHandler>((ref) {
   final repo = ref.watch(voiceLogRepositoryProvider);
-  return DummyRefiner(repository: repo);
+  final queue = ref.watch(jobQueueProvider);
+  return DummyRefiner(repository: repo, queue: queue);
+});
+
+/// Handler for the `embed` job type. Wired in Phase 3; Phase 4's Gemma
+/// path replaces the refine handler but leaves this one untouched.
+final embedHandlerProvider = Provider<JobHandler?>((ref) {
+  // Embed requires the full e5 stack (model bootstrap + tokenizer).
+  // Phase 3 wires it up when the model assets are present; absence is
+  // handled by omitting the handler from the worker's dispatch map.
+  return null;
 });
 
 /// The live worker. Kept alive for the session so background jobs keep
@@ -25,9 +35,11 @@ final refineHandlerProvider = Provider<JobHandler>((ref) {
 final workerProvider = Provider<Worker>((ref) {
   ref.keepAlive();
   final queue = ref.watch(jobQueueProvider);
+  final embedHandler = ref.watch(embedHandlerProvider);
   final handlers = <JobType, JobHandler>{
     JobType.refine: ref.watch(refineHandlerProvider),
   };
+  if (embedHandler != null) handlers[JobType.embed] = embedHandler;
   final worker = Worker(queue: queue, handlers: handlers);
   // Fire-and-forget start — polling begins on first read.
   worker.start();

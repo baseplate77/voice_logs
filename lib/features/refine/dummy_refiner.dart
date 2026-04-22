@@ -3,18 +3,21 @@ import '../../core/db/job_state.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 import '../../core/result.dart';
 import '../../core/worker/job_handler.dart';
+import '../../core/worker/job_queue.dart';
 
 /// Stand-in refine handler — copies `raw_transcript` → `cleaned_text`
-/// after a configurable delay. Replaced by the real Gemma pipeline in
-/// Phase 4. Keeping the behavior here lets the UI update path be
-/// exercised end-to-end before the heavy LLM dep lands.
+/// after a configurable delay, then enqueues the downstream `embed`
+/// job. Replaced by the real Gemma pipeline in Phase 4; the embed
+/// hand-off survives the swap.
 class DummyRefiner implements JobHandler {
   DummyRefiner({
     required this.repository,
+    required this.queue,
     this.delay = const Duration(seconds: 5),
   });
 
   final VoiceLogRepository repository;
+  final JobQueue queue;
   final Duration delay;
 
   @override
@@ -31,9 +34,12 @@ class DummyRefiner implements JobHandler {
       id: ctx.logId,
       cleanedText: log.rawTranscript,
     );
-    return switch (res) {
-      Ok() => const Ok(JobSucceeded()),
-      Err(:final error) => Err(error),
-    };
+    switch (res) {
+      case Ok():
+        await queue.enqueue(logId: ctx.logId, type: JobType.embed);
+        return const Ok(JobSucceeded());
+      case Err(:final error):
+        return Err(error);
+    }
   }
 }

@@ -4,6 +4,7 @@ import '../../app_error.dart';
 import '../../result.dart';
 import '../database.dart';
 import '../processing_state.dart';
+import 'voice_log_fts.dart';
 
 /// Data-transfer view of a voice log consumed by the UI. Keeps feature
 /// code from importing drift's row classes directly.
@@ -68,9 +69,10 @@ final class VoiceLogStorageError extends VoiceLogRepositoryError {
 /// reactive list stream the home screen subscribes to. Phase 1 keeps
 /// the surface small; refine / embed updates arrive in later phases.
 class VoiceLogRepository {
-  VoiceLogRepository(this._db);
+  VoiceLogRepository(this._db) : _fts = VoiceLogFts(_db);
 
   final VoxSynthDatabase _db;
+  final VoiceLogFts _fts;
 
   /// Insert a freshly-recorded voice log in state [ProcessingState.recorded].
   Future<Result<VoiceLogView, VoiceLogStorageError>> insertRecorded({
@@ -91,6 +93,7 @@ class VoiceLogRepository {
         retryCount: 0,
       );
       await _db.into(_db.voiceLogs).insert(row);
+      await _fts.sync(id);
       return Ok(VoiceLogView.fromRow(row));
     } on Object catch (e, s) {
       return Err(
@@ -132,6 +135,7 @@ class VoiceLogRepository {
           errorMessage: const Value(null),
         ),
       );
+      await _fts.sync(id);
       return const Ok(null);
     } on Object catch (e, s) {
       return Err(

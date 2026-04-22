@@ -31,7 +31,11 @@ void main() {
     tearDown(() => db.close());
 
     test('copies raw → cleaned and returns JobSucceeded', () async {
-      final handler = DummyRefiner(repository: repo, delay: Duration.zero);
+      final handler = DummyRefiner(
+        repository: repo,
+        queue: JobQueue(db),
+        delay: Duration.zero,
+      );
       final res = await handler.handle(
         const JobContext(jobId: 'j1', logId: 'log_1', attempts: 0),
       );
@@ -67,7 +71,11 @@ void main() {
       final worker = Worker(
         queue: queue,
         handlers: {
-          JobType.refine: DummyRefiner(repository: repo, delay: Duration.zero),
+          JobType.refine: DummyRefiner(
+            repository: repo,
+            queue: JobQueue(db),
+            delay: Duration.zero,
+          ),
         },
         pollInterval: const Duration(milliseconds: 10),
       );
