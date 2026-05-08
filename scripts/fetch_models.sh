@@ -46,6 +46,25 @@ fetch "e5/model_opt2_QInt8.onnx" \
 fetch "e5/tokenizer.json" \
   "https://huggingface.co/nixiesearch/e5-small-v2-onnx/resolve/main/tokenizer.json"
 
+# Streaming Zipformer English 20M. Small, low-latency model for live captions
+# and immediate raw transcripts. We keep the int8 encoder/joiner and fp32
+# decoder files used by sherpa-onnx's documented mobile path.
+ZIPFORMER_DIR="$MODELS_DIR/zipformer_en_20m"
+ZIPFORMER_TAR="$MODELS_DIR/zipformer_en_20m.tar.bz2"
+if [[ -f "$ZIPFORMER_DIR/encoder-epoch-99-avg-1.int8.onnx" ]]; then
+  echo "[skip] Streaming Zipformer already extracted at $ZIPFORMER_DIR"
+else
+  echo "[fetch] sherpa-onnx-streaming-zipformer-en-20M-2023-02-17 (~45 MB int8 subset)"
+  curl -L --fail --progress-bar -o "$ZIPFORMER_TAR.partial" \
+    "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17.tar.bz2"
+  mv "$ZIPFORMER_TAR.partial" "$ZIPFORMER_TAR"
+  echo "[extract] zipformer_en_20m.tar.bz2 -> $ZIPFORMER_DIR/"
+  mkdir -p "$ZIPFORMER_DIR"
+  tar -xjf "$ZIPFORMER_TAR" -C "$ZIPFORMER_DIR" --strip-components=1
+  rm "$ZIPFORMER_TAR"
+  echo "[done] Streaming Zipformer model extracted ($(du -sh "$ZIPFORMER_DIR" | cut -f1))"
+fi
+
 # Parakeet-TDT-0.6B-v2 (sherpa-onnx int8 export). ~482 MB compressed,
 # expands into assets/models/parakeet/ with encoder/decoder/joiner/tokens.
 PARAKEET_DIR="$MODELS_DIR/parakeet"

@@ -5,6 +5,7 @@ import 'package:voxsynth/core/db/database.dart';
 import 'package:voxsynth/core/db/job_state.dart';
 import 'package:voxsynth/core/db/processing_state.dart';
 import 'package:voxsynth/core/db/repositories/voice_log_repository.dart';
+import 'package:voxsynth/core/pipeline_debug.dart';
 import 'package:voxsynth/core/result.dart';
 import 'package:voxsynth/core/worker/job_handler.dart';
 import 'package:voxsynth/core/worker/job_queue.dart';
@@ -66,6 +67,25 @@ void main() {
 
     tearDown(() => db.close());
 
+    test('reconstructs missing jobs on start and resumes processing', () async {
+      final worker = Worker(
+        queue: queue,
+        handlers: {
+          JobType.refine: DummyRefiner(
+            repository: repo,
+            queue: JobQueue(db),
+            delay: Duration.zero,
+          ),
+        },
+        pollInterval: const Duration(milliseconds: 10),
+      );
+      await worker.start();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      worker.stop();
+      final log = await repo.find('log_1');
+      expect(log!.processingState, ProcessingState.refined);
+    });
+
     test('picks up a refine job and succeeds', () async {
       await queue.enqueue(logId: 'log_1', type: JobType.refine);
       final worker = Worker(
@@ -85,6 +105,65 @@ void main() {
       worker.stop();
       final log = await repo.find('log_1');
       expect(log!.processingState, ProcessingState.refined);
+    });
+
+    test('emits pipeline debug timings for successful jobs', () async {
+      await queue.enqueue(logId: 'log_1', type: JobType.refine);
+      final debug = _CollectingDebugSink();
+      final worker = Worker(
+        queue: queue,
+        handlers: {
+          JobType.refine: DummyRefiner(
+            repository: repo,
+            queue: JobQueue(db),
+            delay: Duration.zero,
+          ),
+        },
+        pollInterval: const Duration(milliseconds: 10),
+        debugSink: debug,
+      );
+      await worker.start();
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      worker.stop();
+
+      expect(
+        debug.entries,
+        contains(
+          isA<PipelineDebugEntry>()
+              .having((e) => e.logId, 'logId', 'log_1')
+              .having((e) => e.stage, 'stage', PipelineDebugStage.refine)
+              .having((e) => e.event, 'event', 'started'),
+        ),
+      );
+      expect(
+        debug.entries,
+        contains(
+          isA<PipelineDebugEntry>()
+              .having((e) => e.logId, 'logId', 'log_1')
+              .having((e) => e.stage, 'stage', PipelineDebugStage.refine)
+              .having((e) => e.event, 'event', 'succeeded')
+              .having((e) => e.elapsedMs, 'elapsedMs', isNotNull),
+        ),
+      );
+    });
+
+    test('marks voice log failed through permanent-failure callback', () async {
+      await queue.enqueue(logId: 'log_1', type: JobType.refine);
+      final worker = Worker(
+        queue: queue,
+        handlers: {JobType.refine: _AlwaysFails()},
+        pollInterval: const Duration(milliseconds: 5),
+        maxAttemptsPerJob: 1,
+        onPermanentFailure: (job, reason) async {
+          await repo.markFailed(id: job.logId, errorMessage: reason);
+        },
+      );
+      await worker.start();
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      worker.stop();
+      final log = await repo.find('log_1');
+      expect(log!.processingState, ProcessingState.failed);
+      expect(log.errorMessage, contains('exhausted retries'));
     });
 
     test('retries then fails when handler always errors', () async {
@@ -113,4 +192,11 @@ class _AlwaysFails implements JobHandler {
   Future<Result<JobOutcome, AppError>> handle(JobContext ctx) async {
     throw StateError('boom');
   }
+}
+
+class _CollectingDebugSink implements PipelineDebugSink {
+  final entries = <PipelineDebugEntry>[];
+
+  @override
+  void add(PipelineDebugEntry entry) => entries.add(entry);
 }

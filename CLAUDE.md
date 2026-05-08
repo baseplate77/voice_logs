@@ -49,6 +49,17 @@ Reciprocal rank fusion (k=60) over three paths:
 
 Raw-transcript-only results are always included — this is the guarantee that search works the instant recording stops, even before refine finishes.
 
+## Memory subsystem (planned)
+Local-only durable memory is planned after entity canonicalization. It is an evidence-backed layer of user facts, preferences, relationships, projects, routines, places, and useful ongoing context extracted from refined logs.
+
+- No cloud memory, sync, telemetry, crash reporting, or remote model APIs.
+- Memory extraction runs as a background job after refine/embed/canonicalize; never blocks record stop.
+- Memories are stored in encrypted Drift tables with source evidence back to voice logs and char offsets.
+- Memory retrieval uses local FTS5 + sqlite-vec + entity boosts, with e5 prefixes enforced (`"passage: "` for memory cards, `"query: "` for lookups).
+- Sensitive memories stay in review/candidate state and are not used in Gemma prompts until confirmed.
+- Users must be able to inspect, edit, merge, delete, export, and disable memory.
+- Full design lives in `docs/memory_subsystem.md`; implementation is scheduled as Phase 5.5.
+
 ## Directory layout
 ```
 lib/

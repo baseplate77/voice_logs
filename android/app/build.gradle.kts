@@ -36,6 +36,21 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+
+    // sherpa_onnx (Parakeet STT) and flutter_onnxruntime (e5 embeddings)
+    // both ship libonnxruntime.so. The root Gradle file force-aligns
+    // flutter_onnxruntime's com.microsoft.onnxruntime:onnxruntime-android
+    // dependency to 1.24.3, matching sherpa_onnx_android_arm64 1.12.39.
+    // Do not remove that alignment: onnxruntime4j_jni requires exact
+    // versioned ORT symbols such as OrtGetApiBase@VERS_1.24.3.
+    packaging {
+        jniLibs {
+            pickFirsts += setOf(
+                "**/libonnxruntime.so",
+                "**/libonnxruntime4j_jni.so",
+            )
+        }
+    }
 }
 
 flutter {

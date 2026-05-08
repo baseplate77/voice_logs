@@ -6,16 +6,35 @@ import '../../core/result.dart';
 /// Abstracts the ASR engine so the UI and tests don't depend on
 /// `sherpa_onnx` directly.
 abstract class SpeechRecognizer {
-  /// Load the underlying model. Must be called once before [transcribe].
+  /// Load the underlying model. Must be called once before [transcribeFile].
   /// Safe to call multiple times; subsequent calls are no-ops.
   Future<Result<void, AsrError>> load();
 
-  /// Transcribe the given wav bytes (16 kHz mono PCM16 with RIFF header).
+  /// Transcribe the given wav file path (16 kHz mono PCM16 with RIFF header).
   /// Returns the recognized text or an error.
-  Future<Result<String, AsrError>> transcribeWav(Uint8List wavBytes);
+  Future<Result<String, AsrError>> transcribeFile(String wavPath);
 
   /// Release any native resources held by the recognizer.
   Future<void> dispose();
+}
+
+/// Optional extension for recognizers that can consume microphone PCM chunks.
+///
+/// The recording controller detects this interface and uses it for live
+/// captions plus a low-latency final raw transcript. Non-streaming engines
+/// still work through [SpeechRecognizer.transcribeFile].
+abstract class StreamingSpeechRecognizer implements SpeechRecognizer {
+  /// Start a fresh streaming session.
+  Future<Result<void, AsrError>> beginStream();
+
+  /// Feed one chunk of little-endian signed PCM16 mono audio.
+  Future<Result<String, AsrError>> acceptPcm16(
+    Uint8List chunk, {
+    int sampleRate = 16000,
+  });
+
+  /// Finish the current session and return the final hypothesis.
+  Future<Result<String, AsrError>> finishStream();
 }
 
 /// Errors surfaced by the ASR layer.

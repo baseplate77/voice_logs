@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 
 import '../db/database.dart';
 import '../db/job_state.dart';
+import '../db/processing_state.dart';
 
 /// One claimed job ready for a [JobHandler] to process.
 class QueuedJob {
@@ -25,20 +26,31 @@ class QueuedJob {
   final int attempts;
 }
 
-/// Thin persistent queue over the [ProcessingJobs] drift table. A small
-/// surface — just enqueue / claim / complete — so tests don't wrestle
-/// with query builders.
+/// Thin persistent queue over the [ProcessingJobs] drift table.
+///
+/// Jobs are durable: `pending` survives process death, `running` is reset
+/// to `pending` on worker start, and missing jobs are reconstructed from
+/// `voice_logs.processing_state` so a cut app resumes the pipeline next
+/// launch.
 class JobQueue {
   JobQueue(this._db);
 
   final VoxSynthDatabase _db;
 
   /// Insert a new pending job for [logId]. Returns the new row id.
+  ///
+  /// Idempotent for active work: if the same [type] for [logId] is already
+  /// `pending` or `running`, its id is returned instead of creating a
+  /// duplicate. Failed/done historical rows are left untouched so manual
+  /// retry can enqueue a fresh attempt.
   Future<String> enqueue({
     required String logId,
     required JobType type,
     int priority = 100,
   }) async {
+    final active = await _activeJobId(logId: logId, type: type);
+    if (active != null) return active;
+
     final id = 'job_${DateTime.now().microsecondsSinceEpoch}_${type.wire}';
     final row = ProcessingJob(
       id: id,
@@ -53,35 +65,49 @@ class JobQueue {
     return id;
   }
 
-  /// Transition the lowest-priority pending job to `running` and return
-  /// it, or `null` if the queue is empty. Not atomic w.r.t. multiple
-  /// workers — Phase 2 assumes a single worker isolate.
+  /// Transition the highest-priority pending job to `running` and return
+  /// it, or `null` if the queue is empty.
+  ///
+  /// Atomic with respect to multiple workers: we only claim the selected
+  /// row if it is still pending at update time.
   Future<QueuedJob?> claimNext() async {
-    final query = _db.select(_db.processingJobs)
-      ..where((t) => t.state.equals(JobState.pending.wire))
-      ..orderBy([
-        (t) => OrderingTerm.asc(t.priority),
-        (t) => OrderingTerm.asc(t.enqueuedAt),
-      ])
-      ..limit(1);
-    final row = await query.getSingleOrNull();
-    if (row == null) return null;
+    return _db.transaction(() async {
+      final query = _db.select(_db.processingJobs)
+        ..where((t) => t.state.equals(JobState.pending.wire))
+        ..orderBy([
+          (t) => OrderingTerm.asc(t.priority),
+          (t) => OrderingTerm.asc(t.enqueuedAt),
+        ])
+        ..limit(1);
+      final row = await query.getSingleOrNull();
+      if (row == null) return null;
 
-    await (_db.update(_db.processingJobs)..where((t) => t.id.equals(row.id)))
-        .write(ProcessingJobsCompanion(state: Value(JobState.running.wire)));
+      final claimed =
+          await (_db.update(_db.processingJobs)..where(
+                (t) =>
+                    t.id.equals(row.id) & t.state.equals(JobState.pending.wire),
+              ))
+              .write(
+                ProcessingJobsCompanion(state: Value(JobState.running.wire)),
+              );
+      if (claimed == 0) {
+        // Another worker claimed this row first.
+        return null;
+      }
 
-    final type = JobType.fromWireOrNull(row.jobType);
-    if (type == null) {
-      // Unknown job type — mark failed so it doesn't block the queue.
-      await markFailed(row.id);
-      return null;
-    }
-    return QueuedJob(
-      id: row.id,
-      logId: row.logId,
-      jobType: type,
-      attempts: row.attempts,
-    );
+      final type = JobType.fromWireOrNull(row.jobType);
+      if (type == null) {
+        // Unknown job type — mark failed so it doesn't block the queue.
+        await markFailed(row.id);
+        return null;
+      }
+      return QueuedJob(
+        id: row.id,
+        logId: row.logId,
+        jobType: type,
+        attempts: row.attempts,
+      );
+    });
   }
 
   /// Reset any jobs left in `running` (e.g. from an app crash) back to
@@ -90,6 +116,42 @@ class JobQueue {
     return (_db.update(_db.processingJobs)
           ..where((t) => t.state.equals(JobState.running.wire)))
         .write(ProcessingJobsCompanion(state: Value(JobState.pending.wire)));
+  }
+
+  /// Recreate missing pipeline jobs from durable voice-log state.
+  ///
+  /// This closes crash windows such as: log inserted but refine not enqueued,
+  /// refined text saved but embed not enqueued, or embeddings saved but the
+  /// canonicalize job was cut before it could link mentions.
+  Future<int> recoverIncompletePipeline() async {
+    var enqueued = 0;
+    final rows =
+        await (_db.select(_db.voiceLogs)
+              ..where(
+                (t) => t.processingState.isIn([
+                  ProcessingState.recorded.wire,
+                  ProcessingState.refined.wire,
+                  ProcessingState.embedded.wire,
+                ]),
+              )
+              ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]))
+            .get();
+
+    for (final row in rows) {
+      final state = ProcessingState.fromWire(row.processingState);
+      final type = switch (state) {
+        ProcessingState.recorded => JobType.refine,
+        ProcessingState.refined => JobType.embed,
+        ProcessingState.embedded =>
+          await _hasUnlinkedMentions(row.id) ? JobType.canonicalize : null,
+        ProcessingState.failed => null,
+      };
+      if (type == null) continue;
+      if (await _hasActiveJobForLog(row.id)) continue;
+      await enqueue(logId: row.id, type: type);
+      enqueued++;
+    }
+    return enqueued;
   }
 
   Future<void> markDone(String jobId) async {
@@ -113,5 +175,53 @@ class JobQueue {
         attempts: Value(currentAttempts + 1),
       ),
     );
+  }
+
+  Future<String?> _activeJobId({
+    required String logId,
+    required JobType type,
+  }) async {
+    final row =
+        await (_db.select(_db.processingJobs)
+              ..where(
+                (t) =>
+                    t.logId.equals(logId) &
+                    t.jobType.equals(type.wire) &
+                    t.state.isIn([
+                      JobState.pending.wire,
+                      JobState.running.wire,
+                    ]),
+              )
+              ..orderBy([(t) => OrderingTerm.asc(t.enqueuedAt)])
+              ..limit(1))
+            .getSingleOrNull();
+    return row?.id;
+  }
+
+  Future<bool> _hasActiveJobForLog(String logId) async {
+    final row =
+        await (_db.select(_db.processingJobs)
+              ..where(
+                (t) =>
+                    t.logId.equals(logId) &
+                    t.state.isIn([
+                      JobState.pending.wire,
+                      JobState.running.wire,
+                    ]),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
+  }
+
+  Future<bool> _hasUnlinkedMentions(String logId) async {
+    final row =
+        await (_db.select(_db.entityMentions)
+              ..where(
+                (t) => t.logId.equals(logId) & t.canonicalEntityId.isNull(),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
   }
 }

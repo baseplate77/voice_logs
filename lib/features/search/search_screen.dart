@@ -4,13 +4,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
-import '../../core/db/repositories/voice_log_repository.dart';
+import '../../core/result.dart';
+import '../../core/worker/providers.dart';
 import '../detail/log_detail_screen.dart';
+import 'hybrid_retriever.dart';
 
-/// Hybrid search screen. Phase 6 wires a debounced text field that
-/// runs FTS against raw_transcript + cleaned_text. Vector + entity
-/// paths are wired in the retriever but require the embedder to be
-/// available — when it isn't, FTS results alone show up.
+/// Hybrid search screen. FTS works immediately on raw transcripts;
+/// embedded logs also participate in vector search after background
+/// refinement/embedding finishes.
 class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
@@ -75,8 +76,8 @@ class _SearchResults extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final logsAsync = ref.watch(_simpleSearchProvider(query));
-    return logsAsync.when(
+    final hitsAsync = ref.watch(_hybridSearchProvider(query));
+    return hitsAsync.when(
       data: (rows) {
         if (rows.isEmpty) {
           return const Center(child: Text('No matches.'));
@@ -85,17 +86,17 @@ class _SearchResults extends ConsumerWidget {
           itemCount: rows.length,
           separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (_, i) {
-            final row = rows[i];
+            final hit = rows[i];
             return ListTile(
               title: Text(
-                row.displayText,
+                hit.snippet,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              subtitle: Text(row.processingState.wire),
+              subtitle: Text(_sourceLabel(hit.matchedVia)),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => LogDetailScreen(logId: row.id),
+                  builder: (_) => LogDetailScreen(logId: hit.logId),
                 ),
               ),
             );
@@ -108,37 +109,34 @@ class _SearchResults extends ConsumerWidget {
   }
 }
 
-/// Phase 6 search is FTS-only against the live log stream — filters
-/// the already-loaded list client-side. The HybridRetriever is reserved
-/// for Phase 7+ when the embedder runs at session start. This avoids
-/// embedder bootstrap cost on every keystroke.
-final _simpleSearchProvider = StreamProvider.family<List<VoiceLogView>, String>(
-  (ref, query) {
-    final logs = ref.watch(voiceLogsStreamProvider.future);
-    final controller = StreamController<List<VoiceLogView>>();
-    logs.then((snapshot) {
-      final lower = query.toLowerCase();
-      controller.add(
-        snapshot.where((l) {
-          final haystack = '${l.rawTranscript} ${l.cleanedText ?? ''}'
-              .toLowerCase();
-          return haystack.contains(lower);
-        }).toList(),
-      );
-    });
-    ref.listen(voiceLogsStreamProvider, (_, next) {
-      next.whenData((snapshot) {
-        final lower = query.toLowerCase();
-        controller.add(
-          snapshot.where((l) {
-            final haystack = '${l.rawTranscript} ${l.cleanedText ?? ''}'
-                .toLowerCase();
-            return haystack.contains(lower);
-          }).toList(),
-        );
-      });
-    });
-    ref.onDispose(controller.close);
-    return controller.stream;
-  },
-);
+String _sourceLabel(Set<MatchSource> sources) {
+  if (sources.isEmpty) return 'keyword';
+  final labels = sources
+      .map((s) {
+        return switch (s) {
+          MatchSource.fts => 'keyword',
+          MatchSource.vector => 'semantic',
+          MatchSource.entity => 'entity',
+        };
+      })
+      .join(' + ');
+  return labels;
+}
+
+final _hybridSearchProvider = FutureProvider.family<List<SearchHit>, String>((
+  ref,
+  query,
+) async {
+  final vecStore = ref.watch(vecStoreProvider);
+  await vecStore.load();
+  final retriever = HybridRetriever(
+    db: ref.watch(voxSynthDatabaseProvider),
+    embedder: ref.watch(embedderProvider),
+    vecStore: vecStore,
+  );
+  final res = await retriever.search(query, limit: 20);
+  return switch (res) {
+    Ok(:final value) => value,
+    Err(:final error) => throw StateError(error.message),
+  };
+});

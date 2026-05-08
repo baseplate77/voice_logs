@@ -3,6 +3,7 @@ import '../../core/db/job_state.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 import '../../core/result.dart';
 import '../../core/worker/job_handler.dart';
+import '../../core/worker/job_queue.dart';
 import '../search/canonicalizer.dart';
 
 /// `canonicalize` job handler — runs after embed so mentions land on
@@ -13,10 +14,12 @@ class CanonicalizeJobHandler implements JobHandler {
   CanonicalizeJobHandler({
     required this.voiceLogs,
     required this.canonicalizer,
+    required this.queue,
   });
 
   final VoiceLogRepository voiceLogs;
   final Canonicalizer canonicalizer;
+  final JobQueue queue;
 
   @override
   JobType get type => JobType.canonicalize;
@@ -33,8 +36,13 @@ class CanonicalizeJobHandler implements JobHandler {
       cleanedText: cleaned,
     );
     return switch (res) {
-      Ok() => const Ok(JobSucceeded()),
+      Ok() => await _enqueueMemory(ctx.logId),
       Err(:final error) => Err(error),
     };
+  }
+
+  Future<Result<JobOutcome, AppError>> _enqueueMemory(String logId) async {
+    await queue.enqueue(logId: logId, type: JobType.memory);
+    return const Ok(JobSucceeded());
   }
 }

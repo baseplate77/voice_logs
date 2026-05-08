@@ -1,8 +1,10 @@
+import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:flutter_onnxruntime/flutter_onnxruntime.dart';
 
 import '../../core/app_error.dart';
+import '../../core/model_bootstrap.dart';
 import '../../core/result.dart';
 import 'embedding_math.dart';
 import 'tokenizer.dart';
@@ -49,12 +51,111 @@ abstract class Embedder {
 
   /// Embed one or more indexed passages. Applies the `"passage: "`
   /// prefix automatically — do not pre-prefix the input.
-  Future<Result<List<Embedding>, EmbedError>> embedPassages(List<String> texts);
+  Future<Result<List<Embedding>, EmbedError>> embedPassages(
+    List<String> texts, {
+    int? batchSize,
+  });
 
   /// Embed a single search query. Applies the `"query: "` prefix.
   Future<Result<Embedding, EmbedError>> embedQuery(String text);
 
   Future<void> dispose();
+}
+
+/// Lazily copies e5 assets, loads the tokenizer, then delegates to
+/// [E5Embedder]. This lets providers stay synchronous while model IO
+/// remains deferred to the background worker/search path.
+class LazyE5Embedder implements Embedder {
+  LazyE5Embedder({required this.bootstrap});
+
+  final ModelBootstrap bootstrap;
+  E5Embedder? _delegate;
+  Future<Result<void, EmbedError>>? _loading;
+
+  @override
+  Future<Result<void, EmbedError>> load() {
+    final existing = _loading;
+    if (existing != null) return existing;
+    final loading = _loadOnce().then((result) {
+      if (result is Err<void, EmbedError>) _loading = null;
+      return result;
+    });
+    _loading = loading;
+    return loading;
+  }
+
+  Future<Result<void, EmbedError>> _loadOnce() async {
+    final existing = _delegate;
+    if (existing != null) return const Ok(null);
+    try {
+      final paths = await bootstrap.ensureE5();
+      final tokenizerRes = await BertWordPieceTokenizer.load(paths.tokenizer);
+      final BertWordPieceTokenizer tokenizer;
+      switch (tokenizerRes) {
+        case Ok(:final value):
+          tokenizer = value;
+        case Err(:final error):
+          return Err(
+            EmbedLoadFailed(
+              message: 'Failed to load e5 tokenizer: ${error.message}',
+              cause: error.cause,
+              stack: error.stack,
+            ),
+          );
+      }
+      final delegate = E5Embedder(modelPath: paths.model, tokenizer: tokenizer);
+      final loaded = await delegate.load();
+      switch (loaded) {
+        case Ok():
+          _delegate = delegate;
+          return const Ok(null);
+        case Err(:final error):
+          await delegate.dispose();
+          return Err(error);
+      }
+    } on Object catch (e, s) {
+      _loading = null;
+      return Err(
+        EmbedLoadFailed(
+          message: 'Failed to initialize e5 embedder: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+  }
+
+  @override
+  Future<Result<List<Embedding>, EmbedError>> embedPassages(
+    List<String> texts, {
+    int? batchSize,
+  }) async {
+    final loaded = await load();
+    switch (loaded) {
+      case Ok():
+        return _delegate!.embedPassages(texts, batchSize: batchSize);
+      case Err(:final error):
+        return Err(error);
+    }
+  }
+
+  @override
+  Future<Result<Embedding, EmbedError>> embedQuery(String text) async {
+    final loaded = await load();
+    switch (loaded) {
+      case Ok():
+        return _delegate!.embedQuery(text);
+      case Err(:final error):
+        return Err(error);
+    }
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _delegate?.dispose();
+    _delegate = null;
+    _loading = null;
+  }
 }
 
 /// `flutter_onnxruntime`-backed e5-small-v2 embedder.
@@ -63,11 +164,16 @@ abstract class Embedder {
 /// simplicity; Phase 4+ moves it onto a dedicated worker isolate
 /// alongside Gemma behind the same [Embedder] interface.
 class E5Embedder implements Embedder {
-  E5Embedder({required this.modelPath, required this.tokenizer});
+  E5Embedder({
+    required this.modelPath,
+    required this.tokenizer,
+    this.maxBatchSize = 8,
+  });
 
   /// On-disk path to `model_opt2_QInt8.onnx`.
   final String modelPath;
   final Tokenizer tokenizer;
+  final int maxBatchSize;
 
   OrtSession? _session;
   final _onnx = OnnxRuntime();
@@ -92,19 +198,39 @@ class E5Embedder implements Embedder {
 
   @override
   Future<Result<List<Embedding>, EmbedError>> embedPassages(
-    List<String> texts,
-  ) => _embedMany(texts.map((t) => 'passage: $t').toList());
+    List<String> texts, {
+    int? batchSize,
+  }) async {
+    if (texts.isEmpty) return const Ok([]);
+    final cappedBatch = math.max(1, batchSize ?? maxBatchSize);
+    final all = <Embedding>[];
+    for (var i = 0; i < texts.length; i += cappedBatch) {
+      final end = math.min(i + cappedBatch, texts.length);
+      final chunk = texts
+          .sublist(i, end)
+          .map((t) => 'passage: $t')
+          .toList(growable: false);
+      final embedded = await _embedBatch(chunk);
+      switch (embedded) {
+        case Ok(:final value):
+          all.addAll(value);
+        case Err(:final error):
+          return Err(error);
+      }
+    }
+    return Ok(all);
+  }
 
   @override
   Future<Result<Embedding, EmbedError>> embedQuery(String text) async {
-    final res = await _embedMany(['query: $text']);
+    final res = await _embedBatch(['query: $text']);
     return switch (res) {
       Ok(:final value) => Ok(value.first),
       Err(:final error) => Err(error),
     };
   }
 
-  Future<Result<List<Embedding>, EmbedError>> _embedMany(
+  Future<Result<List<Embedding>, EmbedError>> _embedBatch(
     List<String> prefixed,
   ) async {
     final session = _session;

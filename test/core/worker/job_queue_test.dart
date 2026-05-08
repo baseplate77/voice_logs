@@ -23,6 +23,13 @@ void main() {
       audioPath: 'a.wav',
       rawTranscript: 'hello',
     );
+    await repo.insertRecorded(
+      id: 'log_b',
+      createdAt: DateTime(2026, 4, 23),
+      durationMs: 1000,
+      audioPath: 'b.wav',
+      rawTranscript: 'second',
+    );
   });
 
   tearDown(() => db.close());
@@ -37,6 +44,31 @@ void main() {
 
     // A second claim should return null — the first is now running.
     expect(await queue.claimNext(), isNull);
+  });
+
+  test('enqueue is idempotent for pending and running jobs', () async {
+    final first = await queue.enqueue(logId: 'log_a', type: JobType.refine);
+    final second = await queue.enqueue(logId: 'log_a', type: JobType.refine);
+    expect(second, first);
+
+    final claimed = await queue.claimNext();
+    expect(claimed!.id, first);
+    final third = await queue.enqueue(logId: 'log_a', type: JobType.refine);
+    expect(third, first);
+
+    await queue.markDone(first);
+    final afterDone = await queue.enqueue(logId: 'log_a', type: JobType.refine);
+    expect(afterDone, isNot(first));
+  });
+
+  test('same-priority jobs run in FIFO order', () async {
+    final first = await queue.enqueue(logId: 'log_a', type: JobType.refine);
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    final second = await queue.enqueue(logId: 'log_b', type: JobType.refine);
+
+    expect((await queue.claimNext())!.id, first);
+    await queue.markDone(first);
+    expect((await queue.claimNext())!.id, second);
   });
 
   test('retryLater bumps attempts and returns to pending', () async {
@@ -54,6 +86,29 @@ void main() {
     final reset = await queue.recoverStale();
     expect(reset, 1);
     expect(await queue.claimNext(), isNotNull);
+  });
+
+  test('recoverIncompletePipeline reconstructs missing refine job', () async {
+    final recovered = await queue.recoverIncompletePipeline();
+    expect(recovered, 2);
+    final first = await queue.claimNext();
+    expect(first!.logId, 'log_a');
+    expect(first.jobType, JobType.refine);
+  });
+
+  test('recoverIncompletePipeline reconstructs missing embed job', () async {
+    await repo.markRefined(id: 'log_a', cleanedText: 'Hello.');
+    await queue.enqueue(logId: 'log_b', type: JobType.refine);
+
+    final recovered = await queue.recoverIncompletePipeline();
+    expect(recovered, 1);
+
+    final first = await queue.claimNext();
+    expect(first!.logId, 'log_b');
+    await queue.markDone(first.id);
+    final second = await queue.claimNext();
+    expect(second!.logId, 'log_a');
+    expect(second.jobType, JobType.embed);
   });
 
   test('lower priority jobs run first', () async {

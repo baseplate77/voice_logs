@@ -1,10 +1,22 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/memory/memory_extractor.dart';
+import '../../features/memory/memory_job.dart';
+import '../../features/refine/canonicalize_job.dart';
+import '../../features/refine/embed_job.dart';
 import '../../features/refine/gemma_refiner.dart';
 import '../../features/refine/gemma_runner.dart';
 import '../../features/refine/llm_runner.dart';
+import '../../features/search/canonicalizer.dart';
+import '../../features/search/embedder.dart';
+import '../../features/search/segment_repository.dart';
+import '../../features/search/vec_store.dart';
 import '../db/job_state.dart';
 import '../db/providers.dart';
+import '../model_bootstrap.dart';
+import '../pipeline_debug_provider.dart';
 import 'job_handler.dart';
 import 'job_queue.dart';
 import 'worker.dart';
@@ -38,30 +50,94 @@ final refineHandlerProvider = Provider<JobHandler>((ref) {
   );
 });
 
-/// Handler for the `embed` job type. Wired in Phase 3; Phase 4's Gemma
-/// path replaces the refine handler but leaves this one untouched.
-/// Null when the e5 stack isn't wired (unit tests / absent asset).
-final embedHandlerProvider = Provider<JobHandler?>((ref) => null);
+/// Segment repository used by the embed job and vector search.
+final segmentRepositoryProvider = Provider<SegmentRepository>((ref) {
+  final db = ref.watch(voxSynthDatabaseProvider);
+  return SegmentRepository(db);
+});
 
-/// Handler for the `canonicalize` job type. Phase 5 wires it; null
-/// falls back to not-wired (mentions stay unlinked, no harm).
-final canonicalizeHandlerProvider = Provider<JobHandler?>((ref) => null);
+/// Lazy e5 embedder. Asset copy/model load happens only when a job or
+/// search query first needs embeddings.
+final embedderProvider = Provider<Embedder>((ref) {
+  final embedder = LazyE5Embedder(bootstrap: ModelBootstrap());
+  ref.onDispose(() => unawaited(embedder.dispose()));
+  return embedder;
+});
+
+/// In-memory vector store warmed from persisted segments and updated by
+/// each successful embed job.
+final vecStoreProvider = Provider<VecStore>((ref) {
+  final store = VecStore(ref.watch(segmentRepositoryProvider));
+  unawaited(store.load());
+  return store;
+});
+
+/// Handler for the `embed` job type. Runs e5, persists segments, and
+/// then enqueues canonicalization.
+final embedHandlerProvider = Provider<JobHandler>((ref) {
+  return EmbedJobHandler(
+    embedder: ref.watch(embedderProvider),
+    repository: ref.watch(voiceLogRepositoryProvider),
+    segmentRepository: ref.watch(segmentRepositoryProvider),
+    vecStore: ref.watch(vecStoreProvider),
+    queue: ref.watch(jobQueueProvider),
+  );
+});
+
+/// Handler for the `canonicalize` job type. Links mention rows to the
+/// user's canonical entity graph after embeddings are available.
+final canonicalizeHandlerProvider = Provider<JobHandler>((ref) {
+  final db = ref.watch(voxSynthDatabaseProvider);
+  return CanonicalizeJobHandler(
+    voiceLogs: ref.watch(voiceLogRepositoryProvider),
+    queue: ref.watch(jobQueueProvider),
+    canonicalizer: Canonicalizer(
+      db: db,
+      embedder: ref.watch(embedderProvider),
+      mentions: ref.watch(entityMentionRepositoryProvider),
+      canonicals: ref.watch(canonicalEntityRepositoryProvider),
+    ),
+  );
+});
+
+/// Handler for the `memory` job type. Extracts durable local memories after
+/// canonicalization, embeds the memory cards, and persists evidence links.
+final memoryHandlerProvider = Provider<JobHandler>((ref) {
+  return MemoryJobHandler(
+    voiceLogs: ref.watch(voiceLogRepositoryProvider),
+    mentions: ref.watch(entityMentionRepositoryProvider),
+    extractor: MemoryExtractor(runner: ref.watch(llmRunnerProvider)),
+    embedder: ref.watch(embedderProvider),
+    memories: ref.watch(memoryRepositoryProvider),
+  );
+});
 
 /// The live worker. Kept alive for the session so background jobs keep
-/// ticking even when no screen is subscribed.
+/// ticking even when no screen is subscribed. The caller is responsible
+/// for invoking [Worker.start] after the first frame so plugin channels
+/// (e.g. `path_provider_android` → `jni`) are fully attached before the
+/// worker hits the DB.
 final workerProvider = Provider<Worker>((ref) {
   ref.keepAlive();
   final queue = ref.watch(jobQueueProvider);
-  final embedHandler = ref.watch(embedHandlerProvider);
-  final canonHandler = ref.watch(canonicalizeHandlerProvider);
   final handlers = <JobType, JobHandler>{
     JobType.refine: ref.watch(refineHandlerProvider),
+    JobType.embed: ref.watch(embedHandlerProvider),
+    JobType.canonicalize: ref.watch(canonicalizeHandlerProvider),
+    JobType.memory: ref.watch(memoryHandlerProvider),
   };
-  if (embedHandler != null) handlers[JobType.embed] = embedHandler;
-  if (canonHandler != null) handlers[JobType.canonicalize] = canonHandler;
-  final worker = Worker(queue: queue, handlers: handlers);
-  // Fire-and-forget start — polling begins on first read.
-  worker.start();
+  final repo = ref.watch(voiceLogRepositoryProvider);
+  final worker = Worker(
+    queue: queue,
+    handlers: handlers,
+    onPermanentFailure: (job, reason) async {
+      await repo.markFailed(
+        id: job.logId,
+        errorMessage: '${job.jobType.wire} failed: $reason',
+      );
+    },
+    debugSink: ref.watch(pipelineDebugSinkProvider),
+  );
   ref.onDispose(worker.stop);
   return worker;
 });

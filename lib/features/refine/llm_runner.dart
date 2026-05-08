@@ -32,6 +32,9 @@ abstract class LlmRunner {
     double temperature = 0.3,
   });
 
+  /// Unload model weights from memory while keeping the runner reusable.
+  Future<void> unload();
+
   /// Release native resources.
   Future<void> dispose();
 }

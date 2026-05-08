@@ -1,10 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
-import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:voxsynth/core/db/database.dart';
 import 'package:voxsynth/core/db/job_state.dart';
 import 'package:voxsynth/core/db/repositories/voice_log_repository.dart';
@@ -14,17 +13,13 @@ import 'package:voxsynth/features/record/audio_recorder.dart';
 import 'package:voxsynth/features/record/recording_providers.dart';
 import 'package:voxsynth/features/record/speech_recognizer.dart';
 
-class _FakePathProvider extends Fake
-    with MockPlatformInterfaceMixin
-    implements PathProviderPlatform {
-  @override
-  Future<String?> getApplicationDocumentsPath() async =>
-      Directory.systemTemp.createTempSync('voxsynth_test_').path;
-}
-
 class _FakeRecorder implements AudioRecorder {
   bool started = false;
   String? pathSeen;
+  final _pcm = StreamController<Uint8List>.broadcast();
+
+  @override
+  Stream<Uint8List> get pcm16Stream => _pcm.stream;
 
   @override
   Future<bool> hasPermission() async => true;
@@ -44,39 +39,77 @@ class _FakeRecorder implements AudioRecorder {
       return const Err(RecorderStateError('not started'));
     }
     started = false;
-    return Ok(
-      RecordedClip(
-        wavBytes: Uint8List.fromList(const [0, 0, 0, 0]),
-        audioPath: pathSeen!,
-        durationMs: 1500,
-      ),
-    );
+    return Ok(RecordedClip(audioPath: pathSeen!, durationMs: 1500));
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _pcm.close();
+  }
+}
+
+class _FakeRecognizer implements SpeechRecognizer {
+  _FakeRecognizer(this.output);
+  final String output;
+  bool disposed = false;
+
+  @override
+  Future<Result<void, AsrError>> load() async => const Ok(null);
+
+  @override
+  Future<Result<String, AsrError>> transcribeFile(String wavPath) async =>
+      Ok(output);
+
+  @override
+  Future<void> dispose() async {
+    disposed = true;
+  }
+}
+
+class _FakeStreamingRecognizer implements StreamingSpeechRecognizer {
+  int beginStreamCalls = 0;
+  int chunks = 0;
+  int finishStreamCalls = 0;
+  int fileTranscriptions = 0;
+
+  @override
+  Future<Result<void, AsrError>> beginStream() async {
+    beginStreamCalls++;
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<String, AsrError>> acceptPcm16(
+    Uint8List chunk, {
+    int sampleRate = 16000,
+  }) async {
+    chunks++;
+    return const Ok('live partial');
+  }
+
+  @override
+  Future<Result<String, AsrError>> finishStream() async {
+    finishStreamCalls++;
+    return const Ok('live final');
+  }
+
+  @override
+  Future<Result<void, AsrError>> load() async => const Ok(null);
+
+  @override
+  Future<Result<String, AsrError>> transcribeFile(String wavPath) async {
+    fileTranscriptions++;
+    return const Ok('file transcript');
   }
 
   @override
   Future<void> dispose() async {}
 }
 
-class _FakeRecognizer implements SpeechRecognizer {
-  _FakeRecognizer(this.output);
-  final String output;
-
-  @override
-  Future<Result<void, AsrError>> load() async => const Ok(null);
-
-  @override
-  Future<Result<String, AsrError>> transcribeWav(Uint8List wavBytes) async =>
-      Ok(output);
-
-  @override
-  Future<void> dispose() async {}
-}
+String tmpDocs() => Directory.systemTemp.createTempSync('voxsynth_test_').path;
 
 void main() {
-  setUpAll(() {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    PathProviderPlatform.instance = _FakePathProvider();
-  });
+  setUpAll(TestWidgetsFlutterBinding.ensureInitialized);
 
   test('start → stop persists a VoiceLog with the transcribed text', () async {
     final db = VoxSynthDatabase(NativeDatabase.memory());
@@ -88,8 +121,9 @@ void main() {
     final controller = RecordingController(
       recorder: recorder,
       repository: repo,
-      recognizerFuture: Future.value(recognizer),
+      recognizerFactory: () async => recognizer,
       jobQueue: JobQueue(db),
+      docsPath: tmpDocs(),
     );
     addTearDown(controller.dispose);
 
@@ -106,12 +140,48 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.first.rawTranscript, 'hello there');
     expect(controller.state, isA<RecordingIdle>());
+    expect(recognizer.disposed, isTrue);
 
     // A refine job should have been enqueued.
     final claimed = await JobQueue(db).claimNext();
     expect(claimed, isNotNull);
     expect(claimed!.jobType, JobType.refine);
   });
+
+  test(
+    'streaming recognizer is used only for completed-file transcription',
+    () async {
+      final db = VoxSynthDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final repo = VoiceLogRepository(db);
+      final recorder = _FakeRecorder();
+      final recognizer = _FakeStreamingRecognizer();
+
+      final controller = RecordingController(
+        recorder: recorder,
+        repository: repo,
+        recognizerFactory: () async => recognizer,
+        jobQueue: JobQueue(db),
+        docsPath: tmpDocs(),
+      );
+      addTearDown(controller.dispose);
+
+      await controller.start();
+      await Future<void>.delayed(Duration.zero);
+
+      final active = controller.state;
+      expect(active, isA<RecordingActive>());
+
+      await controller.stop();
+
+      final rows = await repo.watchAll().first;
+      expect(rows.single.rawTranscript, 'file transcript');
+      expect(recognizer.beginStreamCalls, 0);
+      expect(recognizer.chunks, 0);
+      expect(recognizer.finishStreamCalls, 0);
+      expect(recognizer.fileTranscriptions, 1);
+    },
+  );
 
   test('stop without start is a no-op', () async {
     final db = VoxSynthDatabase(NativeDatabase.memory());
@@ -120,8 +190,9 @@ void main() {
     final controller = RecordingController(
       recorder: _FakeRecorder(),
       repository: repo,
-      recognizerFuture: Future.value(_FakeRecognizer('')),
+      recognizerFactory: () async => _FakeRecognizer(''),
       jobQueue: JobQueue(db),
+      docsPath: tmpDocs(),
     );
     addTearDown(controller.dispose);
 

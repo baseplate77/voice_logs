@@ -52,6 +52,21 @@ class BertWordPieceTokenizer implements Tokenizer {
   static const bool _lowercase = true;
   static const int _maxCharsPerWord = 100;
 
+  /// Create a tokenizer from an in-memory vocabulary for tests.
+  factory BertWordPieceTokenizer.forTesting({required Map<String, int> vocab}) {
+    final reverse = <int, String>{
+      for (final e in vocab.entries) e.value: e.key,
+    };
+    return BertWordPieceTokenizer._(
+      vocab: vocab,
+      reverseVocab: reverse,
+      clsId: vocab['[CLS]'] ?? 101,
+      sepId: vocab['[SEP]'] ?? 102,
+      padId: vocab['[PAD]'] ?? 0,
+      unkId: vocab['[UNK]'] ?? 100,
+    );
+  }
+
   /// Load a tokenizer from a HuggingFace `tokenizer.json`.
   static Future<Result<BertWordPieceTokenizer, TokenizerError>> load(
     String tokenizerJsonPath,
@@ -122,7 +137,7 @@ class BertWordPieceTokenizer implements Tokenizer {
     pieces.add(sepId);
 
     final inputIds = List<int>.from(pieces);
-    final mask = List<int>.filled(inputIds.length, 1);
+    final mask = List<int>.filled(inputIds.length, 1, growable: true);
     // Pad to maxLength for fixed-shape ONNX inputs.
     while (inputIds.length < maxLength) {
       inputIds.add(padId);

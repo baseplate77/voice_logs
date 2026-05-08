@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
+import '../memory/memory_screen.dart';
 import 'entities_screen.dart';
 
 /// Minimal settings — canonical entities list and the destructive
@@ -16,6 +17,13 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          ListTile(
+            leading: const Icon(Icons.memory_outlined),
+            title: const Text('Memory'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const MemoryScreen()),
+            ),
+          ),
           ListTile(
             leading: const Icon(Icons.people_outline),
             title: const Text('Entities'),

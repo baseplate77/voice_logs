@@ -97,14 +97,10 @@ class HybridRetriever {
           }
         }
         vectorLogIds = seen.toList();
-      case Err(:final error):
-        return Err(
-          RetrieverEmbedError(
-            message: 'Query embedding failed: ${error.message}',
-            cause: error.cause,
-            stack: error.stack,
-          ),
-        );
+      case Err():
+        // Search must remain useful immediately after recording and in
+        // builds where the e5 asset is absent. Fall back to FTS-only.
+        vectorLogIds = const [];
     }
 
     // Entity boost is a no-op until Phase 5 wires the canonicalizer.

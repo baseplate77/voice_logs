@@ -1,6 +1,4 @@
-import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
@@ -74,7 +72,10 @@ class ParakeetRunner implements SpeechRecognizer {
           // NEMO Parakeet ships as a transducer with NEMO-style modeling
           // — sherpa-onnx recognizes it via this model type string.
           modelType: 'nemo_transducer',
-          numThreads: 2,
+          // Benchmarked in bench_results/stt_bench_2026-05-03.md:
+          // CPU/4 produced identical transcripts to CPU/2 and improved p50
+          // from 9070ms → 6833ms on a 60s Pixel 6a fixture.
+          numThreads: 4,
         ),
       );
       _recognizer = sherpa.OfflineRecognizer(config);
@@ -92,18 +93,21 @@ class ParakeetRunner implements SpeechRecognizer {
   }
 
   @override
-  Future<Result<String, AsrError>> transcribeWav(Uint8List wavBytes) async {
+  Future<Result<String, AsrError>> transcribeFile(String wavPath) async {
     final recognizer = _recognizer;
     if (recognizer == null) {
       return const Err(
         AsrRuntimeError(message: 'ParakeetRunner.load() not called.'),
       );
     }
-    final tempPath =
-        '${Directory.systemTemp.path}/vox_${DateTime.now().microsecondsSinceEpoch}.wav';
+    final wav = File(wavPath);
+    if (!wav.existsSync()) {
+      return Err(
+        AsrRuntimeError(message: 'WAV file not found at path: $wavPath'),
+      );
+    }
     try {
-      await File(tempPath).writeAsBytes(wavBytes, flush: true);
-      final wave = sherpa.readWave(tempPath);
+      final wave = sherpa.readWave(wavPath);
       final stream = recognizer.createStream();
       stream.acceptWaveform(samples: wave.samples, sampleRate: wave.sampleRate);
       recognizer.decode(stream);
@@ -117,10 +121,6 @@ class ParakeetRunner implements SpeechRecognizer {
           cause: e,
           stack: s,
         ),
-      );
-    } finally {
-      unawaited(
-        File(tempPath).delete().catchError((Object _) => File(tempPath)),
       );
     }
   }

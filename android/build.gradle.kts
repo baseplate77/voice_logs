@@ -16,6 +16,11 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 subprojects {
+    configurations.configureEach {
+        resolutionStrategy.force("com.microsoft.onnxruntime:onnxruntime-android:1.24.3")
+    }
+}
+subprojects {
     project.evaluationDependsOn(":app")
 }
 

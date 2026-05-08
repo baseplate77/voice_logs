@@ -3,13 +3,14 @@ import 'dart:io';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
 
 import '../../core/db/job_state.dart';
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 import '../../core/logger.dart';
 import '../../core/model_bootstrap.dart';
+import '../../core/pipeline_debug.dart';
+import '../../core/pipeline_debug_provider.dart';
 import '../../core/result.dart';
 import '../../core/worker/job_queue.dart';
 import '../../core/worker/providers.dart';
@@ -29,23 +30,28 @@ final modelBootstrapProvider = Provider<ModelBootstrap>(
   (ref) => ModelBootstrap(),
 );
 
-/// Lazy Parakeet recognizer — first `read` copies model files and loads
-/// the native recognizer, so the first call after app start pays the
-/// bootstrap cost once.
-final speechRecognizerProvider = FutureProvider<SpeechRecognizer>((ref) async {
-  final bootstrap = ref.watch(modelBootstrapProvider);
-  final paths = await bootstrap.ensureParakeet();
-  final runner = ParakeetRunner(paths: paths);
-  final loaded = await runner.load();
-  switch (loaded) {
-    case Ok():
-      break;
-    case Err(:final error):
-      throw StateError('Parakeet load failed: ${error.message}');
-  }
-  ref.onDispose(runner.dispose);
-  return runner;
-});
+/// Factory for one-shot completed-file Parakeet transcription.
+///
+/// Realtime captions are intentionally disabled because the streaming model's
+/// partial hypotheses are lower quality than completed-recording transcription.
+/// The returned recognizer must be disposed after each transcription so the
+/// large Parakeet native heap is released before Gemma refinement starts.
+final speechRecognizerFactoryProvider =
+    Provider<Future<SpeechRecognizer> Function()>((ref) {
+      final bootstrap = ref.watch(modelBootstrapProvider);
+      return () async {
+        final paths = await bootstrap.ensureParakeet();
+        final runner = ParakeetRunner(paths: paths);
+        final loaded = await runner.load();
+        switch (loaded) {
+          case Ok():
+            return runner;
+          case Err(:final error):
+            await runner.dispose();
+            throw StateError('Parakeet ASR load failed: ${error.message}');
+        }
+      };
+    });
 
 /// UI state for the record screen.
 sealed class RecordingState {
@@ -63,7 +69,7 @@ final class RecordingActive extends RecordingState {
   final int elapsedMs;
 }
 
-/// Recording stopped; ASR is transcribing before the row lands on disk.
+/// Recording stopped; completed audio file is being transcribed and saved.
 final class RecordingTranscribing extends RecordingState {
   const RecordingTranscribing();
 }
@@ -82,31 +88,38 @@ class RecordingController extends StateNotifier<RecordingState> {
   RecordingController({
     required AudioRecorder recorder,
     required VoiceLogRepository repository,
-    required Future<SpeechRecognizer> recognizerFuture,
+    required Future<SpeechRecognizer> Function() recognizerFactory,
     required JobQueue jobQueue,
+    required String docsPath,
+    PipelineDebugSink debugSink = const NoopPipelineDebugSink(),
   }) : _recorder = recorder,
        _repository = repository,
-       _recognizerFuture = recognizerFuture,
+       _recognizerFactory = recognizerFactory,
        _jobQueue = jobQueue,
+       _docsPath = docsPath,
+       _debug = debugSink,
        super(const RecordingIdle());
 
   final AudioRecorder _recorder;
   final VoiceLogRepository _repository;
-  final Future<SpeechRecognizer> _recognizerFuture;
+  final Future<SpeechRecognizer> Function() _recognizerFactory;
   final JobQueue _jobQueue;
+  final String _docsPath;
+  final PipelineDebugSink _debug;
   final _log = Logger('recording_controller');
 
   Timer? _elapsedTimer;
   DateTime? _startedAt;
+  String? _activeLogId;
 
   /// Begin a new recording session. No-op if already recording.
   Future<void> start() async {
     if (state is! RecordingIdle && state is! RecordingFailed) return;
-    final dir = await getApplicationDocumentsDirectory();
-    final audioDir = Directory(p.join(dir.path, 'audio'));
+    final audioDir = Directory(p.join(_docsPath, 'audio'));
     if (!audioDir.existsSync()) audioDir.createSync(recursive: true);
     final id = 'log_${DateTime.now().microsecondsSinceEpoch}';
     final path = p.join(audioDir.path, '$id.wav');
+    _activeLogId = id;
 
     final started = await _recorder.start(destinationPath: path);
     switch (started) {
@@ -114,9 +127,16 @@ class RecordingController extends StateNotifier<RecordingState> {
         break;
       case Err(:final error):
         state = RecordingFailed(error.message);
+        _activeLogId = null;
         return;
     }
 
+    _debug.record(
+      logId: id,
+      stage: PipelineDebugStage.recording,
+      event: 'started',
+      message: 'Recording started',
+    );
     _startedAt = DateTime.now();
     state = const RecordingActive(0);
     _elapsedTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
@@ -127,43 +147,104 @@ class RecordingController extends StateNotifier<RecordingState> {
     });
   }
 
-  /// Stop, transcribe, persist, and return to idle. The UI transitions
-  /// through [RecordingTranscribing] while ASR runs.
+  /// Stop, transcribe the completed file, persist the raw transcript,
+  /// enqueue background refine, and return to idle.
   Future<void> stop() async {
     _elapsedTimer?.cancel();
     _elapsedTimer = null;
     if (state is! RecordingActive) return;
 
+    final logId = _activeLogId;
+    final totalWatch = Stopwatch()..start();
+    final stopWatch = Stopwatch()..start();
     final clip = await _recorder.stop();
     final RecordedClip recorded;
     switch (clip) {
       case Ok(:final value):
         recorded = value;
+        _debug.record(
+          logId: logId,
+          stage: PipelineDebugStage.recording,
+          event: 'captured',
+          elapsedMs: stopWatch.elapsedMilliseconds,
+          message: 'Audio captured (${value.durationMs}ms)',
+        );
       case Err(:final error):
         state = RecordingFailed(error.message);
+        _debug.record(
+          logId: logId,
+          stage: PipelineDebugStage.recording,
+          event: 'failed',
+          elapsedMs: stopWatch.elapsedMilliseconds,
+          message: error.message,
+        );
         _startedAt = null;
+        _activeLogId = null;
         return;
     }
 
     state = const RecordingTranscribing();
 
-    String rawTranscript = '';
+    var rawTranscript = '';
+    SpeechRecognizer? recognizer;
     try {
-      final recognizer = await _recognizerFuture;
-      final txt = await recognizer.transcribeWav(recorded.wavBytes);
+      final loadWatch = Stopwatch()..start();
+      recognizer = await _recognizerFactory();
+      _debug.record(
+        logId: logId,
+        stage: PipelineDebugStage.transcription,
+        event: 'loaded',
+        elapsedMs: loadWatch.elapsedMilliseconds,
+        message: 'ASR recognizer ready',
+      );
+
+      final transcribeWatch = Stopwatch()..start();
+      final txt = await recognizer.transcribeFile(recorded.audioPath);
       switch (txt) {
         case Ok(:final value):
           rawTranscript = value;
+          _debug.record(
+            logId: logId,
+            stage: PipelineDebugStage.transcription,
+            event: 'succeeded',
+            elapsedMs: transcribeWatch.elapsedMilliseconds,
+            message: 'Transcribed ${value.length} characters',
+          );
         case Err(:final error):
           _log.w('Transcription failed: ${error.message}');
+          _debug.record(
+            logId: logId,
+            stage: PipelineDebugStage.transcription,
+            event: 'failed',
+            elapsedMs: transcribeWatch.elapsedMilliseconds,
+            message: error.message,
+          );
       }
     } on Object catch (e, s) {
       _log.w('Transcription error', error: e, stack: s);
+      _debug.record(
+        logId: logId,
+        stage: PipelineDebugStage.transcription,
+        event: 'failed',
+        message: 'Transcription error: $e',
+      );
+    } finally {
+      if (recognizer != null) {
+        final disposeWatch = Stopwatch()..start();
+        await recognizer.dispose();
+        _debug.record(
+          logId: logId,
+          stage: PipelineDebugStage.transcription,
+          event: 'disposed',
+          elapsedMs: disposeWatch.elapsedMilliseconds,
+          message: 'ASR recognizer disposed',
+        );
+      }
     }
 
-    final docs = await getApplicationDocumentsDirectory();
-    final relPath = p.relative(recorded.audioPath, from: docs.path);
+    final relPath = p.relative(recorded.audioPath, from: _docsPath);
 
+    final persistWatch = Stopwatch()..start();
     final inserted = await _repository.insertRecorded(
       id: p.basenameWithoutExtension(recorded.audioPath),
       createdAt: _startedAt ?? DateTime.now(),
@@ -171,18 +252,54 @@ class RecordingController extends StateNotifier<RecordingState> {
       audioPath: relPath,
       rawTranscript: rawTranscript,
     );
-    final String logId;
+    final String insertedLogId;
     switch (inserted) {
       case Ok(:final value):
-        logId = value.id;
+        insertedLogId = value.id;
+        _debug.record(
+          logId: insertedLogId,
+          stage: PipelineDebugStage.persistence,
+          event: 'succeeded',
+          elapsedMs: persistWatch.elapsedMilliseconds,
+          message: 'Saved voice log and FTS row',
+        );
       case Err(:final error):
         state = RecordingFailed(error.message);
+        _debug.record(
+          logId: logId,
+          stage: PipelineDebugStage.persistence,
+          event: 'failed',
+          elapsedMs: persistWatch.elapsedMilliseconds,
+          message: error.message,
+        );
+        _startedAt = null;
+        _activeLogId = null;
         return;
     }
 
-    await _jobQueue.enqueue(logId: logId, type: JobType.refine);
+    final enqueueWatch = Stopwatch()..start();
+    final jobId = await _jobQueue.enqueue(
+      logId: insertedLogId,
+      type: JobType.refine,
+    );
+    _debug.record(
+      logId: insertedLogId,
+      jobId: jobId,
+      stage: PipelineDebugStage.queue,
+      event: 'enqueued',
+      elapsedMs: enqueueWatch.elapsedMilliseconds,
+      message: 'Queued refine job',
+    );
 
+    _debug.record(
+      logId: insertedLogId,
+      stage: PipelineDebugStage.recording,
+      event: 'returned_to_home',
+      elapsedMs: totalWatch.elapsedMilliseconds,
+      message: 'Stop-to-home path completed',
+    );
     _startedAt = null;
+    _activeLogId = null;
     state = const RecordingIdle();
   }
 
@@ -195,15 +312,21 @@ class RecordingController extends StateNotifier<RecordingState> {
 
 /// Provides the controller, rebuilt when any upstream dependency changes.
 final recordingControllerProvider =
-    StateNotifierProvider<RecordingController, RecordingState>((ref) {
+    StateNotifierProvider.autoDispose<RecordingController, RecordingState>((
+      ref,
+    ) {
       final recorder = ref.watch(audioRecorderProvider);
       final repo = ref.watch(voiceLogRepositoryProvider);
-      final recognizerFuture = ref.watch(speechRecognizerProvider.future);
+      final recognizerFactory = ref.watch(speechRecognizerFactoryProvider);
       final queue = ref.watch(jobQueueProvider);
+      final docsPath = ref.watch(appDocumentsPathProvider);
+      final debugSink = ref.watch(pipelineDebugSinkProvider);
       return RecordingController(
         recorder: recorder,
         repository: repo,
-        recognizerFuture: recognizerFuture,
+        recognizerFactory: recognizerFactory,
         jobQueue: queue,
+        docsPath: docsPath,
+        debugSink: debugSink,
       );
     });

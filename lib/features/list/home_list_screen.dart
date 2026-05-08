@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
+import '../debug/pipeline_debug_screen.dart';
 import '../detail/log_detail_screen.dart';
 import '../record/record_screen.dart';
 import '../search/search_screen.dart';
@@ -20,6 +21,15 @@ class HomeListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('VoxSynth'),
         actions: [
+          IconButton(
+            tooltip: 'Pipeline debug',
+            icon: const Icon(Icons.bug_report_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const PipelineDebugScreen(),
+              ),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => Navigator.of(context).push(

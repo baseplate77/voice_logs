@@ -55,6 +55,7 @@ class EmbedJobHandler implements JobHandler {
 
     final embeddings = await embedder.embedPassages(
       segments.map((s) => s.text).toList(),
+      batchSize: 8,
     );
     switch (embeddings) {
       case Ok(:final value):

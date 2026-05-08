@@ -24,14 +24,17 @@ void main() {
           // spinner (which spins forever on a Timer) never renders.
           voiceLogsStreamProvider.overrideWith((_) => Stream.value(const [])),
           // Inert worker — the real provider starts a polling Timer
-          // that leaks into the test harness.
+          // that leaks into the test harness. 1-day interval keeps the
+          // Timer from firing; onDispose stops it at teardown.
           workerProvider.overrideWith((ref) {
             final queue = ref.watch(jobQueueProvider);
-            return Worker(
+            final worker = Worker(
               queue: queue,
               handlers: <JobType, JobHandler>{},
               pollInterval: const Duration(days: 1),
             );
+            ref.onDispose(worker.stop);
+            return worker;
           }),
         ],
         child: const VoxSynthApp(),

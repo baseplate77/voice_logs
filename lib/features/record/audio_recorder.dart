@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -8,12 +9,14 @@ import '../../core/result.dart';
 
 /// Thin abstraction over a platform audio recorder so tests can mock it.
 ///
-/// Implementations capture 16 kHz mono PCM (the rate expected by the
-/// Parakeet bundle) and return the final recording as both an on-disk
-/// wav path and a raw byte buffer.
+/// Implementations capture 16 kHz mono PCM and expose the same PCM stream
+/// for live ASR while also writing a private wav file on stop.
 abstract class AudioRecorder {
   /// Returns `true` if the OS has granted microphone permission.
   Future<bool> hasPermission();
+
+  /// Live little-endian signed PCM16 mono chunks at 16 kHz.
+  Stream<Uint8List> get pcm16Stream;
 
   /// Begin recording to [destinationPath].
   Future<Result<void, CaptureError>> start({required String destinationPath});
@@ -27,14 +30,7 @@ abstract class AudioRecorder {
 
 /// Final recording handed back by [AudioRecorder.stop].
 class RecordedClip {
-  const RecordedClip({
-    required this.wavBytes,
-    required this.audioPath,
-    required this.durationMs,
-  });
-
-  /// Raw wav bytes — includes the RIFF header; PCM16 little-endian body.
-  final Uint8List wavBytes;
+  const RecordedClip({required this.audioPath, required this.durationMs});
 
   /// Path to the wav file on disk.
   final String audioPath;
@@ -74,8 +70,15 @@ class RecordPackageAudioRecorder implements AudioRecorder {
     : _recorder = recorder ?? pkg.AudioRecorder();
 
   final pkg.AudioRecorder _recorder;
+  final _pcmController = StreamController<Uint8List>.broadcast();
+  final _pcmBytes = BytesBuilder(copy: false);
+
+  StreamSubscription<Uint8List>? _streamSub;
   DateTime? _startedAt;
   String? _activePath;
+
+  @override
+  Stream<Uint8List> get pcm16Stream => _pcmController.stream;
 
   @override
   Future<bool> hasPermission() => _recorder.hasPermission();
@@ -91,15 +94,22 @@ class RecordPackageAudioRecorder implements AudioRecorder {
       return const Err(PermissionDenied());
     }
     try {
-      await _recorder.start(
+      _pcmBytes.clear();
+      final stream = await _recorder.startStream(
         const pkg.RecordConfig(
-          encoder: pkg.AudioEncoder.wav,
+          encoder: pkg.AudioEncoder.pcm16bits,
           sampleRate: 16000,
           numChannels: 1,
           bitRate: 256000,
+          streamBufferSize: 4096,
         ),
-        path: destinationPath,
       );
+      _streamSub = stream.listen((chunk) {
+        _pcmBytes.add(chunk);
+        if (!_pcmController.isClosed) {
+          _pcmController.add(Uint8List.fromList(chunk));
+        }
+      }, onError: _pcmController.addError);
       _activePath = destinationPath;
       _startedAt = DateTime.now();
       return const Ok(null);
@@ -123,13 +133,15 @@ class RecordPackageAudioRecorder implements AudioRecorder {
     }
     try {
       await _recorder.stop();
-      final bytes = await File(path).readAsBytes();
+      await _streamSub?.cancel();
+      _streamSub = null;
+
       final duration = DateTime.now().difference(startedAt).inMilliseconds;
+      final pcm = _pcmBytes.takeBytes();
+      await _writePcm16Wav(path, pcm, sampleRate: 16000, channels: 1);
       _activePath = null;
       _startedAt = null;
-      return Ok(
-        RecordedClip(wavBytes: bytes, audioPath: path, durationMs: duration),
-      );
+      return Ok(RecordedClip(audioPath: path, durationMs: duration));
     } on Object catch (e, s) {
       _activePath = null;
       _startedAt = null;
@@ -145,6 +157,47 @@ class RecordPackageAudioRecorder implements AudioRecorder {
 
   @override
   Future<void> dispose() async {
+    await _streamSub?.cancel();
+    await _pcmController.close();
     await _recorder.dispose();
   }
+}
+
+Future<void> _writePcm16Wav(
+  String path,
+  Uint8List pcm, {
+  required int sampleRate,
+  required int channels,
+}) async {
+  final byteRate = sampleRate * channels * 2;
+  final blockAlign = channels * 2;
+  final totalSize = 36 + pcm.length;
+  final header = ByteData(44);
+
+  void writeAscii(int offset, String value) {
+    for (var i = 0; i < value.length; i++) {
+      header.setUint8(offset + i, value.codeUnitAt(i));
+    }
+  }
+
+  writeAscii(0, 'RIFF');
+  header.setUint32(4, totalSize, Endian.little);
+  writeAscii(8, 'WAVE');
+  writeAscii(12, 'fmt ');
+  header.setUint32(16, 16, Endian.little);
+  header.setUint16(20, 1, Endian.little);
+  header.setUint16(22, channels, Endian.little);
+  header.setUint32(24, sampleRate, Endian.little);
+  header.setUint32(28, byteRate, Endian.little);
+  header.setUint16(32, blockAlign, Endian.little);
+  header.setUint16(34, 16, Endian.little);
+  writeAscii(36, 'data');
+  header.setUint32(40, pcm.length, Endian.little);
+
+  final file = File(path);
+  file.parent.createSync(recursive: true);
+  final sink = file.openWrite();
+  sink.add(header.buffer.asUint8List());
+  sink.add(pcm);
+  await sink.close();
 }

@@ -82,8 +82,15 @@ dev_dependencies:
 # record_platform_interface 1.5.0 and is missing `startStream`. VoxSynth
 # targets iOS+Android only, but Flutter still analyzes all platform
 # implementations — force a compatible record_linux.
+#
+# path_provider_android 2.3.x rewrote the plugin atop the `jni` FFI
+# package, which races with Flutter engine attachment and throws
+# "No JNI instance is available" on first call during the initial
+# frame build (see stack trace from 2026-04-22). Pin to the last 2.2.x
+# release — MethodChannel-backed, no JNI race.
 dependency_overrides:
   record_linux: ^1.0.0
+  path_provider_android: 2.2.23
 
 # `package:sqlite3` 3.x uses Dart build hooks to bundle its native library
 # instead of a separate Flutter plugin. Selecting `sqlite3mc` swaps plain
@@ -104,8 +111,16 @@ flutter:
     # separately.
     - assets/models/silero_vad.onnx
     - assets/models/parakeet/
+    - assets/models/zipformer_en_20m/encoder-epoch-99-avg-1.int8.onnx
+    - assets/models/zipformer_en_20m/decoder-epoch-99-avg-1.onnx
+    - assets/models/zipformer_en_20m/joiner-epoch-99-avg-1.int8.onnx
+    - assets/models/zipformer_en_20m/tokens.txt
     - assets/models/e5/
     # Gemma 4 E2B lives in assets — HF CDN downloads at 2.58 GB hit
     # WorkManager's task-timeout ceiling on device. File is git-ignored
     # (see .gitignore); each dev runs scripts/fetch_models.sh to populate.
     - assets/models/gemma/gemma-4-E2B-it.litertlm
+    # Bench fixture — 60s 16 kHz mono PCM16 used by integration_test/stt_bench.dart.
+    # Resampled from test_data/record_out.wav. Bundled so integration_test can
+    # read it via rootBundle.
+    - test_data/record_out_16k.wav

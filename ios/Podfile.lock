@@ -1,77 +1,109 @@
 PODS:
+  - background_downloader (0.0.1):
+    - Flutter
   - Flutter (1.0.0)
+  - flutter_gemma (0.13.4):
+    - Flutter
+    - MediaPipeTasksGenAI (= 0.10.33)
+    - MediaPipeTasksGenAIC (= 0.10.33)
+    - TensorFlowLiteC (= 0.0.1-nightly.20250619)
+  - flutter_onnxruntime (0.0.1):
+    - Flutter
+    - onnxruntime-objc (= 1.22.0)
   - flutter_secure_storage (6.0.0):
     - Flutter
   - integration_test (0.0.1):
     - Flutter
-  - ObjectBox (4.3.0)
-  - objectbox_flutter_libs (0.0.1):
+  - large_file_handler (0.0.1):
     - Flutter
-    - ObjectBox (= 4.3.0)
+  - MediaPipeTasksGenAI (0.10.33):
+    - MediaPipeTasksGenAIC (= 0.10.33)
+  - MediaPipeTasksGenAIC (0.10.33)
+  - onnxruntime-c (1.22.0)
+  - onnxruntime-objc (1.22.0):
+    - onnxruntime-objc/Core (= 1.22.0)
+  - onnxruntime-objc/Core (1.22.0):
+    - onnxruntime-c (= 1.22.0)
   - permission_handler_apple (9.3.0):
     - Flutter
   - record_darwin (1.0.0):
     - Flutter
-  - SQLCipher (4.10.0):
-    - SQLCipher/standard (= 4.10.0)
-  - SQLCipher/common (4.10.0)
-  - SQLCipher/standard (4.10.0):
-    - SQLCipher/common
-  - sqlcipher_flutter_libs (0.0.1):
+  - shared_preferences_foundation (0.0.1):
     - Flutter
-    - SQLCipher (~> 4.10.0)
-  - voxsynth_asr (0.0.1):
+    - FlutterMacOS
+  - sherpa_onnx_ios (1.12.39):
     - Flutter
+  - TensorFlowLiteC (0.0.1-nightly.20250619):
+    - TensorFlowLiteC/Core (= 0.0.1-nightly.20250619)
+  - TensorFlowLiteC/Core (0.0.1-nightly.20250619)
   - workmanager_apple (0.0.1):
     - Flutter
 
 DEPENDENCIES:
+  - background_downloader (from `.symlinks/plugins/background_downloader/ios`)
   - Flutter (from `Flutter`)
+  - flutter_gemma (from `.symlinks/plugins/flutter_gemma/ios`)
+  - flutter_onnxruntime (from `.symlinks/plugins/flutter_onnxruntime/ios`)
   - flutter_secure_storage (from `.symlinks/plugins/flutter_secure_storage/ios`)
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
-  - objectbox_flutter_libs (from `.symlinks/plugins/objectbox_flutter_libs/ios`)
+  - large_file_handler (from `.symlinks/plugins/large_file_handler/ios`)
   - permission_handler_apple (from `.symlinks/plugins/permission_handler_apple/ios`)
   - record_darwin (from `.symlinks/plugins/record_darwin/ios`)
-  - sqlcipher_flutter_libs (from `.symlinks/plugins/sqlcipher_flutter_libs/ios`)
-  - voxsynth_asr (from `.symlinks/plugins/voxsynth_asr/ios`)
+  - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
+  - sherpa_onnx_ios (from `.symlinks/plugins/sherpa_onnx_ios/ios`)
   - workmanager_apple (from `.symlinks/plugins/workmanager_apple/ios`)
 
 SPEC REPOS:
   trunk:
-    - ObjectBox
-    - SQLCipher
+    - MediaPipeTasksGenAI
+    - MediaPipeTasksGenAIC
+    - onnxruntime-c
+    - onnxruntime-objc
+    - TensorFlowLiteC
 
 EXTERNAL SOURCES:
+  background_downloader:
+    :path: ".symlinks/plugins/background_downloader/ios"
   Flutter:
     :path: Flutter
+  flutter_gemma:
+    :path: ".symlinks/plugins/flutter_gemma/ios"
+  flutter_onnxruntime:
+    :path: ".symlinks/plugins/flutter_onnxruntime/ios"
   flutter_secure_storage:
     :path: ".symlinks/plugins/flutter_secure_storage/ios"
   integration_test:
     :path: ".symlinks/plugins/integration_test/ios"
-  objectbox_flutter_libs:
-    :path: ".symlinks/plugins/objectbox_flutter_libs/ios"
+  large_file_handler:
+    :path: ".symlinks/plugins/large_file_handler/ios"
   permission_handler_apple:
     :path: ".symlinks/plugins/permission_handler_apple/ios"
   record_darwin:
     :path: ".symlinks/plugins/record_darwin/ios"
-  sqlcipher_flutter_libs:
-    :path: ".symlinks/plugins/sqlcipher_flutter_libs/ios"
-  voxsynth_asr:
-    :path: ".symlinks/plugins/voxsynth_asr/ios"
+  shared_preferences_foundation:
+    :path: ".symlinks/plugins/shared_preferences_foundation/darwin"
+  sherpa_onnx_ios:
+    :path: ".symlinks/plugins/sherpa_onnx_ios/ios"
   workmanager_apple:
     :path: ".symlinks/plugins/workmanager_apple/ios"
 
 SPEC CHECKSUMS:
+  background_downloader: 50e91d979067b82081aba359d7d916b3ba5fadad
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
+  flutter_gemma: ec2d68fadc117d339e39aa255d490c3a426e8af9
+  flutter_onnxruntime: 515c2ab17b67fb027964ebbf2d02329771a482de
   flutter_secure_storage: 1ed9476fba7e7a782b22888f956cce43e2c62f13
   integration_test: 4a889634ef21a45d28d50d622cf412dc6d9f586e
-  ObjectBox: 7760fa9072adcffe102a6adf4646ca84ba70ab6b
-  objectbox_flutter_libs: 4014e38f57250b074b99893ae84579aba8f02876
+  large_file_handler: b37481e9b4972562ffcdc8f75700f47cd592bcec
+  MediaPipeTasksGenAI: 8eed8e6d03fe26d30c4205cb5295ec7b394432ad
+  MediaPipeTasksGenAIC: cb098ecea44e248efe8fe7e2f62b4cb0df781802
+  onnxruntime-c: 7f778680e96145956c0a31945f260321eed2611a
+  onnxruntime-objc: 83d28b87525bd971259a66e153ea32b5d023de19
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
   record_darwin: fb1f375f1d9603714f55b8708a903bbb91ffdb0a
-  SQLCipher: eb79c64049cb002b4e9fcb30edb7979bf4706dfc
-  sqlcipher_flutter_libs: ae224763b087bffb3a5955fe295a1c460d458cb1
-  voxsynth_asr: fdcfbeaf47b197417330fd244d2b22b0cabf7184
+  shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
+  sherpa_onnx_ios: 1f4ebcf410d93538ee2f6726d53d88e83c37649c
+  TensorFlowLiteC: 215ef57653dd0fa09a474e7d94d79ae64a870b28
   workmanager_apple: 904529ae31e97fc5be632cf628507652294a0778
 
 PODFILE CHECKSUM: 7adc493ed3f25f0049bd8c04b40918a9f59c679a

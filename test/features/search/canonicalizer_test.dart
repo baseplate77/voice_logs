@@ -22,8 +22,9 @@ class _FakeEmbedder implements Embedder {
 
   @override
   Future<Result<List<Embedding>, EmbedError>> embedPassages(
-    List<String> texts,
-  ) async {
+    List<String> texts, {
+    int? batchSize,
+  }) async {
     final out = <Embedding>[];
     for (final t in texts) {
       final clean = t.startsWith('passage: ') ? t.substring(9) : t;

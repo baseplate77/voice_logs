@@ -35,7 +35,10 @@ enum JobType {
   embed('embed'),
 
   /// Canonical entity linking.
-  canonicalize('canonicalize');
+  canonicalize('canonicalize'),
+
+  /// Durable local memory extraction.
+  memory('memory');
 
   const JobType(this.wire);
 

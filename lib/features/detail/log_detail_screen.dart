@@ -4,8 +4,58 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/db/job_state.dart';
 import '../../core/db/processing_state.dart';
 import '../../core/db/providers.dart';
+import '../../core/db/repositories/entity_mention_repository.dart';
 import '../../core/worker/providers.dart';
 import 'entity_chips.dart';
+
+String _statusText(ProcessingState state) {
+  return switch (state) {
+    ProcessingState.recorded => 'Refining transcript and extracting entities…',
+    ProcessingState.refined => 'Embedding transcript for semantic search…',
+    ProcessingState.embedded => 'Ready for semantic/entity search',
+    ProcessingState.failed => 'Processing failed',
+  };
+}
+
+TextSpan _highlightedTranscript(
+  BuildContext context,
+  String text,
+  List<EntityMentionView> mentions,
+) {
+  final base =
+      Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5) ??
+      const TextStyle(fontSize: 16, height: 1.5);
+  final highlightStyle = base.copyWith(
+    backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+    color: Theme.of(context).colorScheme.onTertiaryContainer,
+    fontWeight: FontWeight.w600,
+  );
+  final sorted = [...mentions]
+    ..sort((a, b) => a.charStart.compareTo(b.charStart));
+  final children = <TextSpan>[];
+  var cursor = 0;
+  for (final mention in sorted) {
+    if (mention.charStart < cursor ||
+        mention.charEnd > text.length ||
+        mention.charStart >= mention.charEnd) {
+      continue;
+    }
+    if (mention.charStart > cursor) {
+      children.add(TextSpan(text: text.substring(cursor, mention.charStart)));
+    }
+    children.add(
+      TextSpan(
+        text: text.substring(mention.charStart, mention.charEnd),
+        style: highlightStyle,
+      ),
+    );
+    cursor = mention.charEnd;
+  }
+  if (cursor < text.length) {
+    children.add(TextSpan(text: text.substring(cursor)));
+  }
+  return TextSpan(style: base, children: children);
+}
 
 /// Detail view for a single voice log — cleaned text, entity chips,
 /// and delete/retry-refine actions.
@@ -49,6 +99,7 @@ class LogDetailScreen extends ConsumerWidget {
             return const Center(child: Text('Log not found'));
           }
           final body = log.cleanedText ?? log.rawTranscript;
+          final mentions = mentionsAsync.value ?? const <EntityMentionView>[];
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -58,20 +109,22 @@ class LogDetailScreen extends ConsumerWidget {
                 orElse: () => const SizedBox.shrink(),
               ),
               const SizedBox(height: 8),
-              if (log.processingState == ProcessingState.recorded)
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              if (log.processingState != ProcessingState.embedded)
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 4,
+                  ),
                   child: Text(
-                    'refining…',
-                    style: TextStyle(fontStyle: FontStyle.italic),
+                    _statusText(log.processingState),
+                    style: const TextStyle(fontStyle: FontStyle.italic),
                   ),
                 ),
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
-                  child: SelectableText(
-                    body,
-                    style: const TextStyle(fontSize: 16, height: 1.5),
+                  child: SelectableText.rich(
+                    _highlightedTranscript(context, body, mentions),
                   ),
                 ),
               ),

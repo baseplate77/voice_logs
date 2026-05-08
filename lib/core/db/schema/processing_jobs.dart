@@ -12,7 +12,7 @@ class ProcessingJobs extends Table {
   /// Owning voice log.
   TextColumn get logId => text().references(VoiceLogs, #id)();
 
-  /// One of: `refine` | `embed` | `canonicalize`.
+  /// One of: `refine` | `embed` | `canonicalize` | `memory`.
   TextColumn get jobType => text()();
 
   /// Lower value = runs first (FIFO within the same priority).

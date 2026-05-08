@@ -3,9 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'recording_providers.dart';
 
-/// Recording screen — big record button, elapsed time, transcribing
-/// indicator. Live waveform + partial captions arrive in Phase 1.1 when
-/// sherpa-onnx's OnlineRecognizer + a streaming model are wired.
+/// Recording screen — big record button and elapsed time.
 class RecordScreen extends ConsumerWidget {
   const RecordScreen({super.key});
 
@@ -14,6 +12,14 @@ class RecordScreen extends ConsumerWidget {
     final state = ref.watch(recordingControllerProvider);
     final controller = ref.read(recordingControllerProvider.notifier);
 
+    Future<void> stopAndReturnHome() async {
+      await controller.stop();
+      if (!context.mounted) return;
+      if (ref.read(recordingControllerProvider) is RecordingIdle) {
+        Navigator.of(context).pop();
+      }
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Record')),
       body: Center(
@@ -21,7 +27,7 @@ class RecordScreen extends ConsumerWidget {
           RecordingIdle() => _IdleView(onStart: controller.start),
           RecordingActive(:final elapsedMs) => _ActiveView(
             elapsedMs: elapsedMs,
-            onStop: controller.stop,
+            onStop: stopAndReturnHome,
           ),
           RecordingTranscribing() => const _TranscribingView(),
           RecordingFailed(:final message) => _FailedView(
@@ -69,6 +75,14 @@ class _ActiveView extends StatelessWidget {
         Text('$seconds s', style: const TextStyle(fontSize: 48)),
         const SizedBox(height: 16),
         const Text('Recording…'),
+        const SizedBox(height: 16),
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24),
+          child: Text(
+            'Transcription will start after you stop recording.',
+            textAlign: TextAlign.center,
+          ),
+        ),
         const SizedBox(height: 32),
         _RoundButton(
           icon: Icons.stop,
@@ -90,7 +104,7 @@ class _TranscribingView extends StatelessWidget {
       children: [
         CircularProgressIndicator.adaptive(),
         SizedBox(height: 16),
-        Text('Transcribing…'),
+        Text('Saving transcript…'),
       ],
     );
   }

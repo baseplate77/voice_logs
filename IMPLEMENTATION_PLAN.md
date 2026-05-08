@@ -1,7 +1,7 @@
 # VoxSynth (v2) — implementation plan
 
 Greenfield rewrite on branch `v2` per the new privacy-first spec. Phases
-0–6. Each phase ends with a demo stop — do not roll one phase into the next.
+0–6, plus a memory subsystem phase after entity canonicalization. Each phase ends with a demo stop — do not roll one phase into the next.
 
 The locked stack and non-negotiables live in `CLAUDE.md`; this file only
 lists the phased delivery shape.
@@ -112,6 +112,31 @@ Swaps the dummy refine job for real Gemma inference. Entity chips appear.
 **Acceptance:**
 - Record "met Shivani at Cafe Coffee Day"; record "Shivani paid for coffee" later. The two mentions link to the same canonical `PERSON` entity without intervention.
 - Manual merge collapses two canonical entities, retroactively relinking mentions.
+
+---
+
+## Phase 5.5 — Local memory subsystem (3–4 days)
+
+Memory is a local-only, evidence-backed layer of durable user context extracted from refined voice logs. It depends on Gemma refinement, e5 embeddings, sqlite-vec retrieval, and entity canonicalization. Full design: `docs/memory_subsystem.md`.
+
+**Files:**
+- `lib/features/memory/memory_extractor.dart` — Gemma prompt + validation for durable memory candidates.
+- `lib/features/memory/memory_repository.dart` — CRUD, source evidence, merge/archive/delete semantics.
+- `lib/features/memory/memory_retriever.dart` — RRF over memory FTS + vector + entity-linked boosts.
+- `lib/features/memory/memory_types.dart` — enums/data classes for memory type, status, sensitivity.
+- `lib/features/memory/memory_screen.dart` — inspect, edit, merge, delete, pin/confirm memories.
+- `lib/core/db/schema/memory_items.dart` — encrypted Drift table + FTS integration.
+- `lib/core/db/schema/memory_sources.dart` — evidence links back to voice logs and char offsets.
+- `lib/core/db/schema/memory_entity_links.dart` — links memory cards to canonical entities.
+
+**Acceptance:**
+- Memory extraction runs as a background job after canonicalization and never blocks record stop.
+- All memories, source evidence, and embeddings stay encrypted in local private storage.
+- No network calls, sync SDKs, telemetry, crash reporting, or remote model APIs are introduced.
+- Sensitive memories enter review/candidate state and are not used in Gemma prompts until confirmed.
+- Deleting a memory removes its row, source links, and embedding, without deleting the original voice log.
+- Memory retrieval returns relevant cards from a local fixture using FTS + vector + entity boosts.
+- Tests cover extraction validation, repository delete/merge semantics, retrieval ranking, and `test/no_network_test.dart`.
 
 ---
 

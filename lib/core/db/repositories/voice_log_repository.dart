@@ -175,6 +175,7 @@ class VoiceLogRepository {
     try {
       await _db.transaction(() async {
         await _fts.remove(id);
+        await _removeMemorySourcesForLog(id);
         await (_db.delete(
           _db.entityMentions,
         )..where((t) => t.logId.equals(id))).go();
@@ -203,6 +204,11 @@ class VoiceLogRepository {
     try {
       await _db.transaction(() async {
         await _db.customStatement('DELETE FROM voice_logs_fts');
+        await _db.customStatement('DELETE FROM memory_items_fts');
+        await _db.delete(_db.memoryEntityLinks).go();
+        await _db.delete(_db.memorySources).go();
+        await _db.delete(_db.memoryEmbeddings).go();
+        await _db.delete(_db.memoryItems).go();
         await _db.delete(_db.entityMentions).go();
         await _db.delete(_db.voiceLogSegments).go();
         await _db.delete(_db.canonicalEntities).go();
@@ -218,6 +224,49 @@ class VoiceLogRepository {
           stack: s,
         ),
       );
+    }
+  }
+
+  Future<void> _removeMemorySourcesForLog(String logId) async {
+    final rows = await _db
+        .customSelect(
+          'SELECT DISTINCT memory_id FROM memory_sources WHERE voice_log_id = ?',
+          variables: [Variable<String>(logId)],
+        )
+        .get();
+    final memoryIds = rows.map((r) => r.read<String>('memory_id')).toList();
+    await (_db.delete(
+      _db.memorySources,
+    )..where((t) => t.voiceLogId.equals(logId))).go();
+    for (final memoryId in memoryIds) {
+      final remaining = await _db
+          .customSelect(
+            'SELECT COUNT(*) AS c FROM memory_sources WHERE memory_id = ?',
+            variables: [Variable<String>(memoryId)],
+          )
+          .getSingle();
+      if (remaining.read<int>('c') > 0) continue;
+      final row = await _db
+          .customSelect(
+            'SELECT rowid FROM memory_items WHERE id = ?',
+            variables: [Variable<String>(memoryId)],
+          )
+          .getSingleOrNull();
+      if (row != null) {
+        await _db.customStatement(
+          'DELETE FROM memory_items_fts WHERE rowid = ?',
+          [row.read<int>('rowid')],
+        );
+      }
+      await (_db.delete(
+        _db.memoryEntityLinks,
+      )..where((t) => t.memoryId.equals(memoryId))).go();
+      await (_db.delete(
+        _db.memoryEmbeddings,
+      )..where((t) => t.memoryId.equals(memoryId))).go();
+      await (_db.delete(
+        _db.memoryItems,
+      )..where((t) => t.id.equals(memoryId))).go();
     }
   }
 
