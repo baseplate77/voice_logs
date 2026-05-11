@@ -56,6 +56,9 @@ dependencies:
   # Runtime permissions
   permission_handler: ^11.3.1
 
+  # Lightweight key-value prefs (auto-record toggle, onboarding flag)
+  shared_preferences: ^2.5.3
+
   # Logging
   logger: ^2.5.0
 

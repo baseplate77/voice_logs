@@ -1,0 +1,166 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../core/db/providers.dart';
+import '../ask/ask_screen.dart';
+import '../debug/pipeline_debug_screen.dart';
+import '../detail/log_detail_screen.dart';
+import '../list/log_row.dart';
+import '../record/recording_providers.dart';
+import '../search/search_screen.dart';
+import '../settings/settings_screen.dart';
+import 'auto_record_provider.dart';
+import 'onboarding_overlay.dart';
+import 'recording_overlay.dart';
+
+/// Primary screen: recording overlay at the top, log list below.
+///
+/// On cold launch with auto-record enabled, recording starts automatically
+/// after the first frame. First launch shows an onboarding overlay instead
+/// that requests microphone permission.
+class VoxHomeScreen extends ConsumerStatefulWidget {
+  const VoxHomeScreen({super.key});
+
+  @override
+  ConsumerState<VoxHomeScreen> createState() => _VoxHomeScreenState();
+}
+
+class _VoxHomeScreenState extends ConsumerState<VoxHomeScreen> {
+  bool _autoRecordFired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _maybeAutoRecord();
+    });
+  }
+
+  void _maybeAutoRecord() {
+    if (_autoRecordFired) return;
+    _autoRecordFired = true;
+
+    final onboarding = ref.read(onboardingCompleteProvider);
+    final isComplete = onboarding.valueOrNull ?? false;
+    if (!isComplete) return;
+
+    final autoEnabled = ref.read(autoRecordEnabledProvider);
+    if (!autoEnabled) return;
+
+    final state = ref.read(recordingControllerProvider);
+    if (state is RecordingIdle) {
+      ref.read(recordingControllerProvider.notifier).start();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final onboarding = ref.watch(onboardingCompleteProvider);
+    final isOnboarded = onboarding.valueOrNull ?? false;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('VoxSynth'),
+        actions: [
+          IconButton(
+            tooltip: 'Pipeline debug',
+            icon: const Icon(Icons.bug_report_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const PipelineDebugScreen(),
+              ),
+            ),
+          ),
+          IconButton(
+            tooltip: 'Ask',
+            icon: const Icon(Icons.question_answer_outlined),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => const AskScreen())),
+          ),
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SearchScreen()),
+            ),
+          ),
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
+            ),
+          ),
+        ],
+      ),
+      body: isOnboarded ? const _MainContent() : const OnboardingOverlay(),
+    );
+  }
+}
+
+class _MainContent extends ConsumerWidget {
+  const _MainContent();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final logs = ref.watch(voiceLogsStreamProvider);
+    final recordingState = ref.watch(recordingControllerProvider);
+    final isRecording =
+        recordingState is RecordingActive ||
+        recordingState is RecordingTranscribing;
+
+    return Column(
+      children: [
+        const RecordingOverlay(),
+        if (isRecording) const Divider(height: 1),
+        Expanded(
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 200),
+            opacity: isRecording ? 0.5 : 1.0,
+            child: logs.when(
+              data: (rows) {
+                if (rows.isEmpty) return const _EmptyState();
+                return ListView.separated(
+                  itemCount: rows.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final row = rows[i];
+                    return LogRow(
+                      log: row,
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => LogDetailScreen(logId: row.id),
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+              loading: () =>
+                  const Center(child: CircularProgressIndicator.adaptive()),
+              error: (e, _) => Center(child: Text('Error: $e')),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(24),
+        child: Text(
+          'Your journal gets smarter as you record more.',
+          textAlign: TextAlign.center,
+          style: TextStyle(fontSize: 18),
+        ),
+      ),
+    );
+  }
+}

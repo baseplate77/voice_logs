@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:flutter/services.dart';
 import 'package:record/record.dart' as pkg;
 
 import '../../core/app_error.dart';
@@ -76,12 +77,25 @@ class RecordPackageAudioRecorder implements AudioRecorder {
   StreamSubscription<Uint8List>? _streamSub;
   DateTime? _startedAt;
   String? _activePath;
+  static bool? _isSimulator;
 
   @override
   Stream<Uint8List> get pcm16Stream => _pcmController.stream;
 
   @override
   Future<bool> hasPermission() => _recorder.hasPermission();
+
+  static Future<bool> _checkSimulator() async {
+    if (_isSimulator != null) return _isSimulator!;
+    try {
+      const channel = MethodChannel('com.nj.voxsynth/runtime');
+      _isSimulator =
+          await channel.invokeMethod<bool>('isIosSimulator') ?? false;
+    } on MissingPluginException {
+      _isSimulator = false;
+    }
+    return _isSimulator!;
+  }
 
   @override
   Future<Result<void, CaptureError>> start({
@@ -90,7 +104,8 @@ class RecordPackageAudioRecorder implements AudioRecorder {
     if (_activePath != null) {
       return const Err(RecorderStateError('Recorder already running.'));
     }
-    if (!await _recorder.hasPermission()) {
+    final sim = await _checkSimulator();
+    if (!sim && !await _recorder.hasPermission()) {
       return const Err(PermissionDenied());
     }
     try {

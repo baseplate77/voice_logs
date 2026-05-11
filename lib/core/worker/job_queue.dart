@@ -198,6 +198,21 @@ class JobQueue {
     return row?.id;
   }
 
+  /// Whether any pending or running jobs exist in the queue.
+  Future<bool> hasActiveJobs() async {
+    final row =
+        await (_db.select(_db.processingJobs)
+              ..where(
+                (t) => t.state.isIn([
+                  JobState.pending.wire,
+                  JobState.running.wire,
+                ]),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
+  }
+
   Future<bool> _hasActiveJobForLog(String logId) async {
     final row =
         await (_db.select(_db.processingJobs)

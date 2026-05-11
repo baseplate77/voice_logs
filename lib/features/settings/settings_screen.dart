@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
 import '../eval/refine_eval_screen.dart';
+import '../home/auto_record_provider.dart';
 import '../memory/memory_screen.dart';
 import 'entities_screen.dart';
+import 'shortcuts_setup_screen.dart';
 
 /// Minimal settings — canonical entities list and the destructive
 /// "delete all" action. Export, storage usage, and thermal/battery
@@ -18,6 +20,19 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
         children: [
+          _AutoRecordTile(),
+          ListTile(
+            leading: const Icon(Icons.shortcut_outlined),
+            title: const Text('Quick access'),
+            subtitle: const Text('Siri, Action Button, Lock Screen, Back Tap'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const ShortcutsSetupScreen(),
+              ),
+            ),
+          ),
+          const Divider(height: 1),
           ListTile(
             leading: const Icon(Icons.memory_outlined),
             title: const Text('Memory'),
@@ -81,5 +96,19 @@ class SettingsScreen extends ConsumerWidget {
     if (!context.mounted) return;
     final repo = ref.read(voiceLogRepositoryProvider);
     await repo.deleteAll();
+  }
+}
+
+class _AutoRecordTile extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = ref.watch(autoRecordEnabledProvider);
+    return SwitchListTile(
+      secondary: const Icon(Icons.play_circle_outline),
+      title: const Text('Record on launch'),
+      subtitle: const Text('Start recording when the app opens'),
+      value: enabled,
+      onChanged: (_) => ref.read(autoRecordEnabledProvider.notifier).toggle(),
+    );
   }
 }
