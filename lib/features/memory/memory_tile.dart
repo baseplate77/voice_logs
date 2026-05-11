@@ -76,6 +76,11 @@ class MemoryTile extends ConsumerWidget {
     MemoryType.routine => Icons.repeat,
     MemoryType.place => Icons.place_outlined,
     MemoryType.eventContext => Icons.event_note_outlined,
+    MemoryType.decision => Icons.gavel_outlined,
+    MemoryType.task => Icons.check_circle_outline,
+    MemoryType.goal => Icons.flag_outlined,
+    MemoryType.idea => Icons.lightbulb_outline,
+    MemoryType.reminder => Icons.notifications_outlined,
   };
 }
 

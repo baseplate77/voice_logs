@@ -60,7 +60,9 @@ assets/models/*.tflite
 assets/models/*.gguf
 assets/models/parakeet/
 assets/models/zipformer_en_20m/
-assets/models/gemma/
+assets/models/smollm/
+assets/models/gemma/*.litertlm
+!assets/models/gemma/.gitkeep
 assets/models/e5/
 assets/models/*.safetensors
 

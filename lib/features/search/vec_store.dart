@@ -42,27 +42,50 @@ class VecStore {
   }
 
   /// Return the top [k] hits for the given L2-normalized query vector.
-  List<VectorHit> search(Float32List queryVec, {int k = 20}) {
+  /// Results scoring below [minScore] are excluded.
+  List<VectorHit> search(
+    Float32List queryVec, {
+    int k = 20,
+    double minScore = 0.25,
+  }) {
     if (_segments.isEmpty) return const [];
-    final scored = <_Scored>[];
+    final topK = <_Scored>[];
+    var threshold = minScore;
+
     for (final seg in _segments) {
       final score = cosineSimilarity(seg.embedding, queryVec);
-      scored.add(_Scored(seg, score));
+      if (score < threshold) continue;
+      _insertSorted(topK, _Scored(seg, score));
+      if (topK.length > k) {
+        topK.removeLast();
+        threshold = topK.last.score;
+      }
     }
-    scored.sort((a, b) => b.score.compareTo(a.score));
-    final out = <VectorHit>[];
-    for (var i = 0; i < scored.length && i < k; i++) {
-      final s = scored[i];
-      out.add(
-        VectorHit(
-          segmentId: s.segment.id,
-          logId: s.segment.logId,
-          score: s.score,
-          text: s.segment.text,
-        ),
-      );
+
+    return topK
+        .map(
+          (s) => VectorHit(
+            segmentId: s.segment.id,
+            logId: s.segment.logId,
+            score: s.score,
+            text: s.segment.text,
+          ),
+        )
+        .toList();
+  }
+
+  static void _insertSorted(List<_Scored> list, _Scored item) {
+    var lo = 0;
+    var hi = list.length;
+    while (lo < hi) {
+      final mid = (lo + hi) >> 1;
+      if (list[mid].score >= item.score) {
+        lo = mid + 1;
+      } else {
+        hi = mid;
+      }
     }
-    return out;
+    list.insert(lo, item);
   }
 
   /// Update the in-memory store with newly inserted segments. Callers

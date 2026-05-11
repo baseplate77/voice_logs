@@ -8,7 +8,12 @@ enum MemoryType {
   project('project'),
   routine('routine'),
   place('place'),
-  eventContext('event_context');
+  eventContext('event_context'),
+  decision('decision'),
+  task('task'),
+  goal('goal'),
+  idea('idea'),
+  reminder('reminder');
 
   const MemoryType(this.wire);
 
@@ -68,6 +73,7 @@ class MemoryCandidate {
     required this.sensitivity,
     required this.startChar,
     required this.endChar,
+    this.importanceScore,
   });
 
   final MemoryType type;
@@ -77,6 +83,7 @@ class MemoryCandidate {
   final MemorySensitivity sensitivity;
   final int startChar;
   final int endChar;
+  final double? importanceScore;
 }
 
 /// Persisted memory card plus optional embedding.
@@ -94,6 +101,7 @@ class MemoryItemView {
     required this.createdAt,
     required this.updatedAt,
     required this.embedding,
+    this.importanceScore,
   });
 
   final String id;
@@ -108,6 +116,7 @@ class MemoryItemView {
   final DateTime createdAt;
   final DateTime updatedAt;
   final Float32List? embedding;
+  final double? importanceScore;
 }
 
 /// A ranked memory retrieval hit.

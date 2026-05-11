@@ -134,6 +134,8 @@ class _DebugEntryTile extends StatelessWidget {
       PipelineDebugStage.embed => Icons.hub_outlined,
       PipelineDebugStage.canonicalize => Icons.link,
       PipelineDebugStage.memory => Icons.psychology_outlined,
+      PipelineDebugStage.enrich => Icons.auto_awesome_outlined,
+      PipelineDebugStage.summarize => Icons.summarize_outlined,
       PipelineDebugStage.worker => Icons.engineering_outlined,
     };
   }

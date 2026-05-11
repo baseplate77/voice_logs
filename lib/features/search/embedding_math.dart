@@ -68,6 +68,14 @@ void l2Normalize({
   }
 }
 
+/// True if every component is zero — produced when all tokens are padding.
+bool isZeroVector(Float32List v) {
+  for (var i = 0; i < v.length; i++) {
+    if (v[i] != 0.0) return false;
+  }
+  return true;
+}
+
 /// Dot product. On L2-normalized vectors this is cosine similarity.
 double cosineSimilarity(Float32List a, Float32List b) {
   assert(a.length == b.length, 'vector lengths must match');

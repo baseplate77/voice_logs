@@ -48,6 +48,43 @@ class _FakeRecorder implements AudioRecorder {
   }
 }
 
+class _BlockingStopRecorder implements AudioRecorder {
+  bool started = false;
+  String? pathSeen;
+  final _pcm = StreamController<Uint8List>.broadcast();
+  final _stopCompleter = Completer<Result<RecordedClip, CaptureError>>();
+
+  @override
+  Stream<Uint8List> get pcm16Stream => _pcm.stream;
+
+  @override
+  Future<bool> hasPermission() async => true;
+
+  @override
+  Future<Result<void, CaptureError>> start({
+    required String destinationPath,
+  }) async {
+    started = true;
+    pathSeen = destinationPath;
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<RecordedClip, CaptureError>> stop() => _stopCompleter.future;
+
+  void completeStop() {
+    started = false;
+    _stopCompleter.complete(
+      Ok(RecordedClip(audioPath: pathSeen!, durationMs: 1500)),
+    );
+  }
+
+  @override
+  Future<void> dispose() async {
+    await _pcm.close();
+  }
+}
+
 class _FakeRecognizer implements SpeechRecognizer {
   _FakeRecognizer(this.output);
   final String output;
@@ -146,6 +183,33 @@ void main() {
     final claimed = await JobQueue(db).claimNext();
     expect(claimed, isNotNull);
     expect(claimed!.jobType, JobType.refine);
+  });
+
+  test('stop immediately shows transcribing while audio finalizes', () async {
+    final db = VoxSynthDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final repo = VoiceLogRepository(db);
+    final recorder = _BlockingStopRecorder();
+    final recognizer = _FakeRecognizer('hello there');
+
+    final controller = RecordingController(
+      recorder: recorder,
+      repository: repo,
+      recognizerFactory: () async => recognizer,
+      jobQueue: JobQueue(db),
+      docsPath: tmpDocs(),
+    );
+    addTearDown(controller.dispose);
+
+    await controller.start();
+    expect(controller.state, isA<RecordingActive>());
+
+    final stopped = controller.stop();
+    expect(controller.state, isA<RecordingTranscribing>());
+
+    recorder.completeStop();
+    await stopped;
+    expect(controller.state, isA<RecordingIdle>());
   });
 
   test(

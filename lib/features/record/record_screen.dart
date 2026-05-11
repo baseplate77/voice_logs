@@ -99,13 +99,22 @@ class _TranscribingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        CircularProgressIndicator.adaptive(),
-        SizedBox(height: 16),
-        Text('Saving transcript…'),
-      ],
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator.adaptive(),
+          const SizedBox(height: 20),
+          Text('Transcribing audio…', style: textTheme.titleMedium),
+          const SizedBox(height: 8),
+          const Text(
+            'Your recording is being finalized and converted to searchable text.',
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

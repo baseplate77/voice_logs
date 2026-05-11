@@ -5,6 +5,7 @@ import '../../core/result.dart';
 import '../../core/worker/job_handler.dart';
 import '../../core/worker/job_queue.dart';
 import '../search/embedder.dart';
+import '../search/embedding_math.dart';
 import '../search/segment_repository.dart';
 import '../search/segmenter.dart';
 import '../search/vec_store.dart';
@@ -59,10 +60,18 @@ class EmbedJobHandler implements JobHandler {
     );
     switch (embeddings) {
       case Ok(:final value):
+        final filteredSegments = <TextSegment>[];
+        final filteredEmbeddings = <Embedding>[];
+        for (var i = 0; i < value.length; i++) {
+          if (!isZeroVector(value[i].vector)) {
+            filteredSegments.add(segments[i]);
+            filteredEmbeddings.add(value[i]);
+          }
+        }
         final stored = await segmentRepository.upsert(
           logId: ctx.logId,
-          segments: segments,
-          embeddings: value,
+          segments: filteredSegments,
+          embeddings: filteredEmbeddings,
         );
         switch (stored) {
           case Ok():

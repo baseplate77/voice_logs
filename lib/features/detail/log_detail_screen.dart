@@ -4,9 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/db/job_state.dart';
 import '../../core/db/processing_state.dart';
 import '../../core/db/providers.dart';
-import '../../core/db/repositories/entity_mention_repository.dart';
 import '../../core/worker/providers.dart';
 import 'entity_chips.dart';
+import 'markdown_transcript_view.dart';
 
 String _statusText(ProcessingState state) {
   return switch (state) {
@@ -15,46 +15,6 @@ String _statusText(ProcessingState state) {
     ProcessingState.embedded => 'Ready for semantic/entity search',
     ProcessingState.failed => 'Processing failed',
   };
-}
-
-TextSpan _highlightedTranscript(
-  BuildContext context,
-  String text,
-  List<EntityMentionView> mentions,
-) {
-  final base =
-      Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5) ??
-      const TextStyle(fontSize: 16, height: 1.5);
-  final highlightStyle = base.copyWith(
-    backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
-    color: Theme.of(context).colorScheme.onTertiaryContainer,
-    fontWeight: FontWeight.w600,
-  );
-  final sorted = [...mentions]
-    ..sort((a, b) => a.charStart.compareTo(b.charStart));
-  final children = <TextSpan>[];
-  var cursor = 0;
-  for (final mention in sorted) {
-    if (mention.charStart < cursor ||
-        mention.charEnd > text.length ||
-        mention.charStart >= mention.charEnd) {
-      continue;
-    }
-    if (mention.charStart > cursor) {
-      children.add(TextSpan(text: text.substring(cursor, mention.charStart)));
-    }
-    children.add(
-      TextSpan(
-        text: text.substring(mention.charStart, mention.charEnd),
-        style: highlightStyle,
-      ),
-    );
-    cursor = mention.charEnd;
-  }
-  if (cursor < text.length) {
-    children.add(TextSpan(text: text.substring(cursor)));
-  }
-  return TextSpan(style: base, children: children);
 }
 
 /// Detail view for a single voice log — cleaned text, entity chips,
@@ -99,7 +59,7 @@ class LogDetailScreen extends ConsumerWidget {
             return const Center(child: Text('Log not found'));
           }
           final body = log.cleanedText ?? log.rawTranscript;
-          final mentions = mentionsAsync.value ?? const <EntityMentionView>[];
+          final mentions = mentionsAsync.value ?? const [];
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -123,9 +83,7 @@ class LogDetailScreen extends ConsumerWidget {
               Expanded(
                 child: SingleChildScrollView(
                   padding: const EdgeInsets.all(16),
-                  child: SelectableText.rich(
-                    _highlightedTranscript(context, body, mentions),
-                  ),
+                  child: MarkdownTranscriptView(text: body, mentions: mentions),
                 ),
               ),
               if (log.processingState == ProcessingState.failed)

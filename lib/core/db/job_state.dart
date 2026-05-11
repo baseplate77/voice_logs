@@ -38,7 +38,13 @@ enum JobType {
   canonicalize('canonicalize'),
 
   /// Durable local memory extraction.
-  memory('memory');
+  memory('memory'),
+
+  /// Segment enrichment: importance scoring, topics, short summaries.
+  enrich('enrich'),
+
+  /// Per-log summary generation.
+  summarize('summarize');
 
   const JobType(this.wire);
 

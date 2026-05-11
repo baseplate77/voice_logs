@@ -66,7 +66,7 @@ class MemoryRepository {
           await _db
               .into(_db.memoryItems)
               .insert(
-                MemoryItem(
+                MemoryItemsCompanion.insert(
                   id: id,
                   type: candidate.type.wire,
                   memoryText: candidate.text,
@@ -78,6 +78,7 @@ class MemoryRepository {
                   lastSeenAt: now,
                   createdAt: now,
                   updatedAt: now,
+                  importanceScore: Value(candidate.importanceScore),
                 ),
               );
           await _upsertEmbedding(id, embedding);
@@ -528,6 +529,7 @@ class MemoryRepository {
       createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt),
       updatedAt: DateTime.fromMillisecondsSinceEpoch(row.updatedAt),
       embedding: embedding,
+      importanceScore: row.importanceScore,
     );
   }
 

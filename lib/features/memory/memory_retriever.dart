@@ -121,7 +121,8 @@ class MemoryRetriever {
   }
 
   Future<List<String>> _ftsSearch(String query) async {
-    final escaped = query.replaceAll('"', '""');
+    final ftsQuery = _buildFtsQuery(query);
+    if (ftsQuery.isEmpty) return const [];
     final rows = await _db
         .customSelect(
           'SELECT mi.id FROM memory_items_fts fts '
@@ -130,7 +131,7 @@ class MemoryRetriever {
           'AND mi.status = ? '
           'ORDER BY rank LIMIT ?',
           variables: [
-            Variable<String>('"$escaped"'),
+            Variable<String>(ftsQuery),
             Variable<String>(MemoryStatus.active.wire),
             Variable<int>(_ftsLimit),
           ],
@@ -138,6 +139,79 @@ class MemoryRetriever {
         )
         .get();
     return rows.map((r) => r.read<String>('id')).toList();
+  }
+
+  static final _stopWords = {
+    'i',
+    'me',
+    'my',
+    'we',
+    'our',
+    'you',
+    'your',
+    'he',
+    'she',
+    'it',
+    'they',
+    'them',
+    'a',
+    'an',
+    'the',
+    'is',
+    'am',
+    'are',
+    'was',
+    'were',
+    'be',
+    'been',
+    'being',
+    'have',
+    'has',
+    'had',
+    'do',
+    'does',
+    'did',
+    'will',
+    'would',
+    'could',
+    'should',
+    'can',
+    'may',
+    'might',
+    'at',
+    'in',
+    'on',
+    'to',
+    'for',
+    'of',
+    'with',
+    'by',
+    'from',
+    'about',
+    'that',
+    'this',
+    'what',
+    'which',
+    'who',
+    'whom',
+    'and',
+    'or',
+    'but',
+    'not',
+    'no',
+    'if',
+    'so',
+    'than',
+  };
+
+  static String _buildFtsQuery(String query) {
+    final terms = query
+        .toLowerCase()
+        .split(RegExp(r'\W+'))
+        .where((w) => w.length > 1 && !_stopWords.contains(w))
+        .toList();
+    if (terms.isEmpty) return '';
+    return terms.map((t) => '"${t.replaceAll('"', '""')}"').join(' ');
   }
 
   Future<List<String>> _vectorSearch(Float32List queryVector) async {

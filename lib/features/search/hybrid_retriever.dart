@@ -14,6 +14,9 @@ class SearchHit {
     required this.fusedScore,
     required this.matchedVia,
     required this.snippet,
+    this.segments = const [],
+    this.fullText,
+    this.createdAt,
   });
 
   final String logId;
@@ -25,6 +28,15 @@ class SearchHit {
   /// Short preview text, usually the top-ranked segment or the first
   /// line of the transcript.
   final String snippet;
+
+  /// All matching vector segments for this log, in hit order.
+  final List<String> segments;
+
+  /// Full cleaned transcript (or raw). Available for short-log inclusion.
+  final String? fullText;
+
+  /// When the voice log was recorded, for temporal context in prompts.
+  final DateTime? createdAt;
 }
 
 enum MatchSource { fts, vector, entity }
@@ -85,21 +97,18 @@ class HybridRetriever {
 
     // Vector path — embed the query with `"query: "` prefix.
     List<String> vectorLogIds = const [];
-    final Map<String, String> vectorSnippets = {};
+    final vectorSegments = <String, List<String>>{};
     final embedded = await _embedder.embedQuery(query);
     switch (embedded) {
       case Ok(:final value):
         final hits = _vecStore.search(value.vector, k: _vectorLimit);
         final seen = <String>{};
         for (final hit in hits) {
-          if (seen.add(hit.logId)) {
-            vectorSnippets[hit.logId] = hit.text;
-          }
+          vectorSegments.putIfAbsent(hit.logId, () => []).add(hit.text);
+          seen.add(hit.logId);
         }
         vectorLogIds = seen.toList();
       case Err():
-        // Search must remain useful immediately after recording and in
-        // builds where the e5 asset is absent. Fall back to FTS-only.
         vectorLogIds = const [];
     }
 
@@ -112,33 +121,36 @@ class HybridRetriever {
     );
     final ordered = sortByScoreDescending(fused).take(limit).toList();
 
-    final snippets = await _snippetsFor(ordered);
+    final logMeta = await _logMetaFor(ordered);
 
     return Ok(
       ordered.map((id) {
         final matched = <MatchSource>{};
         if (ftsLogIds.contains(id)) matched.add(MatchSource.fts);
         if (vectorLogIds.contains(id)) matched.add(MatchSource.vector);
+        final meta = logMeta[id];
+        final segs = vectorSegments[id] ?? const [];
         return SearchHit(
           logId: id,
           fusedScore: fused[id] ?? 0,
           matchedVia: matched,
-          snippet: vectorSnippets[id] ?? snippets[id] ?? '',
+          snippet: segs.isNotEmpty ? segs.first : meta?.text ?? '',
+          segments: segs,
+          fullText: meta?.text,
+          createdAt: meta?.createdAt,
         );
       }).toList(),
     );
   }
 
   Future<List<String>> _ftsSearch(String query) async {
-    // sqlite's FTS5 MATCH takes a bare query — very tolerant of user
-    // input. The FTS table is content-less so we rely on rowid alone
-    // here, not joining to voice_logs.
-    final escaped = query.replaceAll('"', '""');
+    final ftsQuery = _buildFtsQuery(query);
+    if (ftsQuery.isEmpty) return const [];
     final rows = await _db
         .customSelect(
           'SELECT rowid FROM voice_logs_fts WHERE voice_logs_fts '
           'MATCH ? ORDER BY rank LIMIT ?',
-          variables: [Variable<String>('"$escaped"'), Variable<int>(_ftsLimit)],
+          variables: [Variable<String>(ftsQuery), Variable<int>(_ftsLimit)],
         )
         .get();
 
@@ -158,11 +170,92 @@ class HybridRetriever {
     return logs.map((r) => r.read<String>('id')).toList();
   }
 
-  Future<Map<String, String>> _snippetsFor(List<String> logIds) async {
+  Future<Map<String, ({String text, DateTime createdAt})>> _logMetaFor(
+    List<String> logIds,
+  ) async {
     if (logIds.isEmpty) return {};
     final rows = await (_db.select(
       _db.voiceLogs,
     )..where((t) => t.id.isIn(logIds))).get();
-    return {for (final r in rows) r.id: r.cleanedText ?? r.rawTranscript};
+    return {
+      for (final r in rows)
+        r.id: (
+          text: r.cleanedText ?? r.rawTranscript,
+          createdAt: DateTime.fromMillisecondsSinceEpoch(r.createdAt),
+        ),
+    };
+  }
+
+  static final _stopWords = {
+    'i',
+    'me',
+    'my',
+    'we',
+    'our',
+    'you',
+    'your',
+    'he',
+    'she',
+    'it',
+    'they',
+    'them',
+    'a',
+    'an',
+    'the',
+    'is',
+    'am',
+    'are',
+    'was',
+    'were',
+    'be',
+    'been',
+    'being',
+    'have',
+    'has',
+    'had',
+    'do',
+    'does',
+    'did',
+    'will',
+    'would',
+    'could',
+    'should',
+    'can',
+    'may',
+    'might',
+    'at',
+    'in',
+    'on',
+    'to',
+    'for',
+    'of',
+    'with',
+    'by',
+    'from',
+    'about',
+    'that',
+    'this',
+    'what',
+    'which',
+    'who',
+    'whom',
+    'and',
+    'or',
+    'but',
+    'not',
+    'no',
+    'if',
+    'so',
+    'than',
+  };
+
+  static String _buildFtsQuery(String query) {
+    final terms = query
+        .toLowerCase()
+        .split(RegExp(r'\W+'))
+        .where((w) => w.length > 1 && !_stopWords.contains(w))
+        .toList();
+    if (terms.isEmpty) return '';
+    return terms.map((t) => '"${t.replaceAll('"', '""')}"').join(' ');
   }
 }

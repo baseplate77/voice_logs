@@ -38,3 +38,14 @@ abstract class LlmRunner {
   /// Release native resources.
   Future<void> dispose();
 }
+
+/// Optional capability for runners that can surface decode chunks while the
+/// model is generating. Callers must still handle plain [LlmRunner] instances
+/// by falling back to [LlmRunner.generate].
+abstract interface class StreamingLlmRunner {
+  /// Run [prompt] and yield text deltas as they are produced.
+  Stream<Result<String, LlmError>> generateStream(
+    String prompt, {
+    double temperature = 0.3,
+  });
+}

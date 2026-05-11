@@ -46,17 +46,30 @@ class Canonicalizer {
     required EntityMentionRepository mentions,
     required CanonicalEntityRepository canonicals,
     double threshold = kCanonicalSimilarityThreshold,
+    Map<String, double>? typeThresholds,
   }) : _db = db,
        _embedder = embedder,
        _mentions = mentions,
        _canonicals = canonicals,
-       _threshold = threshold;
+       _threshold = threshold,
+       _typeThresholds = typeThresholds ?? _defaultTypeThresholds;
 
   final VoxSynthDatabase _db;
   final Embedder _embedder;
   final EntityMentionRepository _mentions;
   final CanonicalEntityRepository _canonicals;
   final double _threshold;
+  final Map<String, double> _typeThresholds;
+
+  static const _defaultTypeThresholds = <String, double>{
+    'PERSON': 0.75,
+    'PROJECT': 0.80,
+    'PLACE': 0.82,
+    'OTHER': 0.82,
+    'TIME': 0.90,
+    'NUMBER': 0.90,
+    'DURATION': 0.85,
+  };
 
   final _log = Logger('canonicalizer');
 
@@ -83,12 +96,13 @@ class Canonicalizer {
         );
       case Ok(:final value):
         try {
+          final links = <(String mentionId, String canonicalId)>[];
           for (var i = 0; i < mentions.length; i++) {
             final m = mentions[i];
             final vec = value[i].vector;
             final candidates = await _canonicals.byType(m.type);
             String? linkedId;
-            var bestScore = _threshold;
+            var bestScore = _thresholdFor(m.type);
             for (final cand in candidates) {
               final score = cosineSimilarity(cand.embedding, vec);
               if (score > bestScore) {
@@ -109,12 +123,17 @@ class Canonicalizer {
             } else {
               await _canonicals.incrementMentionCount(linkedId);
             }
-            await (_db.update(
-              _db.entityMentions,
-            )..where((t) => t.id.equals(m.id))).write(
-              EntityMentionsCompanion(canonicalEntityId: Value(linkedId)),
-            );
+            links.add((m.id, linkedId));
           }
+          await _db.transaction(() async {
+            for (final (mentionId, canonicalId) in links) {
+              await (_db.update(
+                _db.entityMentions,
+              )..where((t) => t.id.equals(mentionId))).write(
+                EntityMentionsCompanion(canonicalEntityId: Value(canonicalId)),
+              );
+            }
+          });
           _log.i('Canonicalized ${mentions.length} mentions for $logId');
           return const Ok(null);
         } on Object catch (e, s) {
@@ -129,9 +148,17 @@ class Canonicalizer {
     }
   }
 
+  double _thresholdFor(String type) => _typeThresholds[type] ?? _threshold;
+
   String _withContext(String text, int charStart, int charEnd) {
-    final left = (charStart - kContextWindowChars).clamp(0, text.length);
-    final right = (charEnd + kContextWindowChars).clamp(0, text.length);
+    var left = (charStart - kContextWindowChars).clamp(0, text.length);
+    var right = (charEnd + kContextWindowChars).clamp(0, text.length);
+    while (left > 0 && text.codeUnitAt(left - 1) != 32 /* space */ ) {
+      left--;
+    }
+    while (right < text.length && text.codeUnitAt(right) != 32) {
+      right++;
+    }
     return text.substring(left, right);
   }
 }

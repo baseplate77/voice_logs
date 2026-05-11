@@ -19,6 +19,26 @@ class E5ModelPaths {
   final String tokenizer;
 }
 
+/// Paths to SmolLM2-360M-Instruct assets copied to a readable on-device
+/// location. flutter_onnxruntime mmaps the ONNX file directly, and the
+/// BPE tokenizer + chat template config are loaded as plain JSON.
+class SmolLmModelPaths {
+  const SmolLmModelPaths({
+    required this.model,
+    required this.tokenizer,
+    required this.tokenizerConfig,
+  });
+
+  /// Path to `model.onnx` (INT8 merged decoder graph).
+  final String model;
+
+  /// Path to `tokenizer.json` (byte-level BPE vocab + merges).
+  final String tokenizer;
+
+  /// Path to `tokenizer_config.json` (chat template + special-token ids).
+  final String tokenizerConfig;
+}
+
 /// Copies ONNX and tokenizer assets out of the APK / IPA into a readable
 /// on-disk location so the native sherpa-onnx and flutter_onnxruntime
 /// runtimes can mmap them. Idempotent — files are only written when
@@ -54,6 +74,32 @@ class ModelBootstrap {
       decoder: p.join(zipformer.path, 'decoder-epoch-99-avg-1.onnx'),
       joiner: p.join(zipformer.path, 'joiner-epoch-99-avg-1.int8.onnx'),
       tokens: p.join(zipformer.path, 'tokens.txt'),
+    );
+  }
+
+  /// Copy every required file for SmolLM2-360M-Instruct.
+  Future<SmolLmModelPaths> ensureSmolLm() async {
+    final dir = await _modelsDir();
+    final smollm = Directory(p.join(dir.path, 'smollm'));
+    if (!smollm.existsSync()) smollm.createSync(recursive: true);
+
+    const assets = <String>[
+      'assets/models/smollm/model.onnx',
+      'assets/models/smollm/tokenizer.json',
+      'assets/models/smollm/tokenizer_config.json',
+    ];
+
+    for (final asset in assets) {
+      await _maybeCopy(
+        asset,
+        p.join(dir.path, asset.replaceFirst('assets/models/', '')),
+      );
+    }
+
+    return SmolLmModelPaths(
+      model: p.join(smollm.path, 'model.onnx'),
+      tokenizer: p.join(smollm.path, 'tokenizer.json'),
+      tokenizerConfig: p.join(smollm.path, 'tokenizer_config.json'),
     );
   }
 

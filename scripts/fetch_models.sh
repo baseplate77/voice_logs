@@ -3,8 +3,8 @@
 # file already present. Run from anywhere; paths are resolved relative to the
 # repo root detected from this script's location.
 #
-# All artifacts — including the Gemma 4 E2B .litertlm bundle — are fetched
-# from public HuggingFace mirrors; no Kaggle auth required.
+# All artifacts are fetched from public HuggingFace mirrors; no Kaggle or
+# HF auth required.
 
 set -euo pipefail
 
@@ -85,14 +85,18 @@ fi
 
 echo ""
 
-# Gemma 4 E2B IT — LiteRT-LM bundle consumed by flutter_gemma at runtime.
-# ~2.58 GB on disk, ~676 MB resident on GPU. The litert-community mirror is
-# public (no Kaggle / HF auth required). flutter_gemma loads it via its
-# AssetSourceHandler; see Phase 4 code once wired.
-GEMMA_DIR="$MODELS_DIR/gemma"
-mkdir -p "$GEMMA_DIR"
-fetch "gemma/gemma-4-E2B-it.litertlm" \
-  "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm"
+# SmolLM2-360M-Instruct (INT8 ONNX, merged decoder graph). Replaces Gemma 4
+# E2B in Phase 7. ~360 MB model + small tokenizer files, public HF mirror,
+# loaded by flutter_onnxruntime — see lib/features/refine/smollm/smollm_runner.dart.
+# Three files: ONNX graph + byte-level BPE vocab + chat-template config.
+SMOLLM_DIR="$MODELS_DIR/smollm"
+mkdir -p "$SMOLLM_DIR"
+fetch "smollm/model.onnx" \
+  "https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct/resolve/main/onnx/model_int8.onnx"
+fetch "smollm/tokenizer.json" \
+  "https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct/resolve/main/tokenizer.json"
+fetch "smollm/tokenizer_config.json" \
+  "https://huggingface.co/HuggingFaceTB/SmolLM2-360M-Instruct/resolve/main/tokenizer_config.json"
 echo ""
 echo "Done. Files in $MODELS_DIR:"
 ls -lh "$MODELS_DIR" | grep -v '^total' | grep -v 'README.md'

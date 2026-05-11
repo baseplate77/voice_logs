@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
+import '../ask/ask_screen.dart';
 import '../debug/pipeline_debug_screen.dart';
 import '../detail/log_detail_screen.dart';
 import '../record/record_screen.dart';
@@ -29,6 +30,13 @@ class HomeListScreen extends ConsumerWidget {
                 builder: (_) => const PipelineDebugScreen(),
               ),
             ),
+          ),
+          IconButton(
+            tooltip: 'Ask',
+            icon: const Icon(Icons.question_answer_outlined),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute<void>(builder: (_) => const AskScreen())),
           ),
           IconButton(
             icon: const Icon(Icons.search),

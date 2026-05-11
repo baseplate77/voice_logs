@@ -1,36 +1,26 @@
-/// Prompt templates for local-only memory extraction.
+/// Prompt templates for local-only memory extraction. Kept short and focused
+/// for reliable output from Gemma 3 1B.
 library;
 
 /// First-pass prompt for durable memory extraction.
-String memoryExtractionPrompt(String cleanedText) {
+String memoryExtractionPrompt(String cleanedText, {int maxMemories = 5}) {
   return '''
-You are a local-only voice-journal memory extractor. Extract durable memories
-from the cleaned voice log. Only include facts useful in the future. Do not
-include one-off events unless they explain an ongoing goal, project,
-preference, relationship, place, routine, or durable context. Do not guess.
-Do not infer sensitive traits. Return exactly one JSON object, no markdown and
-no commentary.
+Extract durable facts from this voice log as JSON. Skip errands, one-off tasks, and anything with no future value.
 
-Allowed memory types:
-identity, preference, relationship, project, routine, place, event_context
+Return: {"memories":[{"type":"<type>","text":"<short sentence>","evidence":"<exact substring from log>"}]}
+Return {"memories":[]} if nothing durable. Max $maxMemories items.
 
-Allowed sensitivity values:
-normal, sensitive
+Types: fact (stable truth about the user), person (named relationship), habit (routine or schedule), plan (ongoing project or goal).
 
-Schema:
-{
-  "memories": [
-    {
-      "type": "identity|preference|relationship|project|routine|place|event_context",
-      "text": "short user-facing memory sentence",
-      "evidence": "exact substring from the cleaned log",
-      "confidence": 0.0,
-      "sensitivity": "normal|sensitive"
-    }
-  ]
-}
+Evidence must be copied exactly from the log below.
 
-Cleaned voice log:
+Example:
+Log: I am building VoxSynth as a local-first voice journal.
+Output: {"memories":[{"type":"plan","text":"User is building VoxSynth, a local-first voice journal.","evidence":"I am building VoxSynth as a local-first voice journal"}]}
+
+Log: Buy milk tonight.
+Output: {"memories":[]}
+
 """
 $cleanedText
 """
@@ -43,17 +33,13 @@ String memoryExtractionRetryPrompt(
   String previousResponse,
 ) {
   return '''
-Your previous response was not valid for the requested JSON schema. Respond
-with exactly one JSON object and no markdown:
+Previous response was invalid. Return exactly one valid JSON object, no markdown, no code fence:
+{"memories":[{"type":"fact|person|habit|plan","text":"short sentence","evidence":"exact substring from log"}]}
 
-{ "memories": [ { "type": "preference", "text": "...", "evidence": "exact substring", "confidence": 0.85, "sensitivity": "normal" } ] }
+Return {"memories":[]} if nothing durable. Evidence must be an exact substring.
 
-Use only exact evidence substrings from this cleaned voice log:
 """
 $cleanedText
 """
-
-Previous invalid response for reference only:
-$previousResponse
 ''';
 }

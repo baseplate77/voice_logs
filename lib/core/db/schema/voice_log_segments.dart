@@ -20,6 +20,18 @@ class VoiceLogSegments extends Table {
 
   BlobColumn get embedding => blob()();
 
+  /// LLM-generated 1-sentence summary. Populated by the enrich job.
+  TextColumn get shortSummary => text().nullable()();
+
+  /// JSON array of topic keywords. Populated by the enrich job.
+  TextColumn get topicsJson => text().nullable()();
+
+  /// JSON array of canonical entity IDs whose mentions overlap this segment.
+  TextColumn get entitiesJson => text().nullable()();
+
+  /// Deterministic importance score in [0, 1]. Populated by the enrich job.
+  RealColumn get importanceScore => real().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

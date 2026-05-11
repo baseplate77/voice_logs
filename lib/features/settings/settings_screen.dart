@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
+import '../eval/refine_eval_screen.dart';
 import '../memory/memory_screen.dart';
 import 'entities_screen.dart';
 
@@ -29,6 +30,14 @@ class SettingsScreen extends ConsumerWidget {
             title: const Text('Entities'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const EntitiesScreen()),
+            ),
+          ),
+          ListTile(
+            leading: const Icon(Icons.science_outlined),
+            title: const Text('Refine eval'),
+            subtitle: const Text('Run SmolLM2 on the 50-case fixture'),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const RefineEvalScreen()),
             ),
           ),
           const Divider(height: 1),

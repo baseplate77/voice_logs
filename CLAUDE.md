@@ -14,11 +14,10 @@ Privacy-led voice journal. Flutter app. 100% on-device inference. English only f
 
 ## Stack (locked)
 - **STT:** Parakeet via `sherpa_onnx` (streaming ASR). Model files bundled at `assets/models/parakeet/`.
-- **LLM:** `flutter_gemma` (MediaPipe / LiteRT-LM) running Gemma 4 E2B IT.
-  - **User override** of the original spec's `fllama` choice — `flutter_gemma`'s GPU path is materially faster on mobile.
-  - Bundle: `assets/models/gemma/gemma-4-E2B-it.litertlm` (~2.58 GB, git-ignored, fetched via `scripts/fetch_models.sh`).
-  - `maxTokens` is hard-baked at 2048 in the litertlm bundle — shrink input instead of raising it.
-  - Gemma inference is strictly serial. Concurrent sessions OOM on mobile — all callers go through a single queue.
+- **LLM:** Gemma 3 1B IT Q4 LiteRT-LM running through `flutter_gemma`. Replaced SmolLM2 in Phase 7.1 after local eval showed stronger transcript cleanup.
+  - Bundle: `assets/models/gemma/Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm` (~560 MB, git-ignored, gated HF asset populated manually).
+  - Refine is a two-stage pipeline: cleanup JSON first, then exact-substring entity extraction from the cleaned text. No chunker for v1 voice-log lengths.
+  - LLM inference is strictly serial. `Gemma3Runner.generate` serializes all calls and the single-worker queue prevents overlapping refine/memory jobs. Same rule applies to any future LLM, regardless of runtime.
 - **Embeddings:** e5-small-v2 QInt8 ONNX (`model_opt2_QInt8.onnx` from `nixiesearch/e5-small-v2-onnx`, ~33 MB) via `flutter_onnxruntime`. Bundled in app assets.
   - 384-dim. Mean pooling over `last_hidden_state` with attention mask. L2-normalize before storage.
   - Prompt prefixes: `"query: "` for search queries, `"passage: "` for indexed content. Non-optional.
@@ -30,15 +29,15 @@ Privacy-led voice journal. Flutter app. 100% on-device inference. English only f
 ## Pipeline
 1. **Record + stream STT (live):** Parakeet streams partial transcripts into the UI.
 2. **Stop (<500ms):** persist audio file + raw transcript, enqueue `refine` job, return to list. User is free.
-3. **Refine (background, ~15–25s):** Gemma runs a `record_log(cleaned_text, entities[])` function-call-style prompt. Char offsets recovered in Dart by forward-scan matching against `cleaned_text`.
+3. **Refine (background, ~10–20s):** SmolLM2 runs a `record_log(cleaned_text, entities[])`-style prompt over the whole transcript. Char offsets recovered in Dart by forward-scan matching against `cleaned_text`. JSON parse failure → one structured retry; second failure → fall back to raw transcript with no entities.
 4. **Embed (background, ~1–3s):** e5-small-v2 per-segment (~200-token chunks, 1-sentence overlap), L2-normalized, stored per-segment in `sqlite-vec`.
 5. **Canonicalize entities (background, <1s):** similarity match via e5 on `(mention_text + local context)` against the user's canonical entity graph. Link or create.
 
 ## Single-worker isolate
-One long-lived isolate hosts Gemma + e5. FIFO queue, newest-first within priority. Never run two inferences concurrently.
+One long-lived isolate hosts SmolLM2 + e5. FIFO queue, newest-first within priority. Never run two inferences concurrently.
 
 - e5 is resident always (~33 MB).
-- Gemma loads on first refine job, stays warm 60s after last use, then unloads (~1.3 GB RAM).
+- SmolLM2 loads on first refine job, stays warm 5 minutes after last use, then unloads (~200–400 MB RAM).
 - On app resume, any job whose `state != 'embedded'` is resumed.
 
 ## Hybrid search
@@ -83,7 +82,7 @@ assets/
     silero_vad.onnx    -- optional (endpointing)
     e5/                -- model_opt2_QInt8.onnx + tokenizer.json
     parakeet/          -- encoder/decoder/joiner.int8.onnx + tokens.txt
-    gemma/             -- gemma-4-E2B-it.litertlm
+    smollm/            -- model.onnx (INT8) + tokenizer.json + tokenizer_config.json
 ```
 
 ## Coding rules

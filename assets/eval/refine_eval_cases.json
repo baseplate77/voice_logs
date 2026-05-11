@@ -1,0 +1,621 @@
+[
+  {
+    "id": "refine_eval_001",
+    "rawTranscript": "um met shiv knee at cafe coffee day for project atlas around three pm need to send notes later",
+    "expectedCleanedText": "I met Shivani at Cafe Coffee Day for Project Atlas around 3 PM. I need to send the notes later.",
+    "expectedEntities": [
+      {"text": "Shivani", "type": "PERSON"},
+      {"text": "Cafe Coffee Day", "type": "PLACE"},
+      {"text": "Project Atlas", "type": "PROJECT"},
+      {"text": "3 PM", "type": "TIME"}
+    ],
+    "expectedReminders": ["I need to send the notes later."],
+    "phenomena": ["filler_words", "name_homophone", "casing", "time_normalization"]
+  },
+  {
+    "id": "refine_eval_002",
+    "rawTranscript": "dentist appointment with doctor rao monday nine thirty remember insurance card and x ray reports",
+    "expectedCleanedText": "I have a dentist appointment with Dr. Rao on Monday at 9:30. Remember the insurance card and X-ray reports.",
+    "expectedEntities": [
+      {"text": "Dr. Rao", "type": "PERSON"},
+      {"text": "Monday", "type": "TIME"},
+      {"text": "9:30", "type": "TIME"}
+    ],
+    "expectedReminders": ["Remember the insurance card and X-ray reports."],
+    "phenomena": ["title_normalization", "date_time", "reminder"]
+  },
+  {
+    "id": "refine_eval_003",
+    "rawTranscript": "pick up mom from the airport terminal too at six forty five flight air india one zero one",
+    "expectedCleanedText": "Pick up Mom from the airport, Terminal 2, at 6:45. The flight is Air India 101.",
+    "expectedEntities": [
+      {"text": "Mom", "type": "PERSON"},
+      {"text": "airport", "type": "PLACE"},
+      {"text": "Terminal 2", "type": "PLACE"},
+      {"text": "6:45", "type": "TIME"},
+      {"text": "Air India 101", "type": "NUMBER"}
+    ],
+    "expectedReminders": ["Pick up Mom from the airport, Terminal 2, at 6:45."],
+    "phenomena": ["homophone", "number_normalization", "location"]
+  },
+  {
+    "id": "refine_eval_004",
+    "rawTranscript": "call doctor patel tomorrow about blood test results don't forget to ask vitamin d number",
+    "expectedCleanedText": "Call Dr. Patel tomorrow about the blood test results. Do not forget to ask about the vitamin D number.",
+    "expectedEntities": [
+      {"text": "Dr. Patel", "type": "PERSON"},
+      {"text": "tomorrow", "type": "TIME"},
+      {"text": "vitamin D", "type": "OTHER"}
+    ],
+    "expectedReminders": ["Call Dr. Patel tomorrow about the blood test results.", "Do not forget to ask about the vitamin D number."],
+    "phenomena": ["medical", "reminder", "relative_date"]
+  },
+  {
+    "id": "refine_eval_005",
+    "rawTranscript": "meeting with rahool at we work bandra thursday ten am discuss q three launch budget",
+    "expectedCleanedText": "Meeting with Rahul at WeWork Bandra on Thursday at 10 AM to discuss the Q3 launch budget.",
+    "expectedEntities": [
+      {"text": "Rahul", "type": "PERSON"},
+      {"text": "WeWork Bandra", "type": "PLACE"},
+      {"text": "Thursday", "type": "TIME"},
+      {"text": "10 AM", "type": "TIME"},
+      {"text": "Q3 launch", "type": "PROJECT"}
+    ],
+    "expectedReminders": [],
+    "phenomena": ["name_correction", "brand_spacing", "business_meeting"]
+  },
+  {
+    "id": "refine_eval_006",
+    "rawTranscript": "pay electricity bill by friday amount two thousand three forty don't miss late fee",
+    "expectedCleanedText": "Pay the electricity bill by Friday. The amount is 2,340. Do not miss it because of the late fee.",
+    "expectedEntities": [
+      {"text": "Friday", "type": "TIME"},
+      {"text": "2,340", "type": "NUMBER"}
+    ],
+    "expectedReminders": ["Pay the electricity bill by Friday."],
+    "phenomena": ["amount_normalization", "deadline", "reminder"]
+  },
+  {
+    "id": "refine_eval_007",
+    "rawTranscript": "sara birthday dinner olive garden next saturday eight pm book cake also",
+    "expectedCleanedText": "Sarah's birthday dinner is at Olive Garden next Saturday at 8 PM. Book a cake also.",
+    "expectedEntities": [
+      {"text": "Sarah", "type": "PERSON"},
+      {"text": "Olive Garden", "type": "PLACE"},
+      {"text": "next Saturday", "type": "TIME"},
+      {"text": "8 PM", "type": "TIME"}
+    ],
+    "expectedReminders": ["Book a cake also."],
+    "phenomena": ["possessive", "relative_date", "reminder"]
+  },
+  {
+    "id": "refine_eval_008",
+    "rawTranscript": "send revised deck to priya before stand up eleven and mention churn numbers",
+    "expectedCleanedText": "Send the revised deck to Priya before standup at 11. Mention the churn numbers.",
+    "expectedEntities": [
+      {"text": "Priya", "type": "PERSON"},
+      {"text": "11", "type": "TIME"},
+      {"text": "churn numbers", "type": "OTHER"}
+    ],
+    "expectedReminders": ["Send the revised deck to Priya before standup at 11.", "Mention the churn numbers."],
+    "phenomena": ["work_task", "ambiguous_time", "reminder"]
+  },
+  {
+    "id": "refine_eval_009",
+    "rawTranscript": "buy milk eggs aspirin from d mart tonight also get aaa batteries",
+    "expectedCleanedText": "Buy milk, eggs, aspirin, and AAA batteries from D Mart tonight.",
+    "expectedEntities": [
+      {"text": "D Mart", "type": "PLACE"},
+      {"text": "tonight", "type": "TIME"},
+      {"text": "AAA batteries", "type": "OTHER"}
+    ],
+    "expectedReminders": ["Buy milk, eggs, aspirin, and AAA batteries from D Mart tonight."],
+    "phenomena": ["shopping_list", "casing", "reminder"]
+  },
+  {
+    "id": "refine_eval_010",
+    "rawTranscript": "flight to delhi tuesday seven twenty from gate be twelve carry passport",
+    "expectedCleanedText": "Flight to Delhi is on Tuesday at 7:20 from Gate B12. Carry the passport.",
+    "expectedEntities": [
+      {"text": "Delhi", "type": "PLACE"},
+      {"text": "Tuesday", "type": "TIME"},
+      {"text": "7:20", "type": "TIME"},
+      {"text": "Gate B12", "type": "PLACE"}
+    ],
+    "expectedReminders": ["Carry the passport."],
+    "phenomena": ["travel", "homophone", "time_normalization"]
+  },
+  {
+    "id": "refine_eval_011",
+    "rawTranscript": "plumber coming sunday between two and four apartment four zero two keep cash ready",
+    "expectedCleanedText": "The plumber is coming on Sunday between 2 and 4 at Apartment 402. Keep cash ready.",
+    "expectedEntities": [
+      {"text": "Sunday", "type": "TIME"},
+      {"text": "between 2 and 4", "type": "DURATION"},
+      {"text": "Apartment 402", "type": "PLACE"}
+    ],
+    "expectedReminders": ["Keep cash ready."],
+    "phenomena": ["duration", "address", "number_normalization"]
+  },
+  {
+    "id": "refine_eval_012",
+    "rawTranscript": "remind me to book car service for honda city before fifteenth may",
+    "expectedCleanedText": "Remind me to book car service for the Honda City before 15 May.",
+    "expectedEntities": [
+      {"text": "Honda City", "type": "OTHER"},
+      {"text": "15 May", "type": "TIME"}
+    ],
+    "expectedReminders": ["Remind me to book car service for the Honda City before 15 May."],
+    "phenomena": ["reminder", "date_normalization", "vehicle"]
+  },
+  {
+    "id": "refine_eval_013",
+    "rawTranscript": "talked with ankit about hiring designer for blue bird app next week follow up with portfolio links",
+    "expectedCleanedText": "I talked with Ankit about hiring a designer for the Bluebird app next week. Follow up with portfolio links.",
+    "expectedEntities": [
+      {"text": "Ankit", "type": "PERSON"},
+      {"text": "Bluebird app", "type": "PROJECT"},
+      {"text": "next week", "type": "TIME"}
+    ],
+    "expectedReminders": ["Follow up with portfolio links."],
+    "phenomena": ["project", "follow_up", "compound_name"]
+  },
+  {
+    "id": "refine_eval_014",
+    "rawTranscript": "gym personal training with maya every wednesday seven a m at cult fit indiranagar",
+    "expectedCleanedText": "Gym personal training with Maya every Wednesday at 7 AM at Cult Fit Indiranagar.",
+    "expectedEntities": [
+      {"text": "Maya", "type": "PERSON"},
+      {"text": "every Wednesday", "type": "TIME"},
+      {"text": "7 AM", "type": "TIME"},
+      {"text": "Cult Fit Indiranagar", "type": "PLACE"}
+    ],
+    "expectedReminders": [],
+    "phenomena": ["routine", "recurring_time", "location"]
+  },
+  {
+    "id": "refine_eval_015",
+    "rawTranscript": "drop off laptop at apple store phoenix mall tomorrow afternoon ask about battery replacement",
+    "expectedCleanedText": "Drop off the laptop at the Apple Store in Phoenix Mall tomorrow afternoon. Ask about battery replacement.",
+    "expectedEntities": [
+      {"text": "Apple Store", "type": "PLACE"},
+      {"text": "Phoenix Mall", "type": "PLACE"},
+      {"text": "tomorrow afternoon", "type": "TIME"}
+    ],
+    "expectedReminders": ["Drop off the laptop at the Apple Store in Phoenix Mall tomorrow afternoon.", "Ask about battery replacement."],
+    "phenomena": ["location", "relative_time", "reminder"]
+  },
+  {
+    "id": "refine_eval_016",
+    "rawTranscript": "quarterly tax payment due thirty first july around eighteen thousand five hundred check form sixteen",
+    "expectedCleanedText": "The quarterly tax payment is due on 31 July, around 18,500. Check Form 16.",
+    "expectedEntities": [
+      {"text": "31 July", "type": "TIME"},
+      {"text": "18,500", "type": "NUMBER"},
+      {"text": "Form 16", "type": "OTHER"}
+    ],
+    "expectedReminders": ["The quarterly tax payment is due on 31 July, around 18,500.", "Check Form 16."],
+    "phenomena": ["finance", "date_normalization", "amount_normalization"]
+  },
+  {
+    "id": "refine_eval_017",
+    "rawTranscript": "meet neha and kabir at star bucks koregaon park at noon to plan trek",
+    "expectedCleanedText": "Meet Neha and Kabir at Starbucks Koregaon Park at noon to plan the trek.",
+    "expectedEntities": [
+      {"text": "Neha", "type": "PERSON"},
+      {"text": "Kabir", "type": "PERSON"},
+      {"text": "Starbucks Koregaon Park", "type": "PLACE"},
+      {"text": "noon", "type": "TIME"}
+    ],
+    "expectedReminders": [],
+    "phenomena": ["multiple_people", "brand_correction", "location"]
+  },
+  {
+    "id": "refine_eval_018",
+    "rawTranscript": "order flowers for anniversary on twenty second june deliver to andheri east flat",
+    "expectedCleanedText": "Order flowers for the anniversary on 22 June and deliver them to the Andheri East flat.",
+    "expectedEntities": [
+      {"text": "22 June", "type": "TIME"},
+      {"text": "Andheri East", "type": "PLACE"}
+    ],
+    "expectedReminders": ["Order flowers for the anniversary on 22 June and deliver them to the Andheri East flat."],
+    "phenomena": ["date_normalization", "location", "reminder"]
+  },
+  {
+    "id": "refine_eval_019",
+    "rawTranscript": "medication take amoxy cylinder five hundred mg after lunch for five days starting today",
+    "expectedCleanedText": "Medication: take amoxicillin 500 mg after lunch for five days, starting today.",
+    "expectedEntities": [
+      {"text": "amoxicillin", "type": "OTHER"},
+      {"text": "500 mg", "type": "NUMBER"},
+      {"text": "after lunch", "type": "TIME"},
+      {"text": "five days", "type": "DURATION"},
+      {"text": "today", "type": "TIME"}
+    ],
+    "expectedReminders": ["Medication: take amoxicillin 500 mg after lunch for five days, starting today."],
+    "phenomena": ["medical_asr_error", "dosage", "duration"]
+  },
+  {
+    "id": "refine_eval_020",
+    "rawTranscript": "parent teacher meeting at river side school friday three fifteen bring aarav report card",
+    "expectedCleanedText": "The parent-teacher meeting is at Riverside School on Friday at 3:15. Bring Aarav's report card.",
+    "expectedEntities": [
+      {"text": "Riverside School", "type": "PLACE"},
+      {"text": "Friday", "type": "TIME"},
+      {"text": "3:15", "type": "TIME"},
+      {"text": "Aarav", "type": "PERSON"}
+    ],
+    "expectedReminders": ["Bring Aarav's report card."],
+    "phenomena": ["school", "time_normalization", "possessive"]
+  },
+  {
+    "id": "refine_eval_021",
+    "rawTranscript": "renew passport appointment at p s k thane on fourth august eleven forty five",
+    "expectedCleanedText": "Passport renewal appointment at PSK Thane on 4 August at 11:45.",
+    "expectedEntities": [
+      {"text": "PSK Thane", "type": "PLACE"},
+      {"text": "4 August", "type": "TIME"},
+      {"text": "11:45", "type": "TIME"}
+    ],
+    "expectedReminders": ["Passport renewal appointment at PSK Thane on 4 August at 11:45."],
+    "phenomena": ["acronym", "date_time", "government"]
+  },
+  {
+    "id": "refine_eval_022",
+    "rawTranscript": "budget note groceries spent thirty two hundred at reliance fresh yesterday",
+    "expectedCleanedText": "Budget note: groceries cost 3,200 at Reliance Fresh yesterday.",
+    "expectedEntities": [
+      {"text": "3,200", "type": "NUMBER"},
+      {"text": "Reliance Fresh", "type": "PLACE"},
+      {"text": "yesterday", "type": "TIME"}
+    ],
+    "expectedReminders": [],
+    "phenomena": ["finance", "amount_normalization", "relative_date"]
+  },
+  {
+    "id": "refine_eval_023",
+    "rawTranscript": "call landlord mister meta about leaking sink tonight send photos first",
+    "expectedCleanedText": "Call landlord Mr. Mehta about the leaking sink tonight. Send photos first.",
+    "expectedEntities": [
+      {"text": "Mr. Mehta", "type": "PERSON"},
+      {"text": "tonight", "type": "TIME"}
+    ],
+    "expectedReminders": ["Call landlord Mr. Mehta about the leaking sink tonight.", "Send photos first."],
+    "phenomena": ["name_correction", "household", "reminder"]
+  },
+  {
+    "id": "refine_eval_024",
+    "rawTranscript": "yoga class in cubbon park saturday morning six thirty carry mat and water",
+    "expectedCleanedText": "Yoga class is in Cubbon Park on Saturday morning at 6:30. Carry a mat and water.",
+    "expectedEntities": [
+      {"text": "Cubbon Park", "type": "PLACE"},
+      {"text": "Saturday morning", "type": "TIME"},
+      {"text": "6:30", "type": "TIME"}
+    ],
+    "expectedReminders": ["Carry a mat and water."],
+    "phenomena": ["activity", "location", "time_normalization"]
+  },
+  {
+    "id": "refine_eval_025",
+    "rawTranscript": "code review for vega release with omar tomorrow four pm check migration scripts",
+    "expectedCleanedText": "Code review for the Vega release with Omar tomorrow at 4 PM. Check the migration scripts.",
+    "expectedEntities": [
+      {"text": "Vega release", "type": "PROJECT"},
+      {"text": "Omar", "type": "PERSON"},
+      {"text": "tomorrow", "type": "TIME"},
+      {"text": "4 PM", "type": "TIME"}
+    ],
+    "expectedReminders": ["Check the migration scripts."],
+    "phenomena": ["software_project", "relative_date", "reminder"]
+  },
+  {
+    "id": "refine_eval_026",
+    "rawTranscript": "book hotel in goa near baga beach twelfth to fifteenth december for anniversary trip",
+    "expectedCleanedText": "Book a hotel in Goa near Baga Beach from 12 to 15 December for the anniversary trip.",
+    "expectedEntities": [
+      {"text": "Goa", "type": "PLACE"},
+      {"text": "Baga Beach", "type": "PLACE"},
+      {"text": "12 to 15 December", "type": "DURATION"}
+    ],
+    "expectedReminders": ["Book a hotel in Goa near Baga Beach from 12 to 15 December for the anniversary trip."],
+    "phenomena": ["travel", "date_range", "reminder"]
+  },
+  {
+    "id": "refine_eval_027",
+    "rawTranscript": "charity donation five thousand to akshay patra by end of month save receipt",
+    "expectedCleanedText": "Charity donation of 5,000 to Akshaya Patra by the end of the month. Save the receipt.",
+    "expectedEntities": [
+      {"text": "5,000", "type": "NUMBER"},
+      {"text": "Akshaya Patra", "type": "OTHER"},
+      {"text": "end of the month", "type": "TIME"}
+    ],
+    "expectedReminders": ["Save the receipt."],
+    "phenomena": ["organization_name", "amount_normalization", "deadline"]
+  },
+  {
+    "id": "refine_eval_028",
+    "rawTranscript": "car insurance policy expires eighteenth september call h d f c ergo before that",
+    "expectedCleanedText": "The car insurance policy expires on 18 September. Call HDFC Ergo before that.",
+    "expectedEntities": [
+      {"text": "18 September", "type": "TIME"},
+      {"text": "HDFC Ergo", "type": "OTHER"}
+    ],
+    "expectedReminders": ["Call HDFC Ergo before that."],
+    "phenomena": ["acronym", "date_normalization", "reminder"]
+  },
+  {
+    "id": "refine_eval_029",
+    "rawTranscript": "bring camera tripod and charger to lonavala trip friday don't forget memory card",
+    "expectedCleanedText": "Bring the camera, tripod, and charger to the Lonavala trip on Friday. Do not forget the memory card.",
+    "expectedEntities": [
+      {"text": "Lonavala", "type": "PLACE"},
+      {"text": "Friday", "type": "TIME"}
+    ],
+    "expectedReminders": ["Bring the camera, tripod, and charger to the Lonavala trip on Friday.", "Do not forget the memory card."],
+    "phenomena": ["packing_list", "travel", "reminder"]
+  },
+  {
+    "id": "refine_eval_030",
+    "rawTranscript": "on boarding call with client north star capital monday two pm send agenda before lunch",
+    "expectedCleanedText": "Onboarding call with client Northstar Capital on Monday at 2 PM. Send the agenda before lunch.",
+    "expectedEntities": [
+      {"text": "Northstar Capital", "type": "OTHER"},
+      {"text": "Monday", "type": "TIME"},
+      {"text": "2 PM", "type": "TIME"},
+      {"text": "before lunch", "type": "TIME"}
+    ],
+    "expectedReminders": ["Send the agenda before lunch."],
+    "phenomena": ["business", "company_name", "time"]
+  },
+  {
+    "id": "refine_eval_031",
+    "rawTranscript": "schedule vaccination for bruno at pet care clinic sunday morning rabies booster",
+    "expectedCleanedText": "Schedule vaccination for Bruno at PetCare Clinic on Sunday morning for the rabies booster.",
+    "expectedEntities": [
+      {"text": "Bruno", "type": "PERSON"},
+      {"text": "PetCare Clinic", "type": "PLACE"},
+      {"text": "Sunday morning", "type": "TIME"},
+      {"text": "rabies booster", "type": "OTHER"}
+    ],
+    "expectedReminders": ["Schedule vaccination for Bruno at PetCare Clinic on Sunday morning for the rabies booster."],
+    "phenomena": ["pet_name", "medical", "reminder"]
+  },
+  {
+    "id": "refine_eval_032",
+    "rawTranscript": "dad cardiology follow up at apollo hospital on ninth may five pm carry echo report",
+    "expectedCleanedText": "Dad's cardiology follow-up is at Apollo Hospital on 9 May at 5 PM. Carry the echo report.",
+    "expectedEntities": [
+      {"text": "Dad", "type": "PERSON"},
+      {"text": "Apollo Hospital", "type": "PLACE"},
+      {"text": "9 May", "type": "TIME"},
+      {"text": "5 PM", "type": "TIME"}
+    ],
+    "expectedReminders": ["Carry the echo report."],
+    "phenomena": ["family", "medical", "date_time"]
+  },
+  {
+    "id": "refine_eval_033",
+    "rawTranscript": "water plants balcony every other day starting tomorrow especially basil and money plant",
+    "expectedCleanedText": "Water the balcony plants every other day starting tomorrow, especially the basil and money plant.",
+    "expectedEntities": [
+      {"text": "every other day", "type": "TIME"},
+      {"text": "tomorrow", "type": "TIME"},
+      {"text": "basil", "type": "OTHER"},
+      {"text": "money plant", "type": "OTHER"}
+    ],
+    "expectedReminders": ["Water the balcony plants every other day starting tomorrow, especially the basil and money plant."],
+    "phenomena": ["recurring_reminder", "household", "plants"]
+  },
+  {
+    "id": "refine_eval_034",
+    "rawTranscript": "send invoice ten forty seven to acme corp by e o d copy finance team",
+    "expectedCleanedText": "Send invoice 1047 to Acme Corp by EOD. Copy the finance team.",
+    "expectedEntities": [
+      {"text": "1047", "type": "NUMBER"},
+      {"text": "Acme Corp", "type": "OTHER"},
+      {"text": "EOD", "type": "TIME"}
+    ],
+    "expectedReminders": ["Send invoice 1047 to Acme Corp by EOD.", "Copy the finance team."],
+    "phenomena": ["invoice", "acronym", "number_normalization"]
+  },
+  {
+    "id": "refine_eval_035",
+    "rawTranscript": "reserve table for four at the bombay canteen friday nine pm ask for quiet corner",
+    "expectedCleanedText": "Reserve a table for 4 at The Bombay Canteen on Friday at 9 PM. Ask for a quiet corner.",
+    "expectedEntities": [
+      {"text": "4", "type": "NUMBER"},
+      {"text": "The Bombay Canteen", "type": "PLACE"},
+      {"text": "Friday", "type": "TIME"},
+      {"text": "9 PM", "type": "TIME"}
+    ],
+    "expectedReminders": ["Reserve a table for 4 at The Bombay Canteen on Friday at 9 PM.", "Ask for a quiet corner."],
+    "phenomena": ["reservation", "number_normalization", "reminder"]
+  },
+  {
+    "id": "refine_eval_036",
+    "rawTranscript": "collect dry cleaning from sparkle laundry after work blue blazer and white shirts",
+    "expectedCleanedText": "Collect the dry cleaning from Sparkle Laundry after work: the blue blazer and white shirts.",
+    "expectedEntities": [
+      {"text": "Sparkle Laundry", "type": "PLACE"},
+      {"text": "after work", "type": "TIME"},
+      {"text": "blue blazer", "type": "OTHER"},
+      {"text": "white shirts", "type": "OTHER"}
+    ],
+    "expectedReminders": ["Collect the dry cleaning from Sparkle Laundry after work: the blue blazer and white shirts."],
+    "phenomena": ["errand", "location", "item_list"]
+  },
+  {
+    "id": "refine_eval_037",
+    "rawTranscript": "talk to reena about moving chennai trip to october third because conference shifted",
+    "expectedCleanedText": "Talk to Rina about moving the Chennai trip to October 3 because the conference shifted.",
+    "expectedEntities": [
+      {"text": "Rina", "type": "PERSON"},
+      {"text": "Chennai", "type": "PLACE"},
+      {"text": "October 3", "type": "TIME"}
+    ],
+    "expectedReminders": ["Talk to Rina about moving the Chennai trip to October 3 because the conference shifted."],
+    "phenomena": ["name_variant", "travel", "date_normalization"]
+  },
+  {
+    "id": "refine_eval_038",
+    "rawTranscript": "transfer twenty five thousand to savings account on salary day keep five thousand for rent advance",
+    "expectedCleanedText": "Transfer 25,000 to the savings account on salary day. Keep 5,000 for the rent advance.",
+    "expectedEntities": [
+      {"text": "25,000", "type": "NUMBER"},
+      {"text": "salary day", "type": "TIME"},
+      {"text": "5,000", "type": "NUMBER"}
+    ],
+    "expectedReminders": ["Transfer 25,000 to the savings account on salary day.", "Keep 5,000 for the rent advance."],
+    "phenomena": ["finance", "amount_normalization", "reminder"]
+  },
+  {
+    "id": "refine_eval_039",
+    "rawTranscript": "dentist called reschedule cleaning to wednesday one pm confirm with receptionist anita",
+    "expectedCleanedText": "The dentist called to reschedule the cleaning to Wednesday at 1 PM. Confirm with receptionist Anita.",
+    "expectedEntities": [
+      {"text": "Wednesday", "type": "TIME"},
+      {"text": "1 PM", "type": "TIME"},
+      {"text": "Anita", "type": "PERSON"}
+    ],
+    "expectedReminders": ["Confirm with receptionist Anita."],
+    "phenomena": ["reschedule", "time", "person"]
+  },
+  {
+    "id": "refine_eval_040",
+    "rawTranscript": "meet product team in conference room narmada at ten thirty discuss onboarding funnel",
+    "expectedCleanedText": "Meet the product team in conference room Narmada at 10:30 to discuss the onboarding funnel.",
+    "expectedEntities": [
+      {"text": "conference room Narmada", "type": "PLACE"},
+      {"text": "10:30", "type": "TIME"},
+      {"text": "onboarding funnel", "type": "PROJECT"}
+    ],
+    "expectedReminders": [],
+    "phenomena": ["work_meeting", "room_name", "time_normalization"]
+  },
+  {
+    "id": "refine_eval_041",
+    "rawTranscript": "school fee forty eight thousand seven fifty due before fifth june for aarav set up transfer",
+    "expectedCleanedText": "Aarav's school fee of 48,750 is due before 5 June. Set up the transfer.",
+    "expectedEntities": [
+      {"text": "Aarav", "type": "PERSON"},
+      {"text": "48,750", "type": "NUMBER"},
+      {"text": "5 June", "type": "TIME"}
+    ],
+    "expectedReminders": ["Set up the transfer."],
+    "phenomena": ["finance", "date_normalization", "amount_normalization"]
+  },
+  {
+    "id": "refine_eval_042",
+    "rawTranscript": "train to pune six ten saturday coach c one seat thirty four platform maybe five",
+    "expectedCleanedText": "Train to Pune is at 6:10 on Saturday, Coach C1, Seat 34. The platform may be 5.",
+    "expectedEntities": [
+      {"text": "Pune", "type": "PLACE"},
+      {"text": "6:10", "type": "TIME"},
+      {"text": "Saturday", "type": "TIME"},
+      {"text": "Coach C1", "type": "PLACE"},
+      {"text": "Seat 34", "type": "NUMBER"},
+      {"text": "5", "type": "NUMBER"}
+    ],
+    "expectedReminders": [],
+    "phenomena": ["travel", "number_normalization", "uncertainty"]
+  },
+  {
+    "id": "refine_eval_043",
+    "rawTranscript": "remember to carry id badge and vaccine certificate for infosys visit tuesday morning",
+    "expectedCleanedText": "Remember to carry the ID badge and vaccine certificate for the Infosys visit on Tuesday morning.",
+    "expectedEntities": [
+      {"text": "ID badge", "type": "OTHER"},
+      {"text": "vaccine certificate", "type": "OTHER"},
+      {"text": "Infosys", "type": "PLACE"},
+      {"text": "Tuesday morning", "type": "TIME"}
+    ],
+    "expectedReminders": ["Remember to carry the ID badge and vaccine certificate for the Infosys visit on Tuesday morning."],
+    "phenomena": ["reminder", "work_visit", "acronym"]
+  },
+  {
+    "id": "refine_eval_044",
+    "rawTranscript": "brainstorm podcast name with leela for mindful minute project tonight after dinner",
+    "expectedCleanedText": "Brainstorm podcast names with Leela for the Mindful Minute project tonight after dinner.",
+    "expectedEntities": [
+      {"text": "Leela", "type": "PERSON"},
+      {"text": "Mindful Minute", "type": "PROJECT"},
+      {"text": "tonight after dinner", "type": "TIME"}
+    ],
+    "expectedReminders": ["Brainstorm podcast names with Leela for the Mindful Minute project tonight after dinner."],
+    "phenomena": ["creative_project", "relative_time", "person"]
+  },
+  {
+    "id": "refine_eval_045",
+    "rawTranscript": "therapy appointment with doctor singh online at eight pm don't schedule calls after seven thirty",
+    "expectedCleanedText": "Therapy appointment with Dr. Singh online at 8 PM. Do not schedule calls after 7:30.",
+    "expectedEntities": [
+      {"text": "Dr. Singh", "type": "PERSON"},
+      {"text": "8 PM", "type": "TIME"},
+      {"text": "after 7:30", "type": "TIME"}
+    ],
+    "expectedReminders": ["Do not schedule calls after 7:30."],
+    "phenomena": ["sensitive_health", "time", "reminder"]
+  },
+  {
+    "id": "refine_eval_046",
+    "rawTranscript": "replace water filter cartridge model w f two hundred by month end order from amazon",
+    "expectedCleanedText": "Replace the water filter cartridge, model WF-200, by month end. Order it from Amazon.",
+    "expectedEntities": [
+      {"text": "WF-200", "type": "OTHER"},
+      {"text": "month end", "type": "TIME"},
+      {"text": "Amazon", "type": "PLACE"}
+    ],
+    "expectedReminders": ["Replace the water filter cartridge, model WF-200, by month end.", "Order it from Amazon."],
+    "phenomena": ["model_number", "deadline", "shopping"]
+  },
+  {
+    "id": "refine_eval_047",
+    "rawTranscript": "call airtel support ticket nine eight three two one about internet outage tonight",
+    "expectedCleanedText": "Call Airtel support about ticket 98321 for the internet outage tonight.",
+    "expectedEntities": [
+      {"text": "Airtel", "type": "OTHER"},
+      {"text": "98321", "type": "NUMBER"},
+      {"text": "tonight", "type": "TIME"}
+    ],
+    "expectedReminders": ["Call Airtel support about ticket 98321 for the internet outage tonight."],
+    "phenomena": ["support_ticket", "digit_sequence", "reminder"]
+  },
+  {
+    "id": "refine_eval_048",
+    "rawTranscript": "lunch with elena at la piazza near central park on wednesday at one fifteen",
+    "expectedCleanedText": "Lunch with Elena at La Piazza near Central Park on Wednesday at 1:15.",
+    "expectedEntities": [
+      {"text": "Elena", "type": "PERSON"},
+      {"text": "La Piazza", "type": "PLACE"},
+      {"text": "Central Park", "type": "PLACE"},
+      {"text": "Wednesday", "type": "TIME"},
+      {"text": "1:15", "type": "TIME"}
+    ],
+    "expectedReminders": [],
+    "phenomena": ["restaurant", "multiple_locations", "time_normalization"]
+  },
+  {
+    "id": "refine_eval_049",
+    "rawTranscript": "renew notion subscription ninety six dollars before first november use company card",
+    "expectedCleanedText": "Renew the Notion subscription for 96 dollars before 1 November. Use the company card.",
+    "expectedEntities": [
+      {"text": "Notion", "type": "OTHER"},
+      {"text": "96 dollars", "type": "NUMBER"},
+      {"text": "1 November", "type": "TIME"}
+    ],
+    "expectedReminders": ["Renew the Notion subscription for 96 dollars before 1 November.", "Use the company card."],
+    "phenomena": ["subscription", "amount", "deadline"]
+  },
+  {
+    "id": "refine_eval_050",
+    "rawTranscript": "mom asked buy saffron cardamom and basmati rice from crawford market tomorrow morning",
+    "expectedCleanedText": "Mom asked me to buy saffron, cardamom, and basmati rice from Crawford Market tomorrow morning.",
+    "expectedEntities": [
+      {"text": "Mom", "type": "PERSON"},
+      {"text": "Crawford Market", "type": "PLACE"},
+      {"text": "tomorrow morning", "type": "TIME"}
+    ],
+    "expectedReminders": ["Mom asked me to buy saffron, cardamom, and basmati rice from Crawford Market tomorrow morning."],
+    "phenomena": ["shopping_list", "family", "relative_time"]
+  }
+]

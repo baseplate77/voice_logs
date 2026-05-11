@@ -36,6 +36,9 @@ class MemoryItems extends Table {
   /// Unix milliseconds when row was updated.
   IntColumn get updatedAt => integer()();
 
+  /// Deterministic importance score in [0, 1]. Used for promotion and ranking.
+  RealColumn get importanceScore => real().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

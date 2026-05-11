@@ -42,11 +42,9 @@ void main() {
       {
         "memories": [
           {
-            "type": "preference",
+            "type": "fact",
             "text": "User prefers local apps.",
-            "evidence": "I prefer local apps",
-            "confidence": 0.9,
-            "sensitivity": "normal"
+            "evidence": "I prefer local apps"
           }
         ]
       }
@@ -60,10 +58,27 @@ void main() {
       final candidates =
           (res as Ok<List<MemoryCandidate>, MemoryExtractionError>).value;
       expect(candidates.single.text, 'User prefers local apps.');
+      expect(candidates.single.type, MemoryType.identity);
+      expect(candidates.single.confidence, 0.8);
+      expect(candidates.single.sensitivity, MemorySensitivity.normal);
       expect(runner.prompts, hasLength(2));
-      expect(runner.unloads, 1);
+      expect(runner.unloads, 0);
     },
   );
+
+  test('MemoryExtractor returns empty list when retry is invalid', () async {
+    final runner = _FakeRunner(['not json', 'still not json']);
+    final extractor = MemoryExtractor(runner: runner);
+
+    final res = await extractor.extract('I prefer local apps.');
+
+    expect(res, isA<Ok<List<MemoryCandidate>, MemoryExtractionError>>());
+    final candidates =
+        (res as Ok<List<MemoryCandidate>, MemoryExtractionError>).value;
+    expect(candidates, isEmpty);
+    expect(runner.prompts, hasLength(2));
+    expect(runner.unloads, 0);
+  });
 
   test('parseMemoryCandidates keeps only validated durable memories', () {
     const cleaned =
@@ -72,32 +87,19 @@ void main() {
       {
         "memories": [
           {
-            "type": "project",
+            "type": "plan",
             "text": "User is building VoxSynth.",
-            "evidence": "I am building VoxSynth",
-            "confidence": 0.91,
-            "sensitivity": "normal"
+            "evidence": "I am building VoxSynth"
           },
           {
-            "type": "identity",
-            "text": "Low confidence item.",
-            "evidence": "I am building VoxSynth",
-            "confidence": 0.2,
-            "sensitivity": "normal"
-          },
-          {
-            "type": "identity",
+            "type": "fact",
             "text": "Invented item.",
-            "evidence": "not in transcript",
-            "confidence": 0.95,
-            "sensitivity": "normal"
+            "evidence": "not in transcript"
           },
           {
-            "type": "event_context",
+            "type": "fact",
             "text": "User had a cardiology appointment today.",
-            "evidence": "My cardiology appointment was today",
-            "confidence": 0.8,
-            "sensitivity": "sensitive"
+            "evidence": "My cardiology appointment was today"
           }
         ]
       }
@@ -110,7 +112,66 @@ void main() {
       candidates.first.startChar,
       cleaned.indexOf('I am building VoxSynth'),
     );
+    expect(candidates.first.confidence, 0.8);
+    // "cardiology" triggers keyword-based sensitivity detection.
     expect(candidates.last.sensitivity, MemorySensitivity.sensitive);
+  });
+
+  test('parseMemoryCandidates accepts common structured-output variants', () {
+    const cleaned = 'I prefer local apps.';
+    final candidates = parseMemoryCandidates('''
+      {
+        "arguments": {
+          "candidates": [
+            {
+              "category": "preference",
+              "memory": "User prefers local apps.",
+              "quote": "I prefer local apps",
+              "score": "0.88"
+            }
+          ]
+        }
+      }
+      ''', cleanedText: cleaned);
+
+    expect(candidates, isNotNull);
+    expect(candidates, hasLength(1));
+    // "preference" still accepted — original wire types are backwards-compatible.
+    expect(candidates!.single.type, MemoryType.preference);
+    expect(candidates.single.sensitivity, MemorySensitivity.normal);
+    // Model-provided score is honored when present.
+    expect(candidates.single.confidence, 0.88);
+  });
+
+  test('parseMemoryCandidates maps simplified type aliases', () {
+    const cleaned = 'I run every morning. My friend Priya helps test.';
+    final candidates = parseMemoryCandidates('''
+      {
+        "memories": [
+          {"type":"habit","text":"User runs every morning.","evidence":"I run every morning"},
+          {"type":"person","text":"Priya helps test.","evidence":"My friend Priya helps test"}
+        ]
+      }
+      ''', cleanedText: cleaned);
+
+    expect(candidates, isNotNull);
+    expect(candidates, hasLength(2));
+    expect(candidates![0].type, MemoryType.routine);
+    expect(candidates[1].type, MemoryType.relationship);
+  });
+
+  test('parseMemoryCandidates detects sensitivity from keywords', () {
+    const cleaned = 'My therapist suggested I journal more often.';
+    final candidates = parseMemoryCandidates('''
+      {
+        "memories": [
+          {"type":"habit","text":"User journals on therapist advice.","evidence":"My therapist suggested I journal more often"}
+        ]
+      }
+      ''', cleanedText: cleaned);
+
+    expect(candidates, isNotNull);
+    expect(candidates!.single.sensitivity, MemorySensitivity.sensitive);
   });
 
   test('parseMemoryCandidates returns null for malformed top-level JSON', () {

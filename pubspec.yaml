@@ -31,13 +31,12 @@ dependencies:
   # ship with the plugin; model files in assets/models/parakeet/.
   sherpa_onnx: ^1.12.39
 
-  # Embeddings — e5-small-v2 QInt8 ONNX via flutter_onnxruntime. Bundled
-  # model at assets/models/e5/model_opt2_QInt8.onnx (~33 MB).
+  # Embeddings — e5-small-v2 QInt8 ONNX via flutter_onnxruntime.
   flutter_onnxruntime: ^1.7.0
 
-  # LLM — flutter_gemma (MediaPipe / LiteRT-LM). GPU-accelerated on
-  # mobile; explicit user choice over fllama's CPU path. Gemma 4 E2B IT
-  # .litertlm bundle at assets/models/gemma/gemma-4-E2B-it.litertlm.
+  # LLM — Gemma 3 1B IT Q4 LiteRT-LM. The bundle lives in
+  # assets/models/gemma/Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm
+  # and is installed from asset into flutter_gemma's private model store.
   flutter_gemma: ^0.13.6
 
   # Storage — Drift (SQLite + FTS5) with SQLCipher via SQLite3MultipleCiphers.
@@ -116,11 +115,13 @@ flutter:
     - assets/models/zipformer_en_20m/joiner-epoch-99-avg-1.int8.onnx
     - assets/models/zipformer_en_20m/tokens.txt
     - assets/models/e5/
-    # Gemma 4 E2B lives in assets — HF CDN downloads at 2.58 GB hit
-    # WorkManager's task-timeout ceiling on device. File is git-ignored
-    # (see .gitignore); each dev runs scripts/fetch_models.sh to populate.
-    - assets/models/gemma/gemma-4-E2B-it.litertlm
+    # Gemma 3 1B IT Q4 LiteRT-LM production LLM. The directory is git-ignored
+    # and populated manually after accepting the gated HF license.
+    - assets/models/gemma/
     # Bench fixture — 60s 16 kHz mono PCM16 used by integration_test/stt_bench.dart.
     # Resampled from test_data/record_out.wav. Bundled so integration_test can
     # read it via rootBundle.
     - test_data/record_out_16k.wav
+    # Refine eval fixture (50 cases) used by the in-app refine eval debug
+    # screen and the fixture-shape test in test/features/refine/.
+    - assets/eval/refine_eval_cases.json

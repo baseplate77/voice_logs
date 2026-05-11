@@ -150,6 +150,67 @@ Memory is a local-only, evidence-backed layer of durable user context extracted 
 
 ---
 
+## Phase 7 — SmolLM2 360M swap (superseded)
+
+Replaced `flutter_gemma` + Gemma 4 E2B with SmolLM2-360M-Instruct (INT8 ONNX) on the existing `flutter_onnxruntime` runtime. Superseded by Phase 7.1 after Gemma 3 1B eval showed stronger transcript cleanup than SmolLM2/Gemma 270M for the current refine fixture.
+
+**Files added:**
+- `lib/features/refine/smollm/chat_template.dart` — ChatML wrapper.
+- `lib/features/refine/smollm/bpe_tokenizer.dart` — byte-level BPE loaded from `tokenizer.json`.
+- `lib/features/refine/smollm/kv_cache.dart` — past-K/V buffers + ORT input/output naming.
+- `lib/features/refine/smollm/sampler.dart` — greedy + temperature/top-p sampler.
+- `lib/features/refine/smollm/smollm_runner.dart` — `LlmRunner` impl with prefill + decode loop, serial `_opChain`, idle TTL.
+- `assets/models/smollm/` — `model.onnx` (INT8) + `tokenizer.json` + `tokenizer_config.json` (fetched via `scripts/fetch_models.sh`).
+
+**Files modified:**
+- `lib/core/model_bootstrap.dart` — `ensureSmolLm()` next to `ensureE5()`.
+- `lib/features/refine/prompt_templates.dart` — return user-message body; runner wraps in ChatML.
+- `lib/features/refine/gemma_refiner.dart` → `refine_runner.dart` — drops chunking, refines whole transcript in one call.
+- `lib/features/memory/memory_prompt_templates.dart` — same shape, slightly tighter for the smaller model.
+- `lib/core/worker/providers.dart` — provider points at `SmolLmRunner`.
+- `pubspec.yaml` — drops `flutter_gemma`, adds `assets/models/smollm/`.
+- `CLAUDE.md` — stack section reflects SmolLM2; context window 8192; Gemma references removed.
+
+**Files removed:**
+- `lib/features/refine/gemma_runner.dart`
+- `lib/features/refine/llm_chunker.dart`
+- `assets/models/gemma/` (and the `fetch_models.sh` entry).
+- `test/features/refine/gemma_runner_test.dart`, `llm_chunker_test.dart`, `gemma_refiner_test.dart` (replaced).
+
+**Acceptance:**
+- `flutter test` and `make analyze` clean.
+- BPE tokenizer encode/decode parity with HF reference fixtures.
+- ChatML template + sampler unit-tested.
+- Refine + memory pipelines run end-to-end against a fake `LlmRunner` in tests.
+- JSON parse-success rate ≥ 95% on the existing fixture set in real-device smoke (manual). Below that → Phase 7.1 = grammar-constrained sampling.
+- `test/no_network_test.dart` still passes.
+
+**Risks called out before start:**
+- Small-model JSON drift on the structured `record_log` schema. Mitigated with prompt + parse-and-retry; escape hatch is grammar-constrained sampling.
+- ONNX I/O contract names (`past_key_values.{i}.{key,value}` / `present.{i}.{key,value}`) are conventional but export-specific; verify on first device load.
+
+---
+
+## Phase 7.1 — Gemma 3 1B replacement (in progress)
+
+Replace SmolLM2 as the production LLM with Gemma 3 1B IT Q4 LiteRT-LM via `flutter_gemma`.
+
+**Rationale from local eval:**
+- Gemma 3 270M: fast but repeated/hallucinated outputs; entity F1 0.0%, text F1 29.4% on 50 cases.
+- Gemma 3 1B: materially stronger cleanup; text F1 71.5%, parseable with 45/50 first-pass on the legacy one-shot eval, but weak entity recall.
+
+**Implementation shape:**
+- `lib/features/refine/gemma3/gemma3_runner.dart` implements `LlmRunner` and serializes all `flutter_gemma` calls.
+- Production refine becomes two-stage: cleanup-only JSON, then exact-substring entity extraction from cleaned text.
+- `pubspec.yaml` ships `assets/models/gemma/` and moves `flutter_gemma` back to production dependencies.
+
+**Acceptance:**
+- `make analyze` and `flutter test` clean.
+- Real-device/simulator smoke: record/refine with Gemma 3 1B model present.
+- Re-run refine eval through the production two-stage path; decide whether entity prompt tuning is needed before shipping.
+
+---
+
 ## Working rules
 
 - One phase per session. Stop at the end of a phase to demo what works.

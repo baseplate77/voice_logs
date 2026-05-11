@@ -69,7 +69,7 @@ final class RecordingActive extends RecordingState {
   final int elapsedMs;
 }
 
-/// Recording stopped; completed audio file is being transcribed and saved.
+/// Recording stopped; audio is being finalized, transcribed, and saved.
 final class RecordingTranscribing extends RecordingState {
   const RecordingTranscribing();
 }
@@ -150,9 +150,10 @@ class RecordingController extends StateNotifier<RecordingState> {
   /// Stop, transcribe the completed file, persist the raw transcript,
   /// enqueue background refine, and return to idle.
   Future<void> stop() async {
+    if (state is! RecordingActive) return;
     _elapsedTimer?.cancel();
     _elapsedTimer = null;
-    if (state is! RecordingActive) return;
+    state = const RecordingTranscribing();
 
     final logId = _activeLogId;
     final totalWatch = Stopwatch()..start();

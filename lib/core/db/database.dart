@@ -11,6 +11,8 @@ import 'schema/memory_entity_links.dart';
 import 'schema/memory_items.dart';
 import 'schema/memory_sources.dart';
 import 'schema/processing_jobs.dart';
+import 'schema/summaries.dart';
+import 'schema/transcript_segments.dart';
 import 'schema/voice_log_segments.dart';
 import 'schema/voice_logs.dart';
 
@@ -26,6 +28,9 @@ part 'database.g.dart';
 ///   similarity-based mention linking.
 /// - v4 (Phase 5.5): + MemoryItems, MemorySources, MemoryEntityLinks,
 ///   MemoryEmbeddings + memory FTS5 virtual table.
+/// - v5 (Phase 9.0): + TranscriptSegments, Summaries (+ summaries_fts).
+///   VoiceLogSegments gains enrichment columns. MemoryItems gains
+///   importance_score.
 ///
 /// `sqlite-vec` virtual table for native vector search is deferred; the
 /// Phase 3 retriever does brute-force cosine over the blob column in
@@ -42,13 +47,15 @@ part 'database.g.dart';
     MemorySources,
     MemoryEntityLinks,
     MemoryEmbeddings,
+    TranscriptSegments,
+    Summaries,
   ],
 )
 class VoxSynthDatabase extends _$VoxSynthDatabase {
   VoxSynthDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -61,6 +68,10 @@ class VoxSynthDatabase extends _$VoxSynthDatabase {
       await customStatement(
         'CREATE VIRTUAL TABLE memory_items_fts '
         'USING fts5(text, normalized_text)',
+      );
+      await customStatement(
+        'CREATE VIRTUAL TABLE summaries_fts '
+        'USING fts5(title, body)',
       );
     },
     onUpgrade: (m, from, to) async {
@@ -78,6 +89,19 @@ class VoxSynthDatabase extends _$VoxSynthDatabase {
         await customStatement(
           'CREATE VIRTUAL TABLE IF NOT EXISTS memory_items_fts '
           'USING fts5(text, normalized_text)',
+        );
+      }
+      if (from < 5) {
+        await m.createTable(transcriptSegments);
+        await m.createTable(summaries);
+        await m.addColumn(voiceLogSegments, voiceLogSegments.shortSummary);
+        await m.addColumn(voiceLogSegments, voiceLogSegments.topicsJson);
+        await m.addColumn(voiceLogSegments, voiceLogSegments.entitiesJson);
+        await m.addColumn(voiceLogSegments, voiceLogSegments.importanceScore);
+        await m.addColumn(memoryItems, memoryItems.importanceScore);
+        await customStatement(
+          'CREATE VIRTUAL TABLE IF NOT EXISTS summaries_fts '
+          'USING fts5(title, body)',
         );
       }
     },

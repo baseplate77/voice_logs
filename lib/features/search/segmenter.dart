@@ -27,8 +27,8 @@ class TextSegment {
 List<TextSegment> segmentByWords(
   String logId,
   String text, {
-  int targetWords = 200,
-  int overlapWords = 20,
+  int targetWords = 150,
+  int overlapWords = 15,
 }) {
   final trimmed = text.trim();
   if (trimmed.isEmpty) {

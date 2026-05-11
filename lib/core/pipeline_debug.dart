@@ -26,6 +26,12 @@ enum PipelineDebugStage {
   /// Local memory extraction.
   memory('memory', 'Memory'),
 
+  /// Segment enrichment: importance scoring, topics, short summaries.
+  enrich('enrich', 'Enrich'),
+
+  /// Per-log summary generation.
+  summarize('summarize', 'Summarize'),
+
   /// Worker-level dispatch or recovery.
   worker('worker', 'Worker');
 
@@ -44,6 +50,8 @@ enum PipelineDebugStage {
       JobType.embed => PipelineDebugStage.embed,
       JobType.canonicalize => PipelineDebugStage.canonicalize,
       JobType.memory => PipelineDebugStage.memory,
+      JobType.enrich => PipelineDebugStage.enrich,
+      JobType.summarize => PipelineDebugStage.summarize,
     };
   }
 }

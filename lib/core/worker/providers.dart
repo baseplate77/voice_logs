@@ -6,9 +6,9 @@ import '../../features/memory/memory_extractor.dart';
 import '../../features/memory/memory_job.dart';
 import '../../features/refine/canonicalize_job.dart';
 import '../../features/refine/embed_job.dart';
-import '../../features/refine/gemma_refiner.dart';
-import '../../features/refine/gemma_runner.dart';
+import '../../features/refine/gemma3/gemma3_runner.dart';
 import '../../features/refine/llm_runner.dart';
+import '../../features/refine/refine_runner.dart';
 import '../../features/search/canonicalizer.dart';
 import '../../features/search/embedder.dart';
 import '../../features/search/segment_repository.dart';
@@ -27,22 +27,24 @@ final jobQueueProvider = Provider<JobQueue>((ref) {
   return JobQueue(db);
 });
 
-/// Long-lived Gemma runner — one model per session.
+/// Long-lived Gemma 3 1B runner. The runner serializes all LLM calls and
+/// releases the native model after an idle TTL when refine/memory jobs go quiet.
 final llmRunnerProvider = Provider<LlmRunner>((ref) {
-  final runner = GemmaRunner();
+  final runner = Gemma3Runner();
   ref.onDispose(runner.dispose);
   return runner;
 });
 
-/// Handler for the `refine` job type. Phase 4 uses [GemmaRefiner]; load
-/// failures bubble back into the worker's retry/fail path so absence of
-/// the model asset doesn't crash the app.
+/// Handler for the `refine` job type. Gemma 3 1B runs cleanup first and then
+/// extracts exact-substring entities from the cleaned transcript. Load failures
+/// bubble into the worker retry/fail path so absence of the gated model asset
+/// does not crash the app.
 final refineHandlerProvider = Provider<JobHandler>((ref) {
   final repo = ref.watch(voiceLogRepositoryProvider);
   final mentions = ref.watch(entityMentionRepositoryProvider);
   final queue = ref.watch(jobQueueProvider);
   final runner = ref.watch(llmRunnerProvider);
-  return GemmaRefiner(
+  return LlmRefiner(
     runner: runner,
     voiceLogs: repo,
     mentions: mentions,
