@@ -123,8 +123,13 @@ class RecordingController extends StateNotifier<RecordingState>
   DateTime? _startedAt;
   String? _activeLogId;
   int _lastActivityUpdateSec = -1;
+  int _lastActivityUpdateMs = -1;
   bool _liveActivityStarted = false;
   bool _liveActivityStartInFlight = false;
+  bool _startInFlight = false;
+  String? _pendingRefineLogId;
+  DateTime? _pendingRefineStartedAt;
+  int _pendingRefineElapsedSec = 0;
   static const _defaultWaveformLevels = <double>[
     0.24,
     0.48,
@@ -141,10 +146,23 @@ class RecordingController extends StateNotifier<RecordingState>
   ];
   List<double> _waveformLevels = [..._defaultWaveformLevels];
 
-  /// Begin a new recording session. No-op if already recording.
+  /// Begin a new recording session. No-op if already recording or starting.
   Future<void> start() async {
+    if (_startInFlight) return;
     if (state is! RecordingIdle && state is! RecordingFailed) return;
+    _startInFlight = true;
 
+    try {
+      await _startImpl();
+    } finally {
+      _startInFlight = false;
+    }
+  }
+
+  Future<void> _startImpl() async {
+    _pendingRefineLogId = null;
+    _pendingRefineStartedAt = null;
+    _pendingRefineElapsedSec = 0;
     await AudioSessionBridge.ensureConfigured();
 
     final audioDir = Directory(p.join(_docsPath, 'audio'));
@@ -175,6 +193,7 @@ class RecordingController extends StateNotifier<RecordingState>
     );
     _startedAt = DateTime.now();
     _lastActivityUpdateSec = 0;
+    _lastActivityUpdateMs = -1;
     _startWaveformMonitor();
     state = const RecordingActive(0);
     unawaited(_tryStartLiveActivity());
@@ -188,6 +207,9 @@ class RecordingController extends StateNotifier<RecordingState>
       final elapsedSec = elapsed ~/ 1000;
       if (elapsedSec > _lastActivityUpdateSec) {
         _lastActivityUpdateSec = elapsedSec;
+      }
+      if (_lastActivityUpdateMs < 0 || elapsed - _lastActivityUpdateMs >= 500) {
+        _lastActivityUpdateMs = elapsed;
         if (_liveActivityStarted) {
           unawaited(
             LiveActivityBridge.updateActivity(
@@ -379,13 +401,33 @@ class RecordingController extends StateNotifier<RecordingState>
       elapsedMs: totalWatch.elapsedMilliseconds,
       message: 'Stop-to-home path completed',
     );
+    final completedStartedAt = _startedAt;
+    final completedElapsedSec = math.max(
+      _lastActivityUpdateSec,
+      recorded.durationMs ~/ 1000,
+    );
+    final shouldShowCompletedActivity = _liveActivityStarted;
     _startedAt = null;
     _activeLogId = null;
     _lastActivityUpdateSec = -1;
+    _lastActivityUpdateMs = -1;
     _liveActivityStarted = false;
     _liveActivityStartInFlight = false;
     state = const RecordingIdle();
-    unawaited(LiveActivityBridge.endActivity());
+    if (shouldShowCompletedActivity) {
+      _pendingRefineLogId = insertedLogId;
+      _pendingRefineStartedAt = completedStartedAt;
+      _pendingRefineElapsedSec = completedElapsedSec;
+      unawaited(
+        LiveActivityBridge.refineActivity(
+          elapsedSeconds: completedElapsedSec,
+          startedAt: completedStartedAt,
+          waveformLevels: _waveformLevels,
+        ),
+      );
+    } else {
+      unawaited(LiveActivityBridge.endActivity());
+    }
     unawaited(IntentBridge.reportRecordingState(isRecording: false));
     unawaited(BackgroundTaskBridge.end(bgTaskId));
   }
@@ -408,8 +450,38 @@ class RecordingController extends StateNotifier<RecordingState>
     _pcmSub = null;
   }
 
+  /// Called by the worker when a refine job for [logId] finishes successfully.
+  /// Transitions the Live Activity from "refining" to "completed" only if the
+  /// completed job matches the recording we last stopped. Mismatched logIds
+  /// (e.g. the user already started a new recording) are ignored.
+  void onRefineSucceeded(String logId) {
+    if (_pendingRefineLogId != logId) return;
+    final startedAt = _pendingRefineStartedAt;
+    final elapsedSec = _pendingRefineElapsedSec;
+    _pendingRefineLogId = null;
+    _pendingRefineStartedAt = null;
+    _pendingRefineElapsedSec = 0;
+    unawaited(
+      LiveActivityBridge.completeActivity(
+        elapsedSeconds: elapsedSec,
+        startedAt: startedAt,
+        waveformLevels: _waveformLevels,
+      ),
+    );
+  }
+
+  /// Called by the worker when a refine job for [logId] permanently fails.
+  /// Dismisses the refining Live Activity rather than promoting to "ready".
+  void onRefineFailed(String logId) {
+    if (_pendingRefineLogId != logId) return;
+    _pendingRefineLogId = null;
+    _pendingRefineStartedAt = null;
+    _pendingRefineElapsedSec = 0;
+    unawaited(LiveActivityBridge.endActivity());
+  }
+
   double _normalizedPcmLevel(Uint8List chunk) {
-    if (chunk.lengthInBytes < 2) return 0.08;
+    if (chunk.lengthInBytes < 2) return 0.12;
     final data = ByteData.sublistView(chunk);
     final sampleCount = chunk.lengthInBytes ~/ 2;
     var sumSquares = 0.0;
@@ -418,7 +490,8 @@ class RecordingController extends StateNotifier<RecordingState>
       sumSquares += sample * sample;
     }
     final rms = math.sqrt(sumSquares / sampleCount);
-    return (rms * 5).clamp(0.08, 1.0).toDouble();
+    final shaped = math.pow(rms, 0.6).toDouble() * 2.4;
+    return shaped.clamp(0.12, 1.0).toDouble();
   }
 
   @override

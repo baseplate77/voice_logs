@@ -47,13 +47,13 @@ class _VoxSynthAppState extends ConsumerState<VoxSynthApp>
       final state = ref.read(recordingControllerProvider);
       switch (action) {
         case 'start':
-          if (state is RecordingActive) {
-            controller.stop();
-          } else {
+          if (state is RecordingIdle || state is RecordingFailed) {
             controller.start();
           }
         case 'stop':
-          controller.stop();
+          if (state is RecordingActive) {
+            controller.stop();
+          }
       }
     });
   }

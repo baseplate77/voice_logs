@@ -21,12 +21,14 @@ class Worker {
     Duration pollInterval = const Duration(milliseconds: 500),
     int maxAttemptsPerJob = 3,
     FutureOr<void> Function(QueuedJob job, String reason)? onPermanentFailure,
+    FutureOr<void> Function(QueuedJob job)? onJobSucceeded,
     PipelineDebugSink debugSink = const NoopPipelineDebugSink(),
   }) : _queue = queue,
        _handlers = handlers,
        _pollInterval = pollInterval,
        _maxAttempts = maxAttemptsPerJob,
        _onPermanentFailure = onPermanentFailure,
+       _onJobSucceeded = onJobSucceeded,
        _debug = debugSink;
 
   final JobQueue _queue;
@@ -35,6 +37,7 @@ class Worker {
   final int _maxAttempts;
   final FutureOr<void> Function(QueuedJob job, String reason)?
   _onPermanentFailure;
+  final FutureOr<void> Function(QueuedJob job)? _onJobSucceeded;
   final PipelineDebugSink _debug;
   final _log = Logger('worker');
 
@@ -147,6 +150,7 @@ class Worker {
           elapsedMs: watch.elapsedMilliseconds,
           message: 'Completed ${job.jobType.wire} job',
         );
+        await _onJobSucceeded?.call(job);
       case JobFailedPermanently(:final reason):
         _log.w('Job ${job.id} permanently failed: $reason');
         _debug.record(

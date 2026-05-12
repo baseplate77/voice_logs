@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../features/memory/memory_extractor.dart';
 import '../../features/memory/memory_job.dart';
+import '../../features/record/recording_providers.dart';
 import '../../features/refine/canonicalize_job.dart';
 import '../../features/refine/embed_job.dart';
 import '../../features/refine/gemma3/gemma3_runner.dart';
@@ -132,11 +133,22 @@ final workerProvider = Provider<Worker>((ref) {
   final worker = Worker(
     queue: queue,
     handlers: handlers,
+    onJobSucceeded: (job) async {
+      if (job.jobType != JobType.refine) return;
+      ref
+          .read(recordingControllerProvider.notifier)
+          .onRefineSucceeded(job.logId);
+    },
     onPermanentFailure: (job, reason) async {
       await repo.markFailed(
         id: job.logId,
         errorMessage: '${job.jobType.wire} failed: $reason',
       );
+      if (job.jobType == JobType.refine) {
+        ref
+            .read(recordingControllerProvider.notifier)
+            .onRefineFailed(job.logId);
+      }
     },
     debugSink: ref.watch(pipelineDebugSinkProvider),
   );

@@ -174,6 +174,7 @@ import BackgroundTasks
     let state = VoxSynthAttributes.ContentState(
       elapsedSeconds: 0,
       startedAtMillis: Int64(now.timeIntervalSince1970 * 1000),
+      phase: "recording",
       isTranscribing: false,
       waveformLevels: []
     )
@@ -310,6 +311,10 @@ import BackgroundTasks
       startLiveActivity(call: call, result: result)
     case "updateActivity":
       updateLiveActivity(call: call, result: result)
+    case "refineActivity":
+      refineLiveActivity(call: call, result: result)
+    case "completeActivity":
+      completeLiveActivity(call: call, result: result)
     case "endActivity":
       endLiveActivity(result: result)
     default:
@@ -327,13 +332,15 @@ import BackgroundTasks
     let args = call.arguments as? [String: Any] ?? [:]
     let elapsed = args["elapsedSeconds"] as? Int ?? 0
     let startedAtMillis = parseInt64(args["startedAtMillis"])
+    let phase = parseActivityPhase(args["phase"], fallback: "recording")
     let waveform = parseWaveformLevels(args["waveformLevels"])
 
     let attributes = VoxSynthAttributes()
     let state = VoxSynthAttributes.ContentState(
       elapsedSeconds: elapsed,
       startedAtMillis: startedAtMillis,
-      isTranscribing: false,
+      phase: phase,
+      isTranscribing: phase == "transcribing",
       waveformLevels: waveform
     )
 
@@ -357,12 +364,14 @@ import BackgroundTasks
     let elapsed = args["elapsedSeconds"] as? Int ?? 0
     let startedAtMillis = parseInt64(args["startedAtMillis"])
     let transcribing = args["isTranscribing"] as? Bool ?? false
+    let phase = parseActivityPhase(args["phase"], fallback: transcribing ? "transcribing" : "recording")
     let waveform = parseWaveformLevels(args["waveformLevels"])
 
     let state = VoxSynthAttributes.ContentState(
       elapsedSeconds: elapsed,
       startedAtMillis: startedAtMillis,
-      isTranscribing: transcribing,
+      phase: phase,
+      isTranscribing: phase == "transcribing",
       waveformLevels: waveform
     )
     let content = ActivityContent(state: state, staleDate: nil)
@@ -375,11 +384,69 @@ import BackgroundTasks
     }
   }
 
+  @available(iOS 16.2, *)
+  private func refineLiveActivity(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let elapsed = args["elapsedSeconds"] as? Int ?? 0
+    let startedAtMillis = parseInt64(args["startedAtMillis"])
+    let waveform = parseWaveformLevels(args["waveformLevels"])
+
+    let state = VoxSynthAttributes.ContentState(
+      elapsedSeconds: elapsed,
+      startedAtMillis: startedAtMillis,
+      phase: "refining",
+      isTranscribing: false,
+      waveformLevels: waveform
+    )
+    let content = ActivityContent(state: state, staleDate: nil)
+
+    Task {
+      for activity in Activity<VoxSynthAttributes>.activities {
+        await activity.update(content)
+      }
+      result(true)
+    }
+  }
+
+  @available(iOS 16.2, *)
+  private func completeLiveActivity(call: FlutterMethodCall, result: @escaping FlutterResult) {
+    let args = call.arguments as? [String: Any] ?? [:]
+    let elapsed = args["elapsedSeconds"] as? Int ?? 0
+    let startedAtMillis = parseInt64(args["startedAtMillis"])
+    let waveform = parseWaveformLevels(args["waveformLevels"])
+    let state = VoxSynthAttributes.ContentState(
+      elapsedSeconds: elapsed,
+      startedAtMillis: startedAtMillis,
+      phase: "completed",
+      isTranscribing: false,
+      waveformLevels: waveform
+    )
+    let content = ActivityContent(state: state, staleDate: nil)
+    let dismissAt = Date(timeIntervalSinceNow: 18)
+
+    Task {
+      for activity in Activity<VoxSynthAttributes>.activities {
+        await activity.end(content, dismissalPolicy: .after(dismissAt))
+      }
+      result(true)
+    }
+  }
+
   private func parseInt64(_ raw: Any?) -> Int64 {
     if let value = raw as? Int64 { return value }
     if let value = raw as? Int { return Int64(value) }
     if let value = raw as? NSNumber { return value.int64Value }
     return 0
+  }
+
+  private func parseActivityPhase(_ raw: Any?, fallback: String) -> String {
+    guard let phase = raw as? String else { return fallback }
+    switch phase {
+    case "recording", "transcribing", "refining", "completed":
+      return phase
+    default:
+      return fallback
+    }
   }
 
   private func parseWaveformLevels(_ raw: Any?) -> [Double] {
