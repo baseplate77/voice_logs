@@ -5,7 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/background_task_bridge.dart';
 import 'core/intent_bridge.dart';
+import 'core/logger.dart';
+import 'core/vox_intent_action.dart';
 import 'core/worker/providers.dart';
+import 'features/detail/log_detail_screen.dart';
 import 'features/home/vox_home_screen.dart';
 import 'features/record/recording_providers.dart';
 
@@ -23,6 +26,8 @@ class VoxSynthApp extends ConsumerStatefulWidget {
 
 class _VoxSynthAppState extends ConsumerState<VoxSynthApp>
     with WidgetsBindingObserver {
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  final _log = Logger('app');
   StreamSubscription<String>? _intentSub;
   StreamSubscription<void>? _backgroundTaskSub;
   bool _completingBackgroundTask = false;
@@ -41,21 +46,59 @@ class _VoxSynthAppState extends ConsumerState<VoxSynthApp>
   }
 
   void _listenForIntents() {
+    _intentSub = IntentBridge.actions.listen(_handleIntentAction);
     IntentBridge.initialize();
-    _intentSub = IntentBridge.actions.listen((action) {
-      final controller = ref.read(recordingControllerProvider.notifier);
-      final state = ref.read(recordingControllerProvider);
-      switch (action) {
-        case 'start':
-          if (state is RecordingIdle || state is RecordingFailed) {
-            controller.start();
-          }
-        case 'stop':
-          if (state is RecordingActive) {
-            controller.stop();
-          }
-      }
-    });
+  }
+
+  void _handleIntentAction(String rawAction) {
+    final action = VoxIntentAction.parse(rawAction);
+    final state = ref.read(recordingControllerProvider);
+    _log.i('intent action="$rawAction" — current state=${state.runtimeType}');
+    if (action == null) {
+      _log.w('Ignoring unknown intent action: $rawAction');
+      return;
+    }
+
+    switch (action) {
+      case StartRecordingAction():
+        _showHome();
+        if (state is RecordingIdle || state is RecordingFailed) {
+          unawaited(ref.read(recordingControllerProvider.notifier).start());
+        }
+      case StopRecordingAction():
+        _showHome();
+        if (state is RecordingActive) {
+          unawaited(ref.read(recordingControllerProvider.notifier).stop());
+        }
+      case OpenVoiceLogAction(:final logId):
+        _openVoiceLog(logId);
+      case OpenAppAction():
+        break;
+    }
+  }
+
+  void _showHome() {
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _showHome();
+      });
+      return;
+    }
+    navigator.popUntil((route) => route.isFirst);
+  }
+
+  void _openVoiceLog(String logId) {
+    final navigator = _navigatorKey.currentState;
+    if (navigator == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _openVoiceLog(logId);
+      });
+      return;
+    }
+    navigator.push(
+      MaterialPageRoute<void>(builder: (_) => LogDetailScreen(logId: logId)),
+    );
   }
 
   void _listenForBackgroundProcessingTasks() {
@@ -97,6 +140,11 @@ class _VoxSynthAppState extends ConsumerState<VoxSynthApp>
       // on a warm resume it makes sure polling is active again.
       unawaited(ref.read(workerProvider).start());
       unawaited(_syncScheduledProcessingTask());
+      // Pick up any "start" action queued (or synthesised) by the iOS side
+      // — covers Control Widget presses that started a Live Activity in the
+      // widget extension process and never reached Flutter through the
+      // normal intent dispatch.
+      unawaited(IntentBridge.pollPendingActions());
       return;
     }
     // Release heavyweight model memory when app leaves foreground,
@@ -145,6 +193,7 @@ class _VoxSynthAppState extends ConsumerState<VoxSynthApp>
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: _navigatorKey,
       title: 'VoxSynth',
       theme: ThemeData(
         useMaterial3: true,

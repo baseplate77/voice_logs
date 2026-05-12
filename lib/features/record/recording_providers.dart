@@ -148,6 +148,9 @@ class RecordingController extends StateNotifier<RecordingState>
 
   /// Begin a new recording session. No-op if already recording or starting.
   Future<void> start() async {
+    _log.i(
+      'start() called — state=${state.runtimeType}, _startInFlight=$_startInFlight',
+    );
     if (_startInFlight) return;
     if (state is! RecordingIdle && state is! RecordingFailed) return;
     _startInFlight = true;
@@ -196,6 +199,7 @@ class RecordingController extends StateNotifier<RecordingState>
     _lastActivityUpdateMs = -1;
     _startWaveformMonitor();
     state = const RecordingActive(0);
+    _log.i('state transitioned to RecordingActive(0)');
     unawaited(_tryStartLiveActivity());
     unawaited(IntentBridge.reportRecordingState(isRecording: true));
     _elapsedTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
@@ -422,6 +426,7 @@ class RecordingController extends StateNotifier<RecordingState>
         LiveActivityBridge.refineActivity(
           elapsedSeconds: completedElapsedSec,
           startedAt: completedStartedAt,
+          logId: insertedLogId,
           waveformLevels: _waveformLevels,
         ),
       );
@@ -465,6 +470,7 @@ class RecordingController extends StateNotifier<RecordingState>
       LiveActivityBridge.completeActivity(
         elapsedSeconds: elapsedSec,
         startedAt: startedAt,
+        logId: logId,
         waveformLevels: _waveformLevels,
       ),
     );

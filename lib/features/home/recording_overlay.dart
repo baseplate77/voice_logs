@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/logger.dart';
 import '../record/recording_providers.dart';
+
+final _log = Logger('recording_overlay');
 
 /// Displays the current recording state: idle mic button, active timer with
 /// stop, transcribing spinner, or error with retry.
@@ -13,6 +16,7 @@ class RecordingOverlay extends ConsumerWidget {
     final state = ref.watch(recordingControllerProvider);
     final controller = ref.read(recordingControllerProvider.notifier);
     final theme = Theme.of(context);
+    _log.d('build state=${state.runtimeType}');
 
     return AnimatedSize(
       duration: const Duration(milliseconds: 300),

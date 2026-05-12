@@ -55,6 +55,7 @@ class LiveActivityBridge {
   static Future<void> refineActivity({
     required int elapsedSeconds,
     required DateTime? startedAt,
+    required String logId,
     List<double> waveformLevels = const [],
   }) async {
     if (!Platform.isIOS) return;
@@ -63,6 +64,7 @@ class LiveActivityBridge {
         'elapsedSeconds': elapsedSeconds,
         'startedAtMillis': startedAt?.millisecondsSinceEpoch ?? 0,
         'phase': 'refining',
+        'logId': logId,
         'waveformLevels': waveformLevels,
       });
     } on PlatformException catch (e) {
@@ -73,6 +75,7 @@ class LiveActivityBridge {
   static Future<void> completeActivity({
     required int elapsedSeconds,
     required DateTime? startedAt,
+    required String logId,
     List<double> waveformLevels = const [],
   }) async {
     if (!Platform.isIOS) return;
@@ -81,6 +84,7 @@ class LiveActivityBridge {
         'elapsedSeconds': elapsedSeconds,
         'startedAtMillis': startedAt?.millisecondsSinceEpoch ?? 0,
         'phase': 'completed',
+        'logId': logId,
         'waveformLevels': waveformLevels,
       });
     } on PlatformException catch (e) {

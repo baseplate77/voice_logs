@@ -9,10 +9,15 @@ struct StopRecordingIntent: AppIntent {
   static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
   func perform() async throws -> some IntentResult {
-    if let delegate = await UIApplication.shared.delegate as? AppDelegate {
-      await MainActor.run {
-        delegate.dispatchIntentAction("stop")
+    let dispatched = await MainActor.run { () -> Bool in
+      guard let delegate = UIApplication.shared.delegate as? AppDelegate else {
+        return false
       }
+      delegate.dispatchIntentAction("stop")
+      return true
+    }
+    if !dispatched {
+      PendingIntentStore.append("stop")
     }
     return .result()
   }

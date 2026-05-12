@@ -1,0 +1,16 @@
+source 'https://rubygems.org'
+
+# Pin CocoaPods + xcodeproj so they understand Xcode 16+ `objectVersion = 70`
+# in the .pbxproj. Homebrew's bundled cocoapods ships an older xcodeproj and
+# trips:
+#   "[Xcodeproj] Unable to find compatibility version string for object version `70`"
+# Use `bundle exec pod install` instead of plain `pod install`.
+#
+# Note: this Gemfile is paired with `.bundle/shims/kconv.rb`, an empty shim
+# that satisfies CFPropertyList 3.0.8's `require 'kconv'` (kconv was removed
+# from Ruby 3.4 stdlib and CFPropertyList 3.0.9+ requires Ruby <3.2, while
+# xcodeproj caps CFPropertyList <4.0 — leaving no resolvable version). Run
+# pod install via the wrapper script `scripts/pod-install.sh` or set
+# RUBYLIB=.bundle/shims yourself.
+gem 'cocoapods', '~> 1.16', '>= 1.16.2'
+gem 'xcodeproj', git: 'https://github.com/CocoaPods/Xcodeproj.git', branch: 'master'

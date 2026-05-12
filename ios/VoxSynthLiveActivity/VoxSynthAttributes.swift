@@ -8,5 +8,6 @@ struct VoxSynthAttributes: ActivityAttributes {
     var phase: String
     var isTranscribing: Bool
     var waveformLevels: [Double]
+    var logId: String? = nil
   }
 }

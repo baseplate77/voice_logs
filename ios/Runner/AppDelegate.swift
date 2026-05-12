@@ -27,6 +27,23 @@ import BackgroundTasks
     GeneratedPluginRegistrant.register(with: self)
     registerProcessingTask()
 
+    // Allow the Control Widget's `VoxSynthStartLiveActivityIntent` (compiled
+    // into the widget extension target, where AppDelegate / UIApplication
+    // are not reachable) to dispatch actions into the running main-app
+    // process via a plain Swift bridge.
+    if #available(iOS 18.0, *) {
+      IntentActionBridge.handler = { [weak self] action in
+        self?.dispatchIntentAction(action)
+      }
+    }
+
+    // Observe Live Activity lifecycle so the main app reacts immediately
+    // when the widget extension starts an LA — even if our app is in the
+    // foreground (in which case `applicationDidBecomeActive` won't fire).
+    if #available(iOS 16.2, *) {
+      observeLiveActivityUpdates()
+    }
+
     guard let controller = window?.rootViewController as? FlutterViewController else {
       return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
@@ -111,12 +128,29 @@ import BackgroundTasks
       switch call.method {
       case "getPendingActions":
         self.intentChannelReady = true
-        let actions = self.pendingIntentActions
+        var actions = self.pendingIntentActions + PendingIntentStore.consumeAll()
         self.pendingIntentActions.removeAll()
+        // Sync with any Live Activity that's already in "recording" phase
+        // but isn't reflected on the Flutter side. This catches the case
+        // where the Control Widget's intent ran in the widget extension
+        // process and never dispatched to the main app via the in-process
+        // bridge, so nothing got queued.
+        if #available(iOS 16.2, *), self.shouldDispatchStartFromActiveLiveActivity() {
+          if !actions.contains("start") {
+            actions.append("start")
+          }
+        }
         result(actions)
       case "getPendingAction":
         self.intentChannelReady = true
-        let action = self.pendingIntentActions.isEmpty ? nil : self.pendingIntentActions.removeFirst()
+        if self.pendingIntentActions.isEmpty {
+          self.pendingIntentActions.append(contentsOf: PendingIntentStore.consumeAll())
+        }
+        var action: String? = self.pendingIntentActions.isEmpty ? nil : self.pendingIntentActions.removeFirst()
+        if action == nil, #available(iOS 16.2, *),
+           self.shouldDispatchStartFromActiveLiveActivity() {
+          action = "start"
+        }
         result(action)
       case "reportRecordingState":
         self.isRecordingForNativeControls = call.arguments as? Bool ?? false
@@ -129,18 +163,87 @@ import BackgroundTasks
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // ── URL scheme handler (voxsynth://start, voxsynth://stop) ─────────
+  // ── Lifecycle: sync Flutter recording state with the Live Activity ──
+  override func applicationDidBecomeActive(_ application: UIApplication) {
+    super.applicationDidBecomeActive(application)
+    if #available(iOS 16.2, *) {
+      syncRecordingStateWithLiveActivity()
+    }
+  }
+
+  /// Cover the case where the Control Widget's `LiveActivityStartingIntent`
+  /// ran inside the widget extension process: the Live Activity is showing
+  /// "recording" but `IntentActionBridge.handler` was never fired in the
+  /// main app, so Flutter never received a "start" action and the home
+  /// screen stays Idle. Dispatching a "start" here brings the two back
+  /// into sync. Safe to call repeatedly — the Flutter listener treats
+  /// "start" idempotently when state is already Active.
+  @available(iOS 16.2, *)
+  private func syncRecordingStateWithLiveActivity() {
+    guard shouldDispatchStartFromActiveLiveActivity() else { return }
+    dispatchIntentAction("start")
+  }
+
+  /// True when a Live Activity is in the "recording" phase but the Flutter
+  /// recording controller hasn't reported itself as active. Means the LA was
+  /// started by something outside the main app's normal lifecycle (typically
+  /// the Control Widget's intent running in the widget extension process)
+  /// and Flutter still has to be told to begin actually capturing audio.
+  @available(iOS 16.2, *)
+  private func shouldDispatchStartFromActiveLiveActivity() -> Bool {
+    if isRecordingForNativeControls { return false }
+    return Activity<VoxSynthAttributes>.activities.contains { activity in
+      activity.content.state.phase == "recording"
+    }
+  }
+
+  /// Subscribes to ActivityKit's activity-list updates so we hear about
+  /// Live Activities started by the widget extension process immediately,
+  /// not only when the app next becomes active. Without this, a Control
+  /// Widget press while our app is in the foreground would leave the home
+  /// screen out of sync until the user backgrounds and re-foregrounds.
+  @available(iOS 16.2, *)
+  private func observeLiveActivityUpdates() {
+    Task { [weak self] in
+      for await _ in Activity<VoxSynthAttributes>.activityUpdates {
+        guard let self else { return }
+        await MainActor.run {
+          self.syncRecordingStateWithLiveActivity()
+        }
+      }
+    }
+  }
+
+  // ── URL scheme handler (voxsynth://start, voxsynth://stop, voxsynth://log/<id>) ─────────
   override func application(
     _ app: UIApplication,
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
     if url.scheme == "voxsynth" {
-      let action = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-      dispatchIntentAction(action)
+      dispatchIntentAction(actionFromURL(url))
       return true
     }
     return super.application(app, open: url, options: options)
+  }
+
+  private func actionFromURL(_ url: URL) -> String {
+    let host = url.host ?? ""
+    if host == "log" {
+      let logId = url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+      if !logId.isEmpty {
+        return "openLog:\(logId)"
+      }
+    }
+
+    if host == "open",
+       let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+       let logId = components.queryItems?.first(where: { $0.name == "logId" })?.value,
+       !logId.isEmpty {
+      return "openLog:\(logId)"
+    }
+
+    return host.isEmpty ? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/")) : host
   }
 
   // ── Intent dispatch (called by AppIntents) ─────────────────────────
@@ -165,10 +268,14 @@ import BackgroundTasks
     }
   }
 
-  /// Start a Live Activity directly from an AppIntent context (background).
+  /// Start a Live Activity from a non-intent context (URL handler, etc).
+  /// Bails out if the StartRecordingIntent already kicked one off — calling
+  /// Activity.request() from here while the app is in the background fails
+  /// with "Target is not foreground", and there's no point recreating it.
   private func startLiveActivityFromIntent() {
     guard #available(iOS 16.2, *) else { return }
     guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+    if !Activity<VoxSynthAttributes>.activities.isEmpty { return }
 
     let now = Date()
     let state = VoxSynthAttributes.ContentState(
@@ -180,15 +287,11 @@ import BackgroundTasks
     )
 
     Task {
-      // End any existing activity first.
-      for activity in Activity<VoxSynthAttributes>.activities {
-        await activity.end(nil, dismissalPolicy: .immediate)
-      }
       do {
         let content = ActivityContent(state: state, staleDate: nil)
         let _ = try Activity.request(attributes: VoxSynthAttributes(), content: content)
       } catch {
-        // Live Activity may fail from background on iOS < 17.2; non-fatal.
+        // Foreground-required guarantee — leave the existing native LA alone.
       }
     }
   }
@@ -345,9 +448,19 @@ import BackgroundTasks
     )
 
     Task {
-      for activity in Activity<VoxSynthAttributes>.activities {
-        await activity.end(nil, dismissalPolicy: .immediate)
+      // If a Live Activity is already showing (typically started by the
+      // AppIntent that brought us up — Activity.request() is allowed inside
+      // an intent's perform() but not from a background method-channel call),
+      // adopt it by updating instead of tearing it down and re-requesting.
+      // Activity.update() is allowed from background; Activity.request() is
+      // not — it would fail with "Target is not foreground".
+      if let existing = Activity<VoxSynthAttributes>.activities.first {
+        let content = ActivityContent(state: state, staleDate: nil)
+        await existing.update(content)
+        result(true)
+        return
       }
+
       do {
         let content = ActivityContent(state: state, staleDate: nil)
         let _ = try Activity.request(attributes: attributes, content: content)
@@ -390,13 +503,15 @@ import BackgroundTasks
     let elapsed = args["elapsedSeconds"] as? Int ?? 0
     let startedAtMillis = parseInt64(args["startedAtMillis"])
     let waveform = parseWaveformLevels(args["waveformLevels"])
+    let logId = args["logId"] as? String
 
     let state = VoxSynthAttributes.ContentState(
       elapsedSeconds: elapsed,
       startedAtMillis: startedAtMillis,
       phase: "refining",
       isTranscribing: false,
-      waveformLevels: waveform
+      waveformLevels: waveform,
+      logId: logId
     )
     let content = ActivityContent(state: state, staleDate: nil)
 
@@ -414,12 +529,14 @@ import BackgroundTasks
     let elapsed = args["elapsedSeconds"] as? Int ?? 0
     let startedAtMillis = parseInt64(args["startedAtMillis"])
     let waveform = parseWaveformLevels(args["waveformLevels"])
+    let logId = args["logId"] as? String
     let state = VoxSynthAttributes.ContentState(
       elapsedSeconds: elapsed,
       startedAtMillis: startedAtMillis,
       phase: "completed",
       isTranscribing: false,
-      waveformLevels: waveform
+      waveformLevels: waveform,
+      logId: logId
     )
     let content = ActivityContent(state: state, staleDate: nil)
     let dismissAt = Date(timeIntervalSinceNow: 18)

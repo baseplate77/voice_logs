@@ -17,6 +17,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A8DBB53B0A2E7C3676BEB554 /* VoxSynthAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDACC77665F4BC3402AC138 /* VoxSynthAttributes.swift */; };
+		A8DBB55C0A2E7C3676BEB565 /* VoxSynthLiveActivityIntents.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7BDACC88665F4BC3402AC149 /* VoxSynthLiveActivityIntents.swift */; };
 		B03166AD2FB1C10300940AB4 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B03166AC2FB1C10300940AB4 /* WidgetKit.framework */; };
 		B03166AF2FB1C10300940AB4 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B03166AE2FB1C10300940AB4 /* SwiftUI.framework */; };
 		B03166C02FB1C10400940AB4 /* VoxSynthLiveActivityExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = B03166AB2FB1C10300940AB4 /* VoxSynthLiveActivityExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -80,6 +81,7 @@
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		7BDACC77665F4BC3402AC138 /* VoxSynthAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoxSynthAttributes.swift; path = ../VoxSynthLiveActivity/VoxSynthAttributes.swift; sourceTree = "<group>"; };
+		7BDACC88665F4BC3402AC149 /* VoxSynthLiveActivityIntents.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = VoxSynthLiveActivityIntents.swift; path = ../VoxSynthLiveActivity/VoxSynthLiveActivityIntents.swift; sourceTree = "<group>"; };
 		8597D1A58029B96D76FCA063 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8ED840B31D75ECF150DAF8FE /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
@@ -220,6 +222,7 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				7BDACC77665F4BC3402AC138 /* VoxSynthAttributes.swift */,
+				7BDACC88665F4BC3402AC149 /* VoxSynthLiveActivityIntents.swift */,
 				D17A80E4D059C483DFEFAE90 /* Intents */,
 			);
 			path = Runner;
@@ -479,23 +482,6 @@
 			shellPath = /bin/sh;
 			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" build";
 		};
-		BB52D28077CA77129AF7C9D6 /* [CP] Copy Pods Resources */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			name = "[CP] Copy Pods Resources";
-			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
-			showEnvVarsInLog = 0;
-		};
 		A8F1E7D32B450A4100F1A001 /* Fix sqlite3mc Simulator Binary */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -511,6 +497,23 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PROJECT_DIR}/scripts/fix_sqlite3mc_simulator.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		BB52D28077CA77129AF7C9D6 /* [CP] Copy Pods Resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			name = "[CP] Copy Pods Resources";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Runner/Pods-Runner-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -531,6 +534,7 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				A8DBB53B0A2E7C3676BEB554 /* VoxSynthAttributes.swift in Sources */,
+				A8DBB55C0A2E7C3676BEB565 /* VoxSynthLiveActivityIntents.swift in Sources */,
 				44C2CF174EA06FA896144685 /* StartRecordingIntent.swift in Sources */,
 				D552DC4EAA80134F22CA79DB /* StopRecordingIntent.swift in Sources */,
 				E3F7B2275A93DC4F99691235 /* VoxSynthShortcuts.swift in Sources */,

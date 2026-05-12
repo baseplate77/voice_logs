@@ -1,4 +1,5 @@
 import ActivityKit
+import Foundation
 import SwiftUI
 import WidgetKit
 
@@ -7,6 +8,7 @@ struct VoxSynthLiveActivity: Widget {
   var body: some WidgetConfiguration {
     ActivityConfiguration(for: VoxSynthAttributes.self) { context in
       lockScreenView(context: context)
+        .widgetURL(appURL(for: context.state))
     } dynamicIsland: { context in
       DynamicIsland {
         DynamicIslandExpandedRegion(.leading) {
@@ -72,6 +74,7 @@ struct VoxSynthLiveActivity: Widget {
         minimalView(context.state)
       }
       .keylineTint(accentColor(context.state))
+      .widgetURL(appURL(for: context.state))
     }
   }
 
@@ -221,7 +224,7 @@ struct VoxSynthLiveActivity: Widget {
         checkmarkBadge(size: 72, iconSize: 38)
       }
 
-      Link(destination: URL(string: "voxsynth://open")!) {
+      Link(destination: appURL(for: state)) {
         Text("Open")
           .font(.system(size: 17, weight: .semibold, design: .rounded))
           .foregroundStyle(Color.white)
@@ -638,6 +641,16 @@ struct VoxSynthLiveActivity: Widget {
     let minutes = totalSeconds / 60
     let seconds = totalSeconds % 60
     return String(format: "%02d:%02d", minutes, seconds)
+  }
+
+  private func appURL(for state: VoxSynthAttributes.ContentState) -> URL {
+    if let logId = state.logId,
+       !logId.isEmpty,
+       let encoded = logId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed),
+       let url = URL(string: "voxsynth://log/\(encoded)") {
+      return url
+    }
+    return URL(string: "voxsynth://open")!
   }
 }
 

@@ -33,6 +33,18 @@ class IntentBridge {
     _flushPendingActions();
   }
 
+  /// Re-query iOS for any pending intent actions. Call on app resume so a
+  /// Control Widget press while the app was backgrounded — or one that ran
+  /// in the widget extension process and never reached the in-process
+  /// bridge — gets reconciled with Flutter's recording state on the next
+  /// foreground transition. iOS's `getPendingActions` synthesises a
+  /// "start" action when a Live Activity is in "recording" phase but
+  /// Flutter hasn't reported itself as recording, so this hook is the
+  /// Flutter-side trigger for the sync.
+  static Future<void> pollPendingActions() async {
+    await _flushPendingActions();
+  }
+
   static Future<void> _flushPendingActions() async {
     try {
       final pending =

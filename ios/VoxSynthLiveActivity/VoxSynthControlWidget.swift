@@ -10,7 +10,7 @@ struct VoxSynthRecordControl: ControlWidget {
         Label("Record", systemImage: "mic.fill")
       }
     }
-    .displayName("Start Voice Log")
-    .description("Start recording a voice log.")
+    .displayName("Toggle Voice Log")
+    .description("Open VoxSynth and start or stop the current voice log.")
   }
 }
