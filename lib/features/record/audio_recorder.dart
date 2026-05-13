@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/services.dart';
 import 'package:record/record.dart' as pkg;
 
 import '../../core/app_error.dart';
 import '../../core/result.dart';
+import 'wav_io.dart';
 
 /// Thin abstraction over a platform audio recorder so tests can mock it.
 ///
@@ -72,11 +72,12 @@ class RecordPackageAudioRecorder implements AudioRecorder {
 
   final pkg.AudioRecorder _recorder;
   final _pcmController = StreamController<Uint8List>.broadcast();
-  final _pcmBytes = BytesBuilder(copy: false);
 
   StreamSubscription<Uint8List>? _streamSub;
+  IOSink? _wavSink;
   DateTime? _startedAt;
   String? _activePath;
+  int _pcmByteCount = 0;
   static bool? _isSimulator;
 
   @override
@@ -109,7 +110,14 @@ class RecordPackageAudioRecorder implements AudioRecorder {
       return const Err(PermissionDenied());
     }
     try {
-      _pcmBytes.clear();
+      _pcmByteCount = 0;
+      final file = File(destinationPath);
+      file.parent.createSync(recursive: true);
+      _wavSink = file.openWrite();
+      _wavSink!.add(
+        pcm16WavHeader(pcmDataBytes: 0, sampleRate: 16000, channels: 1),
+      );
+
       final stream = await _recorder.startStream(
         const pkg.RecordConfig(
           encoder: pkg.AudioEncoder.pcm16bits,
@@ -120,7 +128,8 @@ class RecordPackageAudioRecorder implements AudioRecorder {
         ),
       );
       _streamSub = stream.listen((chunk) {
-        _pcmBytes.add(chunk);
+        _pcmByteCount += chunk.lengthInBytes;
+        _wavSink?.add(chunk);
         if (!_pcmController.isClosed) {
           _pcmController.add(Uint8List.fromList(chunk));
         }
@@ -129,6 +138,16 @@ class RecordPackageAudioRecorder implements AudioRecorder {
       _startedAt = DateTime.now();
       return const Ok(null);
     } on Object catch (e, s) {
+      await _streamSub?.cancel();
+      _streamSub = null;
+      await _wavSink?.close();
+      _wavSink = null;
+      _pcmByteCount = 0;
+      try {
+        File(destinationPath).deleteSync();
+      } on Object {
+        // Best-effort cleanup of a partial recording file.
+      }
       return Err(
         RecorderPlatformError(
           message: 'Failed to start recording: $e',
@@ -152,14 +171,27 @@ class RecordPackageAudioRecorder implements AudioRecorder {
       _streamSub = null;
 
       final duration = DateTime.now().difference(startedAt).inMilliseconds;
-      final pcm = _pcmBytes.takeBytes();
-      await _writePcm16Wav(path, pcm, sampleRate: 16000, channels: 1);
+      await _wavSink?.flush();
+      await _wavSink?.close();
+      _wavSink = null;
+      await patchPcm16WavHeader(
+        path,
+        pcmDataBytes: _pcmByteCount,
+        sampleRate: 16000,
+        channels: 1,
+      );
       _activePath = null;
       _startedAt = null;
+      _pcmByteCount = 0;
       return Ok(RecordedClip(audioPath: path, durationMs: duration));
     } on Object catch (e, s) {
+      await _streamSub?.cancel();
+      _streamSub = null;
+      await _wavSink?.close();
+      _wavSink = null;
       _activePath = null;
       _startedAt = null;
+      _pcmByteCount = 0;
       return Err(
         RecorderPlatformError(
           message: 'Failed to stop recording: $e',
@@ -173,46 +205,8 @@ class RecordPackageAudioRecorder implements AudioRecorder {
   @override
   Future<void> dispose() async {
     await _streamSub?.cancel();
+    await _wavSink?.close();
     await _pcmController.close();
     await _recorder.dispose();
   }
-}
-
-Future<void> _writePcm16Wav(
-  String path,
-  Uint8List pcm, {
-  required int sampleRate,
-  required int channels,
-}) async {
-  final byteRate = sampleRate * channels * 2;
-  final blockAlign = channels * 2;
-  final totalSize = 36 + pcm.length;
-  final header = ByteData(44);
-
-  void writeAscii(int offset, String value) {
-    for (var i = 0; i < value.length; i++) {
-      header.setUint8(offset + i, value.codeUnitAt(i));
-    }
-  }
-
-  writeAscii(0, 'RIFF');
-  header.setUint32(4, totalSize, Endian.little);
-  writeAscii(8, 'WAVE');
-  writeAscii(12, 'fmt ');
-  header.setUint32(16, 16, Endian.little);
-  header.setUint16(20, 1, Endian.little);
-  header.setUint16(22, channels, Endian.little);
-  header.setUint32(24, sampleRate, Endian.little);
-  header.setUint32(28, byteRate, Endian.little);
-  header.setUint16(32, blockAlign, Endian.little);
-  header.setUint16(34, 16, Endian.little);
-  writeAscii(36, 'data');
-  header.setUint32(40, pcm.length, Endian.little);
-
-  final file = File(path);
-  file.parent.createSync(recursive: true);
-  final sink = file.openWrite();
-  sink.add(header.buffer.asUint8List());
-  sink.add(pcm);
-  await sink.close();
 }

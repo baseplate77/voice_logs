@@ -7,6 +7,7 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import '../../core/logger.dart';
 import '../../core/result.dart';
 import 'speech_recognizer.dart';
+import 'wav_io.dart' as wav;
 
 /// Paths to the small English streaming Zipformer model artifacts.
 ///
@@ -135,7 +136,7 @@ class ZipformerStreamingRunner implements StreamingSpeechRecognizer {
     }
     try {
       stream.acceptWaveform(
-        samples: pcm16BytesToFloat32(chunk),
+        samples: wav.pcm16BytesToFloat32(chunk),
         sampleRate: sampleRate,
       );
       _decodeReady(recognizer, stream);
@@ -199,13 +200,16 @@ class ZipformerStreamingRunner implements StreamingSpeechRecognizer {
       return Err(AsrRuntimeError(message: 'WAV file not found: $wavPath'));
     }
     try {
-      final wave = sherpa.readWave(wavPath);
+      final info = await wav.readPcm16WavInfo(wavPath);
       final stream = recognizer.createStream();
       try {
-        stream.acceptWaveform(
-          samples: wave.samples,
-          sampleRate: wave.sampleRate,
-        );
+        await for (final samples in wav.readPcm16WavFloatChunks(
+          wavPath,
+          samplesPerChunk: _samplesPerTranscriptionChunk,
+        )) {
+          stream.acceptWaveform(samples: samples, sampleRate: info.sampleRate);
+          _decodeReady(recognizer, stream);
+        }
         stream.inputFinished();
         _decodeReady(recognizer, stream);
         return Ok(recognizer.getResult(stream).text.trim());
@@ -232,6 +236,8 @@ class ZipformerStreamingRunner implements StreamingSpeechRecognizer {
     }
   }
 
+  static const _samplesPerTranscriptionChunk = 16000 * 30;
+
   @override
   Future<void> dispose() async {
     _activeStream?.free();
@@ -244,11 +250,5 @@ class ZipformerStreamingRunner implements StreamingSpeechRecognizer {
 /// Convert little-endian signed PCM16 bytes to normalized float samples.
 @visibleForTesting
 Float32List pcm16BytesToFloat32(Uint8List bytes) {
-  final sampleCount = bytes.length ~/ 2;
-  final out = Float32List(sampleCount);
-  final data = ByteData.sublistView(bytes);
-  for (var i = 0; i < sampleCount; i++) {
-    out[i] = data.getInt16(i * 2, Endian.little) / 32768.0;
-  }
-  return out;
+  return wav.pcm16BytesToFloat32(bytes);
 }

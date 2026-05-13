@@ -19,8 +19,11 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
     this.assetPath = _defaultAssetPath,
     this.maxTokens = 1024,
     this.idleTtl = const Duration(minutes: 5),
+    this.staleNativeRecoveryDelay = const Duration(seconds: 2),
     PreferredBackend? preferredBackend,
-  }) : _preferredBackend = preferredBackend;
+    PlatformService? platformService,
+  }) : _preferredBackend = preferredBackend,
+       _platformService = platformService ?? PlatformService();
 
   static const _defaultAssetPath =
       'models/gemma/Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm';
@@ -36,7 +39,11 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
   /// Time to keep the native model loaded after the last generation.
   final Duration idleTtl;
 
+  /// Delay after cancelling an orphaned native generation before retrying.
+  final Duration staleNativeRecoveryDelay;
+
   final PreferredBackend? _preferredBackend;
+  final PlatformService _platformService;
   final _log = Logger('gemma3');
 
   InferenceModel? _model;
@@ -66,6 +73,7 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
   Future<Result<void, LlmError>> _doLoad() async {
     try {
       await FlutterGemma.initialize();
+      await _resetNativeRuntime('before first load');
 
       _log.i('Installing/activating Gemma 3 1B asset $assetPath');
       final installation = await FlutterGemma.installModel(
@@ -174,72 +182,89 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
     required StreamController<Result<String, LlmError>> controller,
   }) async {
     try {
-      final loaded = await _loadUnlocked();
-      switch (loaded) {
-        case Ok():
-          break;
-        case Err(:final error):
-          controller.add(Err(error));
-          await controller.close();
-          return;
-      }
-
-      final model = _model;
-      if (model == null) {
-        controller.add(
-          const Err(
-            LlmRuntimeError(
-              message: 'Gemma 3 1B model not available after load()',
-            ),
-          ),
-        );
-        await controller.close();
-        return;
-      }
-
-      InferenceModelSession? session;
-      final watch = Stopwatch()..start();
-      var responseChars = 0;
-      try {
-        session = await model.createSession(
+      var recoveredBusyNativeGeneration = false;
+      while (true) {
+        final attempt = await _generateStreamAttempt(
+          prompt,
           temperature: temperature,
-          topP: 0.95,
+          controller: controller,
         );
-        await session.addQueryChunk(Message.text(text: prompt, isUser: true));
-        await for (final chunk in session.getResponseAsync()) {
-          responseChars += chunk.length;
-          controller.add(Ok(chunk));
+        switch (attempt) {
+          case _GemmaAttemptSucceeded():
+            return;
+          case _GemmaAttemptBusy(:final cause, :final stack):
+            if (recoveredBusyNativeGeneration) {
+              controller.add(Err(_runtimeError(cause, stack)));
+              return;
+            }
+            recoveredBusyNativeGeneration = true;
+            _log.w(
+              'Gemma native generation already in progress; '
+              'cancelling stale session and retrying once',
+              error: cause,
+              stack: stack,
+            );
+            await _resetNativeRuntime('native generation busy');
+            if (staleNativeRecoveryDelay > Duration.zero) {
+              await Future<void>.delayed(staleNativeRecoveryDelay);
+            }
+          case _GemmaAttemptFailed(:final error):
+            controller.add(Err(error));
+            return;
         }
-        _log.i(
-          'Gemma stream done in ${watch.elapsedMilliseconds} ms; '
-          'promptChars=${prompt.length} responseChars=$responseChars',
-        );
-        _armIdleTimer();
-      } on Object catch (e, s) {
-        controller.add(
-          Err(
-            LlmRuntimeError(
-              message: 'Gemma 3 1B generation failed: $e',
-              cause: e,
-              stack: s,
-            ),
-          ),
-        );
-      } finally {
-        await session?.close();
-        await controller.close();
       }
     } on Object catch (e, s) {
-      controller.add(
-        Err(
-          LlmRuntimeError(
-            message: 'Gemma 3 1B generation failed: $e',
-            cause: e,
-            stack: s,
-          ),
-        ),
-      );
+      controller.add(Err(_runtimeError(e, s)));
+    } finally {
       await controller.close();
+    }
+  }
+
+  Future<_GemmaAttemptResult> _generateStreamAttempt(
+    String prompt, {
+    required double temperature,
+    required StreamController<Result<String, LlmError>> controller,
+  }) async {
+    final loaded = await _loadUnlocked();
+    switch (loaded) {
+      case Ok():
+        break;
+      case Err(:final error):
+        return _GemmaAttemptFailed(error);
+    }
+
+    final model = _model;
+    if (model == null) {
+      return const _GemmaAttemptFailed(
+        LlmRuntimeError(message: 'Gemma 3 1B model not available after load()'),
+      );
+    }
+
+    InferenceModelSession? session;
+    final watch = Stopwatch()..start();
+    var responseChars = 0;
+    try {
+      session = await model.createSession(temperature: temperature, topP: 0.95);
+      await session.addQueryChunk(Message.text(text: prompt, isUser: true));
+      await for (final chunk in session.getResponseAsync()) {
+        responseChars += chunk.length;
+        if (!controller.isClosed) controller.add(Ok(chunk));
+      }
+      _log.i(
+        'Gemma stream done in ${watch.elapsedMilliseconds} ms; '
+        'promptChars=${prompt.length} responseChars=$responseChars',
+      );
+      _armIdleTimer();
+      return const _GemmaAttemptSucceeded();
+    } on Object catch (e, s) {
+      if (_isNativeGenerationBusy(e)) return _GemmaAttemptBusy(e, s);
+      return _GemmaAttemptFailed(_runtimeError(e, s));
+    } finally {
+      try {
+        await session?.close();
+      } on Object catch (e, s) {
+        _log.w('Gemma session close failed', error: e, stack: s);
+      }
     }
   }
 
@@ -286,6 +311,69 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
     });
   }
 
+  Future<void> _resetNativeRuntime(String reason) async {
+    _idleTimer?.cancel();
+    _idleTimer = null;
+    _log.i('Resetting Gemma native runtime: $reason');
+
+    final dartModel = _model ?? FlutterGemmaPlugin.instance.initializedModel;
+    _model = null;
+
+    await _bestEffort('stop native generation', () async {
+      final session = dartModel?.session;
+      if (session != null) await session.stopGeneration();
+      await _platformService.stopGeneration();
+    });
+    await _bestEffort('close native session', () async {
+      final session = dartModel?.session;
+      if (session != null) await session.close();
+      await _platformService.closeSession();
+    });
+    await _bestEffort('close native model', () async {
+      if (dartModel != null) {
+        await dartModel.close();
+      } else {
+        await _platformService.closeModel();
+      }
+    });
+  }
+
+  Future<void> _bestEffort(String label, Future<void> Function() op) async {
+    try {
+      await op();
+    } on Object catch (e, s) {
+      if (_isExpectedCleanupMiss(e)) return;
+      _log.w('Gemma cleanup step failed: $label', error: e, stack: s);
+    }
+  }
+
+  bool _isExpectedCleanupMiss(Object error) {
+    final text = error.toString();
+    return text.contains('Session not created') ||
+        text.contains('Inference model is not created') ||
+        text.contains('Inference model not created') ||
+        text.contains('Model is closed');
+  }
+
+  LlmRuntimeError _runtimeError(Object error, StackTrace stack) {
+    return LlmRuntimeError(
+      message: 'Gemma 3 1B generation failed: $error',
+      cause: error,
+      stack: stack,
+    );
+  }
+
+  bool _isNativeGenerationBusy(Object error) {
+    if (error is PlatformException && error.code == 'ERROR') {
+      final message = error.message ?? '';
+      return message.contains('Response generation is already in progress') ||
+          message.contains('request in progress');
+    }
+    final text = error.toString();
+    return text.contains('Response generation is already in progress') ||
+        text.contains('request in progress');
+  }
+
   Future<PreferredBackend> _defaultBackend() async {
     if (!Platform.isIOS) return PreferredBackend.gpu;
     try {
@@ -298,4 +386,25 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
           : PreferredBackend.gpu;
     }
   }
+}
+
+sealed class _GemmaAttemptResult {
+  const _GemmaAttemptResult();
+}
+
+final class _GemmaAttemptSucceeded extends _GemmaAttemptResult {
+  const _GemmaAttemptSucceeded();
+}
+
+final class _GemmaAttemptBusy extends _GemmaAttemptResult {
+  const _GemmaAttemptBusy(this.cause, this.stack);
+
+  final Object cause;
+  final StackTrace stack;
+}
+
+final class _GemmaAttemptFailed extends _GemmaAttemptResult {
+  const _GemmaAttemptFailed(this.error);
+
+  final LlmError error;
 }

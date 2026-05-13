@@ -20,6 +20,8 @@ class Worker {
     required Map<JobType, JobHandler> handlers,
     Duration pollInterval = const Duration(milliseconds: 500),
     int maxAttemptsPerJob = 3,
+    Duration Function(QueuedJob job, int nextAttempt, String reason)?
+    retryDelay,
     FutureOr<void> Function(QueuedJob job, String reason)? onPermanentFailure,
     FutureOr<void> Function(QueuedJob job)? onJobSucceeded,
     PipelineDebugSink debugSink = const NoopPipelineDebugSink(),
@@ -27,6 +29,7 @@ class Worker {
        _handlers = handlers,
        _pollInterval = pollInterval,
        _maxAttempts = maxAttemptsPerJob,
+       _retryDelay = retryDelay ?? defaultRetryDelay,
        _onPermanentFailure = onPermanentFailure,
        _onJobSucceeded = onJobSucceeded,
        _debug = debugSink;
@@ -35,6 +38,8 @@ class Worker {
   final Map<JobType, JobHandler> _handlers;
   final Duration _pollInterval;
   final int _maxAttempts;
+  final Duration Function(QueuedJob job, int nextAttempt, String reason)
+  _retryDelay;
   final FutureOr<void> Function(QueuedJob job, String reason)?
   _onPermanentFailure;
   final FutureOr<void> Function(QueuedJob job)? _onJobSucceeded;
@@ -43,6 +48,16 @@ class Worker {
 
   Timer? _timer;
   bool _busy = false;
+
+  /// Exponential-ish delay before a transient retry is re-queued.
+  static Duration defaultRetryDelay(QueuedJob _, int nextAttempt, String _) {
+    final seconds = switch (nextAttempt) {
+      1 => 5,
+      2 => 15,
+      _ => 30,
+    };
+    return Duration(seconds: seconds);
+  }
 
   /// Begin polling. Idempotent.
   Future<void> start() async {
@@ -179,6 +194,19 @@ class Worker {
           );
           await _failPermanently(job, exhausted);
         } else {
+          final delay = _retryDelay(job, attempt, reason);
+          if (delay > Duration.zero) {
+            _debug.record(
+              logId: job.logId,
+              jobId: job.id,
+              stage: stage,
+              event: 'retry_wait',
+              attempt: attempt,
+              elapsedMs: watch.elapsedMilliseconds,
+              message: 'Retrying after ${delay.inMilliseconds} ms: $reason',
+            );
+            await Future<void>.delayed(delay);
+          }
           await _queue.retryLater(job.id, currentAttempts: job.attempts);
           _debug.record(
             logId: job.logId,

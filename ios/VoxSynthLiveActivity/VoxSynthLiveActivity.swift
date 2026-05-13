@@ -93,15 +93,15 @@ struct VoxSynthLiveActivity: Widget {
   }
 
   private func recordingLockScreenView(_ state: VoxSynthAttributes.ContentState) -> some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: 12) {
       headerView(color: Palette.recording)
 
-      HStack(alignment: .center, spacing: 16) {
+      HStack(alignment: .center, spacing: 14) {
         VStack(alignment: .leading, spacing: 10) {
           stateRow(label: "Recording", color: Palette.recording)
 
           timerText(state)
-            .font(.system(size: 54, weight: .bold, design: .rounded))
+            .font(.system(size: 48, weight: .bold, design: .rounded))
             .monospacedDigit()
             .foregroundStyle(Palette.textPrimary)
             .lineLimit(1)
@@ -127,10 +127,10 @@ struct VoxSynthLiveActivity: Widget {
   }
 
   private func transcribingLockScreenView(_ state: VoxSynthAttributes.ContentState) -> some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: 12) {
       headerView(color: Palette.transcribing)
 
-      HStack(alignment: .center, spacing: 16) {
+      HStack(alignment: .center, spacing: 14) {
         VStack(alignment: .leading, spacing: 10) {
           stateRow(label: "Transcribing", color: Palette.transcribing)
 
@@ -141,7 +141,7 @@ struct VoxSynthLiveActivity: Widget {
             .minimumScaleFactor(0.8)
 
           timerText(state)
-            .font(.system(size: 54, weight: .bold, design: .rounded))
+            .font(.system(size: 48, weight: .bold, design: .rounded))
             .monospacedDigit()
             .foregroundStyle(Palette.textPrimary)
             .lineLimit(1)
@@ -150,7 +150,7 @@ struct VoxSynthLiveActivity: Widget {
 
         Spacer(minLength: 10)
 
-        progressRing(size: 58, lineWidth: 6, color: Palette.transcribing)
+        progressRing(size: 52, lineWidth: 5.5, color: Palette.transcribing)
       }
 
       waveformView(
@@ -167,10 +167,10 @@ struct VoxSynthLiveActivity: Widget {
   }
 
   private func refiningLockScreenView(_ state: VoxSynthAttributes.ContentState) -> some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: 12) {
       headerView(color: Palette.refining)
 
-      HStack(alignment: .center, spacing: 16) {
+      HStack(alignment: .center, spacing: 14) {
         VStack(alignment: .leading, spacing: 10) {
           stateRow(label: "Refining", color: Palette.refining)
 
@@ -188,7 +188,7 @@ struct VoxSynthLiveActivity: Widget {
 
         Spacer(minLength: 10)
 
-        sparkleBadge(size: 58, iconSize: 28, color: Palette.refining)
+        sparkleBadge(size: 52, iconSize: 25, color: Palette.refining)
       }
 
       progressBar(color: Palette.refining)
@@ -199,36 +199,36 @@ struct VoxSynthLiveActivity: Widget {
   }
 
   private func completedLockScreenView(_ state: VoxSynthAttributes.ContentState) -> some View {
-    VStack(alignment: .leading, spacing: 14) {
+    VStack(alignment: .leading, spacing: 12) {
       headerView(color: Palette.completed)
 
-      HStack(alignment: .center, spacing: 16) {
+      HStack(alignment: .center, spacing: 14) {
         VStack(alignment: .leading, spacing: 9) {
           stateRow(label: "Ready", color: Palette.completed)
 
           Text("Transcript saved")
-            .font(.system(size: 30, weight: .bold, design: .rounded))
+            .font(.system(size: 27, weight: .bold, design: .rounded))
             .foregroundStyle(Palette.textPrimary)
             .lineLimit(1)
             .minimumScaleFactor(0.72)
 
-          Text("Your recording is complete and saved on this device.")
-            .font(.system(size: 15, weight: .regular, design: .rounded))
+          Text("Saved on this device.")
+            .font(.system(size: 14, weight: .regular, design: .rounded))
             .foregroundStyle(Palette.textSecondary)
-            .lineLimit(2)
-            .fixedSize(horizontal: false, vertical: true)
+            .lineLimit(1)
+            .minimumScaleFactor(0.82)
         }
 
         Spacer(minLength: 10)
 
-        checkmarkBadge(size: 72, iconSize: 38)
+        checkmarkBadge(size: 60, iconSize: 32)
       }
 
       Link(destination: appURL(for: state)) {
         Text("Open")
-          .font(.system(size: 17, weight: .semibold, design: .rounded))
+          .font(.system(size: 16, weight: .semibold, design: .rounded))
           .foregroundStyle(Color.white)
-          .frame(width: 108, height: 38)
+          .frame(width: 96, height: 36)
           .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
               .fill(Palette.completed)
@@ -408,6 +408,8 @@ struct VoxSynthLiveActivity: Widget {
       Text("VoxSynth")
         .font(.system(size: 17, weight: .semibold, design: .rounded))
         .foregroundStyle(Palette.textPrimary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.85)
       Spacer()
     }
   }
@@ -422,20 +424,39 @@ struct VoxSynthLiveActivity: Widget {
         .font(compact ? .caption2.weight(.semibold) : .system(size: 15, weight: .medium, design: .rounded))
         .foregroundStyle(compact ? Palette.textSecondary : Palette.textPrimary)
         .lineLimit(1)
+        .minimumScaleFactor(0.82)
     }
   }
 
   private var privacyFooter: some View {
-    HStack(spacing: 6) {
-      Image(systemName: "lock.fill")
-        .font(.system(size: 12, weight: .semibold))
-      Text("Private voice journal")
-        .font(.system(size: 13, weight: .regular, design: .rounded))
-      Spacer(minLength: 10)
-      Text("On-device & private")
-        .font(.system(size: 13, weight: .regular, design: .rounded))
-      Image(systemName: "shield.fill")
-        .font(.system(size: 12, weight: .semibold))
+    ViewThatFits(in: .horizontal) {
+      HStack(spacing: 6) {
+        Image(systemName: "lock.fill")
+          .font(.system(size: 11, weight: .semibold))
+        Text("Private voice journal")
+          .font(.system(size: 12, weight: .regular, design: .rounded))
+          .lineLimit(1)
+          .minimumScaleFactor(0.82)
+        Spacer(minLength: 8)
+        Text("On-device & private")
+          .font(.system(size: 12, weight: .regular, design: .rounded))
+          .lineLimit(1)
+          .minimumScaleFactor(0.82)
+        Image(systemName: "shield.fill")
+          .font(.system(size: 11, weight: .semibold))
+      }
+
+      HStack(spacing: 6) {
+        Image(systemName: "lock.fill")
+          .font(.system(size: 11, weight: .semibold))
+        Text("Private")
+          .font(.system(size: 12, weight: .regular, design: .rounded))
+        Spacer(minLength: 8)
+        Text("On-device")
+          .font(.system(size: 12, weight: .regular, design: .rounded))
+        Image(systemName: "shield.fill")
+          .font(.system(size: 11, weight: .semibold))
+      }
     }
     .foregroundStyle(Palette.textSecondary)
   }
@@ -445,11 +466,11 @@ struct VoxSynthLiveActivity: Widget {
       ZStack {
         Circle()
           .fill(Palette.recording)
-          .frame(width: 58, height: 58)
-          .shadow(color: Palette.recording.opacity(0.45), radius: 16, x: 0, y: 0)
+          .frame(width: 54, height: 54)
+          .shadow(color: Palette.recording.opacity(0.45), radius: 14, x: 0, y: 0)
         RoundedRectangle(cornerRadius: 4, style: .continuous)
           .fill(Color.white)
-          .frame(width: 18, height: 18)
+          .frame(width: 17, height: 17)
       }
       .accessibilityLabel("Stop recording")
     }
@@ -668,8 +689,9 @@ private struct ActivityCardModifier: ViewModifier {
 
   func body(content: Content) -> some View {
     content
-      .padding(.horizontal, 22)
-      .padding(.vertical, 20)
+      .padding(.horizontal, 20)
+      .padding(.vertical, 18)
+      .frame(maxWidth: .infinity, alignment: .leading)
       .background(cardBackground)
       .activityBackgroundTint(Palette.surface)
       .activitySystemActionForegroundColor(accent)

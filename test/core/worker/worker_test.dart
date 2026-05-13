@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voxsynth/core/app_error.dart';
@@ -154,6 +156,7 @@ void main() {
         handlers: {JobType.refine: _AlwaysFails()},
         pollInterval: const Duration(milliseconds: 5),
         maxAttemptsPerJob: 1,
+        retryDelay: (_, _, _) => Duration.zero,
         onPermanentFailure: (job, reason) async {
           await repo.markFailed(id: job.logId, errorMessage: reason);
         },
@@ -173,6 +176,7 @@ void main() {
         handlers: {JobType.refine: _AlwaysFails()},
         pollInterval: const Duration(milliseconds: 5),
         maxAttemptsPerJob: 2,
+        retryDelay: (_, _, _) => Duration.zero,
       );
       await worker.start();
       await Future<void>.delayed(const Duration(milliseconds: 80));
@@ -180,6 +184,28 @@ void main() {
       final log = await repo.find('log_1');
       // Log still in 'recorded' state — refine never completed.
       expect(log!.processingState, ProcessingState.recorded);
+    });
+
+    test('waits before re-queueing transient failures', () async {
+      await queue.enqueue(logId: 'log_1', type: JobType.refine);
+      final handler = _FailsOnceThenSucceeds();
+      final worker = Worker(
+        queue: queue,
+        handlers: {JobType.refine: handler},
+        pollInterval: const Duration(milliseconds: 5),
+        maxAttemptsPerJob: 2,
+        retryDelay: (_, _, _) => const Duration(milliseconds: 60),
+      );
+      await worker.start();
+      await handler.firstCall.future.timeout(const Duration(milliseconds: 100));
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(handler.calls, 1);
+
+      await handler.secondCall.future.timeout(
+        const Duration(milliseconds: 150),
+      );
+      worker.stop();
+      expect(handler.calls, 2);
     });
   });
 }
@@ -191,6 +217,26 @@ class _AlwaysFails implements JobHandler {
   @override
   Future<Result<JobOutcome, AppError>> handle(JobContext ctx) async {
     throw StateError('boom');
+  }
+}
+
+class _FailsOnceThenSucceeds implements JobHandler {
+  var calls = 0;
+  final firstCall = Completer<void>();
+  final secondCall = Completer<void>();
+
+  @override
+  JobType get type => JobType.refine;
+
+  @override
+  Future<Result<JobOutcome, AppError>> handle(JobContext ctx) async {
+    calls += 1;
+    if (calls == 1) {
+      firstCall.complete();
+      return const Ok(JobShouldRetry('native generation busy'));
+    }
+    secondCall.complete();
+    return const Ok(JobSucceeded());
   }
 }
 

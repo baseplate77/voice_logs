@@ -5,6 +5,7 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 import '../../core/logger.dart';
 import '../../core/result.dart';
 import 'speech_recognizer.dart';
+import 'wav_io.dart';
 
 /// Paths to the four Parakeet model artifacts on disk. Callers resolve
 /// these from asset bundles at app start — see `lib/core/model_paths.dart`.
@@ -107,13 +108,23 @@ class ParakeetRunner implements SpeechRecognizer {
       );
     }
     try {
-      final wave = sherpa.readWave(wavPath);
-      final stream = recognizer.createStream();
-      stream.acceptWaveform(samples: wave.samples, sampleRate: wave.sampleRate);
-      recognizer.decode(stream);
-      final result = recognizer.getResult(stream);
-      stream.free();
-      return Ok(result.text);
+      final info = await readPcm16WavInfo(wavPath);
+      final segments = <String>[];
+      await for (final samples in readPcm16WavFloatChunks(
+        wavPath,
+        samplesPerChunk: _samplesPerTranscriptionChunk,
+      )) {
+        final stream = recognizer.createStream();
+        try {
+          stream.acceptWaveform(samples: samples, sampleRate: info.sampleRate);
+          recognizer.decode(stream);
+          final text = recognizer.getResult(stream).text.trim();
+          if (text.isNotEmpty) segments.add(text);
+        } finally {
+          stream.free();
+        }
+      }
+      return Ok(segments.join(' ').trim());
     } on Object catch (e, s) {
       return Err(
         AsrRuntimeError(
@@ -124,6 +135,8 @@ class ParakeetRunner implements SpeechRecognizer {
       );
     }
   }
+
+  static const _samplesPerTranscriptionChunk = 16000 * 30;
 
   @override
   Future<void> dispose() async {
