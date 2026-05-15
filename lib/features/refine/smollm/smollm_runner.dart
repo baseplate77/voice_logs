@@ -122,7 +122,13 @@ class SmolLmRunner implements LlmRunner {
   Future<Result<String, LlmError>> generate(
     String prompt, {
     double temperature = 0.3,
+    int topK = 1,
+    double topP = 0.95,
+    int? randomSeed,
   }) {
+    // SmolLM2 was retired before topK/topP/seed plumbing landed. The legacy
+    // runner is retained for eval comparison only and ignores the extra
+    // sampling knobs.
     return _runExclusive(
       'generate',
       () => _generateUnlocked(prompt, temperature),

@@ -5,6 +5,8 @@ import '../memory/memory_types.dart';
 import '../refine/llm_runner.dart';
 import '../search/hybrid_retriever.dart';
 import 'ask_prompt_templates.dart';
+import 'ask_query_utils.dart';
+import 'ask_stream_guard.dart';
 
 /// Searches active local memory cards for ask-context.
 typedef AskMemorySearch =
@@ -104,7 +106,7 @@ class AskAssistant {
     required AskMemorySearch searchMemories,
     required AskLogSearch searchLogs,
     int memoryLimit = kAskPromptMemoryLimit,
-    int logLimit = 10,
+    int logLimit = kAskPromptLogLimit,
   }) : _runner = runner,
        _searchMemories = searchMemories,
        _searchLogs = searchLogs,
@@ -147,9 +149,10 @@ class AskAssistant {
       return;
     }
 
+    final retrievalQuery = buildAskRetrievalQuery(trimmed);
     final (memoryResult, logResult) = await (
-      _searchMemories(trimmed, limit: _memoryLimit),
-      _searchLogs(trimmed, limit: _logLimit),
+      _searchMemories(retrievalQuery, limit: _memoryLimit),
+      _searchLogs(retrievalQuery, limit: _logLimit),
     ).wait;
 
     final List<MemoryHit> memories;
@@ -218,30 +221,51 @@ class AskAssistant {
       logHits: logs,
     );
     final out = StringBuffer();
+    final guard = AskStreamGuard();
+    AskStreamGuardTrip? tripReason;
     if (_runner case final StreamingLlmRunner streamingRunner) {
+      streamLoop:
       await for (final chunkResult in streamingRunner.generateStream(
         prompt,
-        temperature: 0.2,
+        temperature: _kAskTemperature,
+        topK: _kAskTopK,
       )) {
         switch (chunkResult) {
           case Ok(:final value):
             out.write(value);
             yield Ok(AskAnswerDelta(value));
+            tripReason = guard.inspect(out.toString());
+            if (tripReason != null) break streamLoop;
           case Err(:final error):
             yield Err(_llmError(error));
             return;
         }
       }
     } else {
-      final answerResult = await _runner.generate(prompt, temperature: 0.2);
+      final answerResult = await _runner.generate(
+        prompt,
+        temperature: _kAskTemperature,
+        topK: _kAskTopK,
+      );
       switch (answerResult) {
         case Ok(:final value):
-          out.write(value);
-          yield Ok(AskAnswerDelta(value));
+          // The non-streaming path already has the full response, so apply
+          // the guard once and truncate if it tripped before yielding the
+          // delta. This keeps a runaway one-shot answer from blasting a
+          // multi-megabyte string into the UI.
+          final truncated = _truncateOneShot(value, guard);
+          out.write(truncated.text);
+          yield Ok(AskAnswerDelta(truncated.text));
+          tripReason = truncated.trip;
         case Err(:final error):
           yield Err(_llmError(error));
           return;
       }
+    }
+
+    if (tripReason != null) {
+      out.write(AskStreamGuard.truncationMarker);
+      yield const Ok(AskAnswerDelta(AskStreamGuard.truncationMarker));
     }
 
     final raw = out.toString();
@@ -257,6 +281,44 @@ class AskAssistant {
   }
 }
 
+/// Sampling parameters for Ask, matching the Gemma 3 team's published
+/// recommendation (temperature=1.0, topK=64, topP=0.95). The previous
+/// config (temperature=0.35, topK=1) was the actual root cause of the
+/// phrase-loop bug: flutter_gemma defaults [topK] to 1, which forces
+/// purely greedy decoding regardless of temperature. Temperature only
+/// matters when topK lets multiple candidates into the sampling pool.
+///
+/// Refine deliberately keeps the greedy defaults (temperature=0.0,
+/// topK=1) so its JSON output stays deterministic and parseable.
+const double _kAskTemperature = 1.0;
+const int _kAskTopK = 64;
+// topP=0.95 is Gemma's recommendation and also the LlmRunner default, so
+// we don't pass it explicitly — keep the constant available for tests that
+// want to assert the documented value.
+const double _kAskTopP = 0.95; // ignore: unused_element
+
+/// Result of applying the stream guard to a non-streaming response. The
+/// returned [text] is the answer truncated at the first guard trip, with
+/// trailing word-boundary alignment so it doesn't end mid-token.
+({String text, AskStreamGuardTrip? trip}) _truncateOneShot(
+  String answer,
+  AskStreamGuard guard,
+) {
+  // Walk the answer in modestly-sized slices so the guard sees the same
+  // tail shape it would in the streaming case. Stops at the first trip.
+  const sliceChars = 80;
+  final buffer = StringBuffer();
+  for (var i = 0; i < answer.length; i += sliceChars) {
+    final end = (i + sliceChars).clamp(0, answer.length);
+    buffer.write(answer.substring(i, end));
+    final trip = guard.inspect(buffer.toString());
+    if (trip != null) {
+      return (text: buffer.toString(), trip: trip);
+    }
+  }
+  return (text: answer, trip: null);
+}
+
 AskLlmError _llmError(LlmError error) {
   return AskLlmError(
     message: 'Ask generation failed: ${error.message}',
@@ -266,15 +328,11 @@ AskLlmError _llmError(LlmError error) {
 }
 
 String _cleanAnswer(String raw) {
-  var trimmed = raw.trim();
+  final trimmed = raw.trim();
   if (trimmed.isEmpty) {
     return 'I found relevant context but the on-device model '
         'returned an empty answer.';
   }
-  trimmed = trimmed.replaceFirst(
-    RegExp(r'\n##\s*(Key points|Gaps|Notes|Additional)[\s\S]*$'),
-    '',
-  );
   return trimmed.trim();
 }
 

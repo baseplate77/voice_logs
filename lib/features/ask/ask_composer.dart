@@ -21,56 +21,73 @@ class AskComposer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
-    return Material(
-      elevation: 8,
+    return ColoredBox(
       color: colorScheme.surface,
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                enabled: !loading,
-                minLines: 1,
-                maxLines: 5,
-                textInputAction: TextInputAction.send,
-                decoration: InputDecoration(
-                  hintText: loading
-                      ? 'Streaming answer…'
-                      : 'Ask about your voice logs…',
-                  filled: true,
-                  fillColor: colorScheme.surfaceContainerHighest,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 760),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(30),
+                border: Border.all(color: colorScheme.outlineVariant),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(18, 7, 7, 7),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        enabled: !loading,
+                        minLines: 1,
+                        maxLines: 5,
+                        textInputAction: TextInputAction.send,
+                        decoration: InputDecoration(
+                          hintText: loading
+                              ? 'Streaming answer…'
+                              : 'Ask anything about your journal…',
+                          filled: false,
+                          fillColor: Colors.transparent,
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          disabledBorder: InputBorder.none,
+                          errorBorder: InputBorder.none,
+                          focusedErrorBorder: InputBorder.none,
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                          ),
+                        ),
+                        onSubmitted: (_) {
+                          if (!loading) onSubmit();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: loading ? null : onSubmit,
+                      style: FilledButton.styleFrom(
+                        minimumSize: const Size.square(42),
+                        shape: const CircleBorder(),
+                        padding: EdgeInsets.zero,
+                      ),
+                      child: loading
+                          ? const SizedBox.square(
+                              dimension: 18,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.arrow_upward, size: 21),
+                    ),
+                  ],
                 ),
-                onSubmitted: (_) {
-                  if (!loading) onSubmit();
-                },
               ),
             ),
-            const SizedBox(width: 8),
-            FilledButton(
-              onPressed: loading ? null : onSubmit,
-              style: FilledButton.styleFrom(
-                shape: const CircleBorder(),
-                padding: const EdgeInsets.all(14),
-              ),
-              child: loading
-                  ? const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.arrow_upward),
-            ),
-          ],
+          ),
         ),
       ),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'recording_providers.dart';
+import 'transcribing_indicator.dart';
 
 /// Recording screen — big record button and elapsed time.
 class RecordScreen extends ConsumerWidget {
@@ -87,7 +88,7 @@ class _ActiveView extends StatelessWidget {
         _RoundButton(
           icon: Icons.stop,
           onPressed: () async => onStop(),
-          color: Colors.redAccent,
+          color: Theme.of(context).colorScheme.primary,
         ),
       ],
     );
@@ -105,7 +106,7 @@ class _TranscribingView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator.adaptive(),
+          const TranscribingIndicator(size: 48),
           const SizedBox(height: 20),
           Text('Transcribing audio…', style: textTheme.titleMedium),
           const SizedBox(height: 8),
@@ -131,7 +132,11 @@ class _FailedView extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+          Icon(
+            Icons.error_outline,
+            size: 48,
+            color: Theme.of(context).colorScheme.error,
+          ),
           const SizedBox(height: 16),
           Text(message, textAlign: TextAlign.center),
           const SizedBox(height: 24),

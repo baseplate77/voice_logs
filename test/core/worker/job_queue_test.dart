@@ -111,6 +111,30 @@ void main() {
     expect(second.jobType, JobType.embed);
   });
 
+  test(
+    'recoverIncompletePipeline reconstructs missing action job once',
+    () async {
+      await repo.markEmbedded('log_a');
+      await repo.markEmbedded('log_b');
+      final historical = await queue.enqueue(
+        logId: 'log_b',
+        type: JobType.action,
+      );
+      await queue.claimNext();
+      await queue.markDone(historical);
+
+      final recovered = await queue.recoverIncompletePipeline();
+      expect(recovered, 1);
+
+      final action = await queue.claimNext();
+      expect(action!.logId, 'log_a');
+      expect(action.jobType, JobType.action);
+      await queue.markDone(action.id);
+
+      expect(await queue.recoverIncompletePipeline(), 0);
+    },
+  );
+
   test('lower priority jobs run first', () async {
     final high = await queue.enqueue(logId: 'log_a', type: JobType.refine);
     final low = await queue.enqueue(

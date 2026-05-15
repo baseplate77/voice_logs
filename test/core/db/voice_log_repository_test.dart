@@ -34,6 +34,78 @@ void main() {
     expect(fetched.processingState, ProcessingState.recorded);
     expect(fetched.durationMs, 4321);
     expect(fetched.cleanedText, isNull);
+    expect(fetched.title, isNull);
+    expect(fetched.displayTitle, 'hello world');
+  });
+
+  test('markRefined stores generated title', () async {
+    await repo.insertRecorded(
+      id: 'log_1',
+      createdAt: DateTime(2026, 4, 22, 12),
+      durationMs: 4321,
+      audioPath: 'audio/log_1.wav',
+      rawTranscript: 'today i talked to raj about app launch',
+    );
+
+    final res = await repo.markRefined(
+      id: 'log_1',
+      cleanedText: 'Today I talked to Raj about the app launch.',
+      title: 'Raj call about app launch',
+    );
+    expect(res.isOk, isTrue);
+
+    final fetched = await repo.find('log_1');
+    expect(fetched?.title, 'Raj call about app launch');
+    expect(fetched?.displayTitle, 'Raj call about app launch');
+  });
+
+  test(
+    'updateTitle stores trimmed value and overrides previous title',
+    () async {
+      await repo.insertRecorded(
+        id: 'log_1',
+        createdAt: DateTime(2026, 4, 22, 12),
+        durationMs: 1000,
+        audioPath: 'audio/log_1.wav',
+        rawTranscript: 'hello world',
+      );
+      await repo.markRefined(
+        id: 'log_1',
+        cleanedText: 'Hello world.',
+        title: 'auto title',
+      );
+
+      final res = await repo.updateTitle(
+        id: 'log_1',
+        title: '  user picked title  ',
+      );
+      expect(res.isOk, isTrue);
+
+      final fetched = await repo.find('log_1');
+      expect(fetched?.title, 'user picked title');
+    },
+  );
+
+  test('updateTitle clears title when given empty/whitespace input', () async {
+    await repo.insertRecorded(
+      id: 'log_1',
+      createdAt: DateTime(2026, 4, 22, 12),
+      durationMs: 1000,
+      audioPath: 'audio/log_1.wav',
+      rawTranscript: 'hello world',
+    );
+    await repo.markRefined(
+      id: 'log_1',
+      cleanedText: 'Hello world.',
+      title: 'auto title',
+    );
+
+    final res = await repo.updateTitle(id: 'log_1', title: '   ');
+    expect(res.isOk, isTrue);
+
+    final fetched = await repo.find('log_1');
+    expect(fetched?.title, isNull);
+    expect(fetched?.displayTitle, 'Hello world.');
   });
 
   test('watchAll emits reverse chronological order', () async {

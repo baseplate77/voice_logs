@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:isolate';
 
+import 'package:meta/meta.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
 import '../../core/logger.dart';
@@ -35,6 +37,50 @@ class ParakeetModelPaths {
       File(decoder).existsSync() &&
       File(joiner).existsSync() &&
       File(tokens).existsSync();
+}
+
+/// Background-isolate Parakeet wrapper used by the app recording flow.
+///
+/// The underlying sherpa-onnx decode calls are synchronous and can block the
+/// UI isolate long enough to freeze loading indicators. This wrapper creates,
+/// runs, and disposes [ParakeetRunner] inside a worker isolate for each
+/// completed-file transcription, keeping the transcribing UI animated.
+class IsolateParakeetRunner implements SpeechRecognizer {
+  IsolateParakeetRunner({required this.paths});
+
+  /// Where the four model files live on disk.
+  final ParakeetModelPaths paths;
+
+  @override
+  Future<Result<void, AsrError>> load() async {
+    if (!paths.allExist) return Err(AsrModelMissing(paths.encoder));
+    return const Ok(null);
+  }
+
+  @override
+  Future<Result<String, AsrError>> transcribeFile(String wavPath) async {
+    final detailed = await transcribeFileDetailed(wavPath);
+    return detailed.map((r) => r.text);
+  }
+
+  @override
+  Future<Result<TranscriptionResult, AsrError>> transcribeFileDetailed(
+    String wavPath,
+  ) async {
+    final paths = this.paths;
+    final payload = await Isolate.run(
+      () => _transcribeParakeetPayload(paths: paths, wavPath: wavPath),
+    );
+    if (payload['ok'] != true) {
+      return Err(
+        AsrRuntimeError(message: payload['error'] as String? ?? 'ASR failed'),
+      );
+    }
+    return Ok(_decodeTranscriptionPayload(payload));
+  }
+
+  @override
+  Future<void> dispose() async {}
 }
 
 /// `sherpa_onnx`-backed offline recognizer for the NEMO Parakeet-TDT-0.6b
@@ -95,6 +141,14 @@ class ParakeetRunner implements SpeechRecognizer {
 
   @override
   Future<Result<String, AsrError>> transcribeFile(String wavPath) async {
+    final detailed = await transcribeFileDetailed(wavPath);
+    return detailed.map((r) => r.text);
+  }
+
+  @override
+  Future<Result<TranscriptionResult, AsrError>> transcribeFileDetailed(
+    String wavPath,
+  ) async {
     final recognizer = _recognizer;
     if (recognizer == null) {
       return const Err(
@@ -109,22 +163,44 @@ class ParakeetRunner implements SpeechRecognizer {
     }
     try {
       final info = await readPcm16WavInfo(wavPath);
-      final segments = <String>[];
+      final segments = <TranscriptSegmentResult>[];
+      var samplesConsumed = 0;
       await for (final samples in readPcm16WavFloatChunks(
         wavPath,
         samplesPerChunk: _samplesPerTranscriptionChunk,
       )) {
+        final chunkStartMs = _samplesToMs(samplesConsumed, info.sampleRate);
+        final chunkDurationMs = _samplesToMs(samples.length, info.sampleRate);
+        samplesConsumed += samples.length;
+
         final stream = recognizer.createStream();
         try {
           stream.acceptWaveform(samples: samples, sampleRate: info.sampleRate);
           recognizer.decode(stream);
-          final text = recognizer.getResult(stream).text.trim();
-          if (text.isNotEmpty) segments.add(text);
+          final result = recognizer.getResult(stream);
+          final text = result.text.trim();
+          if (text.isEmpty) continue;
+
+          final words = _wordsFromTokens(
+            tokens: result.tokens,
+            timestampsSeconds: result.timestamps,
+            chunkOffsetMs: chunkStartMs,
+            chunkEndMs: chunkStartMs + chunkDurationMs,
+          );
+
+          segments.add(
+            TranscriptSegmentResult(
+              text: text,
+              startMs: chunkStartMs,
+              endMs: chunkStartMs + chunkDurationMs,
+              words: words,
+            ),
+          );
         } finally {
           stream.free();
         }
       }
-      return Ok(segments.join(' ').trim());
+      return Ok(TranscriptionResult(segments: segments));
     } on Object catch (e, s) {
       return Err(
         AsrRuntimeError(
@@ -138,9 +214,163 @@ class ParakeetRunner implements SpeechRecognizer {
 
   static const _samplesPerTranscriptionChunk = 16000 * 30;
 
+  static int _samplesToMs(int samples, int sampleRate) =>
+      (samples * 1000) ~/ sampleRate;
+
   @override
   Future<void> dispose() async {
     _recognizer?.free();
     _recognizer = null;
   }
 }
+
+/// SentencePiece word-boundary marker emitted by NEMO Parakeet tokenizers.
+const String _sentencePieceBoundary = '▁';
+
+/// Tokens that should never start or extend a word.
+const Set<String> _ignoredTokens = {'<blk>', '<blank>', '<unk>', '<s>', '</s>'};
+
+/// Group sherpa-onnx token+timestamp output into word-level timings.
+///
+/// Each token whose string starts with the SentencePiece boundary marker
+/// `▁` (U+2581) opens a new word; subsequent non-boundary tokens append to
+/// the current word. Word end times are inferred from the next word's
+/// start time, or [chunkEndMs] for the final word. Timestamps from sherpa
+/// are seconds relative to the chunk start; [chunkOffsetMs] shifts them
+/// into absolute WAV time.
+List<WordTiming> _wordsFromTokens({
+  required List<String> tokens,
+  required List<double> timestampsSeconds,
+  required int chunkOffsetMs,
+  required int chunkEndMs,
+}) {
+  if (tokens.isEmpty) return const [];
+  final pairs = <_TokenWithMs>[];
+  final pairCount = tokens.length < timestampsSeconds.length
+      ? tokens.length
+      : timestampsSeconds.length;
+  for (var i = 0; i < pairCount; i++) {
+    final token = tokens[i];
+    if (_ignoredTokens.contains(token)) continue;
+    final tsMs = (timestampsSeconds[i] * 1000).round() + chunkOffsetMs;
+    pairs.add(_TokenWithMs(token, tsMs));
+  }
+  if (pairs.isEmpty) return const [];
+
+  final words = <_WordBuilder>[];
+  for (final pair in pairs) {
+    final token = pair.token;
+    if (token.startsWith(_sentencePieceBoundary) || words.isEmpty) {
+      final stripped = token.startsWith(_sentencePieceBoundary)
+          ? token.substring(_sentencePieceBoundary.length)
+          : token;
+      words.add(_WordBuilder(text: stripped, startMs: pair.startMs));
+    } else {
+      words.last.text += token;
+    }
+  }
+
+  final result = <WordTiming>[];
+  for (var i = 0; i < words.length; i++) {
+    final w = words[i];
+    if (w.text.isEmpty) continue;
+    final endMs = i + 1 < words.length ? words[i + 1].startMs : chunkEndMs;
+    result.add(
+      WordTiming(
+        word: w.text,
+        startMs: w.startMs,
+        endMs: endMs > w.startMs ? endMs : w.startMs,
+      ),
+    );
+  }
+  return result;
+}
+
+class _TokenWithMs {
+  const _TokenWithMs(this.token, this.startMs);
+  final String token;
+  final int startMs;
+}
+
+class _WordBuilder {
+  _WordBuilder({required this.text, required this.startMs});
+  String text;
+  final int startMs;
+}
+
+Future<Map<String, Object?>> _transcribeParakeetPayload({
+  required ParakeetModelPaths paths,
+  required String wavPath,
+}) async {
+  final runner = ParakeetRunner(paths: paths);
+  try {
+    final loaded = await runner.load();
+    switch (loaded) {
+      case Ok():
+        break;
+      case Err(:final error):
+        return {'ok': false, 'error': error.message};
+    }
+    final result = await runner.transcribeFileDetailed(wavPath);
+    switch (result) {
+      case Ok(:final value):
+        return {
+          'ok': true,
+          'segments': value.segments
+              .map(
+                (segment) => {
+                  'text': segment.text,
+                  'startMs': segment.startMs,
+                  'endMs': segment.endMs,
+                  'words': segment.words.map((word) => word.toJson()).toList(),
+                },
+              )
+              .toList(),
+        };
+      case Err(:final error):
+        return {'ok': false, 'error': error.message};
+    }
+  } on Object catch (e) {
+    return {'ok': false, 'error': 'Parakeet isolate failed: $e'};
+  } finally {
+    await runner.dispose();
+  }
+}
+
+TranscriptionResult _decodeTranscriptionPayload(Map<String, Object?> payload) {
+  final rawSegments = (payload['segments'] as List<dynamic>? ?? const []);
+  return TranscriptionResult(
+    segments: rawSegments
+        .map((raw) {
+          final map = (raw as Map).cast<String, Object?>();
+          final rawWords = (map['words'] as List<dynamic>? ?? const []);
+          return TranscriptSegmentResult(
+            text: map['text'] as String? ?? '',
+            startMs: map['startMs'] as int? ?? 0,
+            endMs: map['endMs'] as int? ?? 0,
+            words: rawWords
+                .map(
+                  (rawWord) => WordTiming.fromJson(
+                    (rawWord as Map).cast<String, Object?>(),
+                  ),
+                )
+                .toList(growable: false),
+          );
+        })
+        .toList(growable: false),
+  );
+}
+
+/// Test hook: expose the private token→word reconstruction.
+@visibleForTesting
+List<WordTiming> reconstructWordsFromTokens({
+  required List<String> tokens,
+  required List<double> timestampsSeconds,
+  required int chunkOffsetMs,
+  required int chunkEndMs,
+}) => _wordsFromTokens(
+  tokens: tokens,
+  timestampsSeconds: timestampsSeconds,
+  chunkOffsetMs: chunkOffsetMs,
+  chunkEndMs: chunkEndMs,
+);

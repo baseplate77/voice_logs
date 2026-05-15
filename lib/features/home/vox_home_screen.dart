@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
+import '../actions/action_screen.dart';
 import '../ask/ask_screen.dart';
 import '../debug/pipeline_debug_screen.dart';
 import '../detail/log_detail_screen.dart';
@@ -12,6 +13,7 @@ import '../settings/settings_screen.dart';
 import 'auto_record_provider.dart';
 import 'onboarding_overlay.dart';
 import 'recording_overlay.dart';
+import 'two_tone_palette.dart';
 
 /// Primary screen: recording overlay at the top, log list below.
 ///
@@ -58,9 +60,16 @@ class _VoxHomeScreenState extends ConsumerState<VoxHomeScreen> {
   Widget build(BuildContext context) {
     final onboarding = ref.watch(onboardingCompleteProvider);
     final isOnboarded = onboarding.valueOrNull ?? false;
+    final logs = ref.watch(voiceLogsStreamProvider);
+    final hasImportedLogs = logs.valueOrNull?.isNotEmpty ?? false;
 
     return Scaffold(
+      backgroundColor: TwoTonePalette.canvas,
       appBar: AppBar(
+        backgroundColor: TwoTonePalette.canvas,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        foregroundColor: TwoTonePalette.fgPrimary,
         title: const Text('VoxSynth'),
         actions: [
           IconButton(
@@ -80,6 +89,13 @@ class _VoxHomeScreenState extends ConsumerState<VoxHomeScreen> {
             ).push(MaterialPageRoute<void>(builder: (_) => const AskScreen())),
           ),
           IconButton(
+            tooltip: 'Action Inbox',
+            icon: const Icon(Icons.check_circle_outline),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ActionScreen()),
+            ),
+          ),
+          IconButton(
             icon: const Icon(Icons.search),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute<void>(builder: (_) => const SearchScreen()),
@@ -93,7 +109,9 @@ class _VoxHomeScreenState extends ConsumerState<VoxHomeScreen> {
           ),
         ],
       ),
-      body: isOnboarded ? const _MainContent() : const OnboardingOverlay(),
+      body: isOnboarded || hasImportedLogs
+          ? const _MainContent()
+          : const OnboardingOverlay(),
     );
   }
 }
@@ -109,40 +127,87 @@ class _MainContent extends ConsumerWidget {
         recordingState is RecordingActive ||
         recordingState is RecordingTranscribing;
 
+    // Gradient fade sits over the bottom of the scrollable list so log
+    // content visibly dissolves into the recording zone below — softer
+    // than a hairline divider on white-on-white.
     return Column(
       children: [
-        const RecordingOverlay(),
-        if (isRecording) const Divider(height: 1),
         Expanded(
-          child: AnimatedOpacity(
-            duration: const Duration(milliseconds: 200),
-            opacity: isRecording ? 0.5 : 1.0,
-            child: logs.when(
-              data: (rows) {
-                if (rows.isEmpty) return const _EmptyState();
-                return ListView.separated(
-                  itemCount: rows.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, i) {
-                    final row = rows[i];
-                    return LogRow(
-                      log: row,
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => LogDetailScreen(logId: row.id),
-                        ),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ColoredBox(
+                  color: TwoTonePalette.canvas,
+                  child: AnimatedOpacity(
+                    duration: const Duration(milliseconds: 200),
+                    opacity: isRecording ? 0.55 : 1.0,
+                    child: logs.when(
+                      data: (rows) {
+                        if (rows.isEmpty) return const _EmptyState();
+                        return ListView.separated(
+                          padding: const EdgeInsets.only(bottom: 32),
+                          itemCount: rows.length,
+                          separatorBuilder: (_, _) => const Divider(
+                            height: 1,
+                            color: TwoTonePalette.slabOnLight,
+                          ),
+                          itemBuilder: (_, i) {
+                            final row = rows[i];
+                            return LogRow(
+                              log: row,
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) =>
+                                      LogDetailScreen(logId: row.id),
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                      loading: () => const Center(
+                        child: CircularProgressIndicator.adaptive(),
                       ),
-                    );
-                  },
-                );
-              },
-              loading: () =>
-                  const Center(child: CircularProgressIndicator.adaptive()),
-              error: (e, _) => Center(child: Text('Error: $e')),
-            ),
+                      error: (e, _) => Center(child: Text('Error: $e')),
+                    ),
+                  ),
+                ),
+              ),
+              const Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: 40,
+                child: IgnorePointer(child: _ScrollFadeEdge()),
+              ),
+            ],
           ),
         ),
+        const RecordingOverlay(),
       ],
+    );
+  }
+}
+
+/// Soft top→bottom gradient covering the last 40px of the list zone.
+/// Pinned above the recording overlay so log rows scroll up out of view
+/// behind it, dissolving into the canvas instead of meeting a hard edge.
+class _ScrollFadeEdge extends StatelessWidget {
+  const _ScrollFadeEdge();
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            TwoTonePalette.canvas.withValues(alpha: 0),
+            TwoTonePalette.canvas,
+          ],
+        ),
+      ),
     );
   }
 }

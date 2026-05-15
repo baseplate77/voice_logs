@@ -6,12 +6,12 @@ library;
 const double kRecordLogTemperature = 0;
 
 /// First stage: Gemma 3 1B is strongest at transcript cleanup when it is not
-/// asked to also perform entity extraction. The model must return only the
-/// cleaned text in JSON so parsing can remain deterministic.
+/// asked to also perform entity extraction or summarize. The title is now
+/// generated in a separate pass so cleanup can focus on faithful rewriting.
 String cleanupTranscriptPrompt(String rawTranscript) {
   return '''
 You are VoxSynth's local English voice-transcript editor.
-Clean this transcript only. Do not extract entities in this step.
+Clean this transcript only. Do not extract entities and do not summarize.
 
 Return exactly one minified JSON object and nothing else:
 {"cleaned_text":"..."}
@@ -93,7 +93,7 @@ Return exactly one valid minified JSON object and nothing else:
 If cleaned_text contains Markdown line breaks, encode them inside the JSON string as \\n. Do not put raw unescaped line breaks inside a JSON string.
 
 Non-negotiable rules:
-- Preserve all information from the transcript. Never summarize.
+- Preserve all information from the transcript. Never summarize cleaned_text.
 - Include every distinct thought, task, event, detail, name, place, time, and number.
 - Only fix grammar, spelling, punctuation, casing, sentence boundaries, obvious speech-to-text/pronunciation mistakes, and readable formatting.
 - Use paragraphs or bullet lists when helpful, but do not compress or omit details.
@@ -236,6 +236,130 @@ $rawTranscript
 """
 
 Invalid previous answer:
+$previousResponse
+''';
+}
+
+/// Third stage: produce a short, specific log title from the *already cleaned*
+/// transcript. Run as a dedicated Gemma call so the title reflects the entire
+/// log instead of only the first chunk, and so a malformed title response
+/// cannot drop the cleaned transcript along with it.
+String generateLogTitlePrompt(String cleanedText) {
+  return '''
+You are VoxSynth's local log titler.
+Read the cleaned transcript and return one short title that captures the core
+of the log — what it is fundamentally about.
+
+Return exactly one minified JSON object and nothing else:
+{"title":"..."}
+
+Rules:
+- 4-10 specific words. No trailing punctuation. No quotes.
+- Capture the dominant topic, not the first sentence.
+- Prefer names of people, places, projects, and the main action or decision.
+- Avoid generic openers like "Voice note about", "I", or "Notes on".
+- If there are multiple unrelated topics, name the most important one.
+- If the transcript is empty or unintelligible, return {"title":""}.
+
+Examples:
+Cleaned transcript: I met Shivani at Cafe Coffee Day for Project Atlas around 3 PM. I need to send the notes later.
+Output: {"title":"Shivani meeting on Project Atlas notes"}
+
+Cleaned transcript: I need to send the revised deck to Shivani before Friday morning.
+Output: {"title":"Send revised deck to Shivani by Friday"}
+
+Cleaned transcript: I have a dentist appointment with Dr. Rao on Monday at 9:30. Remember the insurance card and X-ray reports.
+Output: {"title":"Dr. Rao dentist appointment with documents"}
+
+Cleaned transcript: Pick up Mom from the airport, Terminal 2, at 6:45. The flight is Air India 101.
+Output: {"title":"Pick up Mom from airport Terminal 2"}
+
+Cleaned transcript: Tasks for tomorrow:\\n- Call Dr. Rao at 9:30.\\n- Send Project Atlas notes to Shivani.\\n- Buy milk and eggs.
+Output: {"title":"Tomorrow tasks for Dr. Rao and Shivani"}
+
+Cleaned transcript:
+"""
+$cleanedText
+"""
+''';
+}
+
+/// Stricter title retry when the first response was malformed or empty.
+String generateLogTitleRetryPrompt(
+  String cleanedText,
+  String previousResponse,
+) {
+  return '''
+Your previous response was invalid. Return exactly one valid minified JSON
+object with a single "title" key, and no markdown or prose:
+{"title":"4-10 word topic-first title"}
+
+Cleaned transcript:
+"""
+$cleanedText
+"""
+
+Invalid previous response:
+$previousResponse
+''';
+}
+
+/// Fourth stage: extract 2-4 tappable "Ask my journal" suggestion chips from
+/// the cleaned log. Each chip pairs a short topic label (the visible chip
+/// text) with a fully-formed question that gets auto-submitted to Ask when
+/// the user taps.
+String generateSuggestionsPrompt(String cleanedText) {
+  return '''
+You are VoxSynth's suggestion writer for "Ask my journal".
+Read the cleaned transcript and produce 2-4 short prompt chips a user might
+tap to interrogate this entry later. Each chip pairs a topic label with the
+actual question that gets submitted.
+
+Return exactly one minified JSON object and nothing else:
+{"suggestions":[{"chip":"...","question":"..."},...]}
+
+Rules:
+- 2 to 4 suggestions. No more.
+- chip: 2-5 words, topic only, no question mark. Use names of people, places, projects, or the central action.
+- question: a complete sentence ending with "?". Refers to the log's content as "I" / "the log" so retrieval finds it.
+- Cover *different* topics across suggestions when the log has more than one — do not repeat the same subject in two chips.
+- Avoid generic chips like "Summary", "Details", "Notes", "Today".
+- Avoid yes/no questions; prefer "what", "when", "who", "how", "why".
+- If the transcript is empty or generic, return {"suggestions":[]}.
+
+Examples:
+Cleaned transcript: I met Shivani at Cafe Coffee Day for Project Atlas around 3 PM. I need to send the notes later.
+Output: {"suggestions":[{"chip":"Coffee with Shivani","question":"What did I discuss with Shivani over coffee?"},{"chip":"Project Atlas","question":"What is the latest on Project Atlas?"},{"chip":"Atlas notes to send","question":"Which notes do I still need to send for Project Atlas?"}]}
+
+Cleaned transcript: I have a dentist appointment with Dr. Rao on Monday at 9:30. Remember the insurance card and X-ray reports.
+Output: {"suggestions":[{"chip":"Dr. Rao appointment","question":"When is my appointment with Dr. Rao?"},{"chip":"Documents to bring","question":"What documents do I need for the dentist?"}]}
+
+Cleaned transcript: Pick up Mom from the airport, Terminal 2, at 6:45. The flight is Air India 101.
+Output: {"suggestions":[{"chip":"Airport pickup for Mom","question":"When and where am I picking up Mom?"},{"chip":"Air India 101","question":"What flight is Mom arriving on?"}]}
+
+Cleaned transcript:
+"""
+$cleanedText
+"""
+''';
+}
+
+/// Stricter suggestion retry when the first response was malformed.
+String generateSuggestionsRetryPrompt(
+  String cleanedText,
+  String previousResponse,
+) {
+  return '''
+Your previous response was invalid. Return exactly one valid minified JSON
+object with a "suggestions" array (2-4 items), and no markdown or prose:
+{"suggestions":[{"chip":"topic label","question":"full question ending with ?"}]}
+
+Cleaned transcript:
+"""
+$cleanedText
+"""
+
+Invalid previous response:
 $previousResponse
 ''';
 }

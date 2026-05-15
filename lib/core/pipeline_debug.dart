@@ -26,11 +26,20 @@ enum PipelineDebugStage {
   /// Local memory extraction.
   memory('memory', 'Memory'),
 
+  /// Action item extraction.
+  action('action', 'Actions'),
+
   /// Segment enrichment: importance scoring, topics, short summaries.
   enrich('enrich', 'Enrich'),
 
   /// Per-log summary generation.
   summarize('summarize', 'Summarize'),
+
+  /// Per-entity narrative summary generation.
+  entitySummary('entity_summary', 'Entity summary'),
+
+  /// Cross-log daily / weekly digest generation.
+  digest('digest', 'Digest'),
 
   /// Worker-level dispatch or recovery.
   worker('worker', 'Worker');
@@ -50,8 +59,11 @@ enum PipelineDebugStage {
       JobType.embed => PipelineDebugStage.embed,
       JobType.canonicalize => PipelineDebugStage.canonicalize,
       JobType.memory => PipelineDebugStage.memory,
+      JobType.action => PipelineDebugStage.action,
       JobType.enrich => PipelineDebugStage.enrich,
       JobType.summarize => PipelineDebugStage.summarize,
+      JobType.entitySummary => PipelineDebugStage.entitySummary,
+      JobType.digest => PipelineDebugStage.digest,
     };
   }
 }

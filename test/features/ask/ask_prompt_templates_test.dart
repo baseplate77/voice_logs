@@ -58,8 +58,9 @@ void main() {
         memoryHits: [],
         logHits: [_logHit('log_1', 0.5, 'I worked on project Atlas.')],
       );
-      expect(prompt, contains('bullet list'));
-      expect(prompt, isNot(contains('## Answer')));
+      // Template-placeholder scaffold instead of descriptive prose, so the
+      // model substitutes rather than copies.
+      expect(prompt, contains('<topic 1, citation>'));
     });
 
     test('uses comparison format for comparison queries', () {
@@ -68,7 +69,7 @@ void main() {
         memoryHits: [],
         logHits: [_logHit('log_1', 0.5, 'project details here')],
       );
-      expect(prompt, contains('table'));
+      expect(prompt, contains('| Aspect | A | B |'));
     });
 
     test('uses factual format for factual queries', () {
@@ -77,7 +78,10 @@ void main() {
         memoryHits: [],
         logHits: [_logHit('log_1', 0.5, 'Met Raj on May 5.')],
       );
-      expect(prompt, contains('one concise sentence'));
+      expect(prompt, contains('one or two sentences'));
+      // Factual answers are intentionally header-less: a single tight
+      // paragraph reads better than `## Answer` for one-line facts.
+      expect(prompt, isNot(contains('## Answer')));
     });
 
     test('uses general format with headings for general queries', () {
@@ -87,7 +91,114 @@ void main() {
         logHits: [],
       );
       expect(prompt, contains('## Answer'));
-      expect(prompt, contains('## Evidence'));
+      // Details section is marked optional so the model isn't forced to
+      // fill it when the context only supports a one-line answer.
+      expect(prompt, contains('## Details (omit if'));
+    });
+
+    test('never asks the model to write an Evidence/Sources section', () {
+      // The UI renders sources unconditionally under every answer. Asking
+      // the model to recap them produced duplicate text and triggered
+      // verbatim parroting on the 1B model (the bug in the screenshot).
+      for (final q in [
+        'List all projects',
+        'Compare A vs B',
+        'When did I meet Raj?',
+        'Summarize Friday',
+        'What is going on with Atlas?',
+      ]) {
+        final prompt = buildAskPrompt(
+          question: q,
+          memoryHits: [],
+          logHits: [_logHit('log_1', 0.5, 'placeholder content')],
+        );
+        expect(
+          prompt,
+          isNot(contains('## Evidence')),
+          reason: 'Evidence section must be dropped for query: "$q"',
+        );
+      }
+    });
+
+    test('never reintroduces the parroted placeholder bullets', () {
+      // These exact phrases used to appear inside the prompt and small
+      // models copy-pasted them into their answers. The new prompt uses
+      // directive language ("write 3-6 bullets…") instead.
+      for (final q in ['Summarize today', 'What happened with Atlas?']) {
+        final prompt = buildAskPrompt(
+          question: q,
+          memoryHits: [],
+          logHits: [_logHit('log_1', 0.5, 'placeholder content')],
+        );
+        expect(prompt, isNot(contains('Source-backed bullets for')));
+        expect(
+          prompt,
+          isNot(contains('Cite which sources support each claim')),
+        );
+      }
+    });
+
+    test('system preamble + format scaffold stay short to prevent loops', () {
+      // Long preambles dilute attention on 1B models and cause looping.
+      // The whole pre-Context portion (system + rules + format) must
+      // stay under ~140 words. If a future change pushes it past this
+      // threshold, revisit whether each new line is really necessary.
+      for (final q in [
+        'List all projects',
+        'Compare A vs B',
+        'When did I meet Raj?',
+        'Summarize Friday',
+        'What is going on?',
+      ]) {
+        final prompt = buildAskPrompt(
+          question: q,
+          memoryHits: [],
+          logHits: [_logHit('log_1', 0.5, 'placeholder')],
+        );
+        final preamble = prompt.split('Context:').first;
+        final wordCount = preamble
+            .split(RegExp(r'\s+'))
+            .where((w) => w.isNotEmpty)
+            .length;
+        expect(
+          wordCount,
+          lessThan(140),
+          reason:
+              'Preamble for "$q" grew to $wordCount words. Compress or '
+              'remove a directive — long preambles trigger loops.',
+        );
+      }
+    });
+
+    test('stop directive sits right before "Answer:" as a recency anchor', () {
+      // The model gives the last instruction the most attention. Burying
+      // anti-loop guidance in the system preamble does not work on 1B
+      // models — it has to be the line immediately preceding `Answer:`.
+      final prompt = buildAskPrompt(
+        question: 'Anything',
+        memoryHits: [],
+        logHits: [_logHit('log_1', 0.5, 'content')],
+      );
+      final lines = prompt.split('\n');
+      final answerIdx = lines.lastIndexWhere((l) => l.startsWith('Answer:'));
+      expect(answerIdx, greaterThan(0));
+      final previous = lines[answerIdx - 1];
+      expect(previous, contains('Stop'));
+      expect(previous.toLowerCase(), contains('do not repeat'));
+    });
+
+    test('prompt no longer contains contradictory verbosity directives', () {
+      // "Prefer a detailed... do not be overly terse" was the primary loop
+      // trigger — it fought the "stop when done" rule. Lock both phrases
+      // out of the prompt going forward.
+      final prompt = buildAskPrompt(
+        question: 'Anything',
+        memoryHits: [],
+        logHits: [_logHit('log_1', 0.5, 'content')],
+      );
+      expect(prompt, isNot(contains('Prefer a detailed')));
+      expect(prompt, isNot(contains('not be overly terse')));
+      expect(prompt, isNot(contains('NEVER repeat')));
     });
 
     test('includes date labels on log snippets', () {
@@ -96,7 +207,7 @@ void main() {
         memoryHits: [],
         logHits: [_logHit('log_1', 0.5, 'content', date: DateTime(2026, 5, 8))],
       );
-      expect(prompt, contains('(May 8)'));
+      expect(prompt, contains('May 8 log'));
     });
 
     test('allocates more budget to higher-scoring hits', () {

@@ -3,11 +3,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/logger.dart';
 import '../record/recording_providers.dart';
+import '../record/transcribing_indicator.dart';
+import 'two_tone_palette.dart';
 
 final _log = Logger('recording_overlay');
 
-/// Displays the current recording state: idle mic button, active timer with
-/// stop, transcribing spinner, or error with retry.
+/// The recording surface at the bottom of the home screen. Renders the
+/// current recording state in one of four shapes: idle mic, active timer
+/// + stop, transcribing spinner, or failed retry. Painted on the white
+/// canvas with orchid primary actions.
 class RecordingOverlay extends ConsumerWidget {
   const RecordingOverlay({super.key});
 
@@ -15,56 +19,55 @@ class RecordingOverlay extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final state = ref.watch(recordingControllerProvider);
     final controller = ref.read(recordingControllerProvider.notifier);
-    final theme = Theme.of(context);
     _log.d('build state=${state.runtimeType}');
 
-    return AnimatedSize(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      child: switch (state) {
-        RecordingIdle() => _IdleOverlay(
-          onStart: controller.start,
-          theme: theme,
+    // Full-bleed canvas: the gradient fade above this zone lives on the
+    // scrolling list so log content visibly fades as it scrolls down,
+    // rather than being clipped by a hard divider.
+    return SizedBox(
+      width: double.infinity,
+      child: ColoredBox(
+        color: TwoTonePalette.canvas,
+        child: SafeArea(
+          top: false,
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOut,
+            child: switch (state) {
+              RecordingIdle() => _IdleOverlay(onStart: controller.start),
+              RecordingActive(:final elapsedMs) => _ActiveOverlay(
+                elapsedMs: elapsedMs,
+                onStop: controller.stop,
+              ),
+              RecordingTranscribing() => const _TranscribingOverlay(),
+              RecordingFailed(:final message) => _FailedOverlay(
+                message: message,
+                onRetry: controller.start,
+              ),
+            },
+          ),
         ),
-        RecordingActive(:final elapsedMs) => _ActiveOverlay(
-          elapsedMs: elapsedMs,
-          onStop: controller.stop,
-          theme: theme,
-        ),
-        RecordingTranscribing() => _TranscribingOverlay(theme: theme),
-        RecordingFailed(:final message) => _FailedOverlay(
-          message: message,
-          onRetry: controller.start,
-          theme: theme,
-        ),
-      },
+      ),
     );
   }
 }
 
 class _IdleOverlay extends StatelessWidget {
-  const _IdleOverlay({required this.onStart, required this.theme});
+  const _IdleOverlay({required this.onStart});
   final Future<void> Function() onStart;
-  final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            'Tap to record',
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _RecordButton(
-            icon: Icons.mic,
+          Text('TAP TO RECORD', style: labelCaps(TwoTonePalette.fgMuted)),
+          const SizedBox(height: 20),
+          _PrimarySquareButton(
+            icon: Icons.mic_rounded,
             onPressed: () async => onStart(),
-            color: theme.colorScheme.primary,
           ),
         ],
       ),
@@ -73,23 +76,17 @@ class _IdleOverlay extends StatelessWidget {
 }
 
 class _ActiveOverlay extends StatelessWidget {
-  const _ActiveOverlay({
-    required this.elapsedMs,
-    required this.onStop,
-    required this.theme,
-  });
+  const _ActiveOverlay({required this.elapsedMs, required this.onStop});
   final int elapsedMs;
   final Future<void> Function() onStop;
-  final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
     final minutes = (elapsedMs ~/ 60000).toString().padLeft(2, '0');
     final seconds = ((elapsedMs ~/ 1000) % 60).toString().padLeft(2, '0');
-    return Container(
-      width: double.infinity,
-      color: Colors.redAccent.withValues(alpha: 0.08),
-      padding: const EdgeInsets.symmetric(vertical: 32),
+    final centi = ((elapsedMs ~/ 10) % 100).toString().padLeft(2, '0');
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 32),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -98,27 +95,24 @@ class _ActiveOverlay extends StatelessWidget {
             children: [
               const _PulsingDot(),
               const SizedBox(width: 8),
-              Text(
-                'Recording',
-                style: theme.textTheme.labelLarge?.copyWith(
-                  color: Colors.redAccent,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              Text('RECORDING', style: labelCaps(TwoTonePalette.accentRed)),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(
-            '$minutes:$seconds',
-            style: theme.textTheme.displayMedium?.copyWith(
-              fontFeatures: [const FontFeature.tabularFigures()],
+            '$minutes:$seconds:$centi',
+            style: const TextStyle(
+              fontSize: 56,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -1.5,
+              color: TwoTonePalette.fgPrimary,
+              fontFeatures: [FontFeature.tabularFigures()],
             ),
           ),
-          const SizedBox(height: 24),
-          _RecordButton(
+          const SizedBox(height: 22),
+          _PrimarySquareButton(
             icon: Icons.stop_rounded,
             onPressed: () async => onStop(),
-            color: Colors.redAccent,
           ),
         ],
       ),
@@ -127,23 +121,18 @@ class _ActiveOverlay extends StatelessWidget {
 }
 
 class _TranscribingOverlay extends StatelessWidget {
-  const _TranscribingOverlay({required this.theme});
-  final ThemeData theme;
+  const _TranscribingOverlay();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(
-            width: 32,
-            height: 32,
-            child: CircularProgressIndicator.adaptive(strokeWidth: 3),
-          ),
-          const SizedBox(height: 16),
-          Text('Transcribing...', style: theme.textTheme.titleMedium),
+          const TranscribingIndicator(),
+          const SizedBox(height: 14),
+          Text('TRANSCRIBING', style: labelCaps(TwoTonePalette.fgPrimary)),
         ],
       ),
     );
@@ -151,34 +140,36 @@ class _TranscribingOverlay extends StatelessWidget {
 }
 
 class _FailedOverlay extends StatelessWidget {
-  const _FailedOverlay({
-    required this.message,
-    required this.onRetry,
-    required this.theme,
-  });
+  const _FailedOverlay({required this.message, required this.onRetry});
   final String message;
   final Future<void> Function() onRetry;
-  final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.error_outline, size: 40, color: Colors.redAccent),
-          const SizedBox(height: 12),
+          const Icon(
+            Icons.error_outline,
+            size: 36,
+            color: TwoTonePalette.accentRed,
+          ),
+          const SizedBox(height: 10),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: theme.textTheme.bodyMedium,
+            style: const TextStyle(
+              color: TwoTonePalette.fgPrimary,
+              fontSize: 14,
+            ),
           ),
           const SizedBox(height: 16),
-          FilledButton.icon(
+          _PrimarySquareButton(
+            icon: Icons.refresh_rounded,
             onPressed: () async => onRetry(),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Try again'),
+            label: 'TRY AGAIN',
           ),
         ],
       ),
@@ -217,10 +208,10 @@ class _PulsingDotState extends State<_PulsingDot>
     return FadeTransition(
       opacity: Tween<double>(begin: 0.3, end: 1.0).animate(_controller),
       child: Container(
-        width: 12,
-        height: 12,
+        width: 10,
+        height: 10,
         decoration: const BoxDecoration(
-          color: Colors.redAccent,
+          color: TwoTonePalette.accentRed,
           shape: BoxShape.circle,
         ),
       ),
@@ -228,29 +219,43 @@ class _PulsingDotState extends State<_PulsingDot>
   }
 }
 
-class _RecordButton extends StatelessWidget {
-  const _RecordButton({
+/// Editorial square button matching the primary call-to-action.
+/// 88×88 with 20pt corner radius per `docs/design_future_two_tone.md`.
+class _PrimarySquareButton extends StatelessWidget {
+  const _PrimarySquareButton({
     required this.icon,
     required this.onPressed,
-    required this.color,
+    this.label,
   });
+
   final IconData icon;
   final VoidCallback onPressed;
-  final Color color;
+
+  /// Optional small-caps label shown under the glyph. Used for the retry
+  /// affordance where the icon alone is ambiguous.
+  final String? label;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: color,
-      shape: const CircleBorder(),
-      elevation: 4,
+      color: TwoTonePalette.accentRed,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        customBorder: const CircleBorder(),
         onTap: onPressed,
+        borderRadius: BorderRadius.circular(20),
         child: SizedBox(
-          width: 80,
-          height: 80,
-          child: Icon(icon, size: 36, color: Colors.white),
+          width: 88,
+          height: 88,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 36, color: TwoTonePalette.fgOnSlab),
+              if (label != null) ...[
+                const SizedBox(height: 4),
+                Text(label!, style: labelCaps(TwoTonePalette.fgOnSlab)),
+              ],
+            ],
+          ),
         ),
       ),
     );

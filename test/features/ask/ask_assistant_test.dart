@@ -12,6 +12,9 @@ class _FakeLlmRunner implements LlmRunner {
   final Result<String, LlmError> response;
   String? prompt;
   var generateCalls = 0;
+  double? capturedTemperature;
+  int? capturedTopK;
+  double? capturedTopP;
 
   @override
   Future<void> dispose() async {}
@@ -20,9 +23,15 @@ class _FakeLlmRunner implements LlmRunner {
   Future<Result<String, LlmError>> generate(
     String prompt, {
     double temperature = 0.3,
+    int topK = 1,
+    double topP = 0.95,
+    int? randomSeed,
   }) async {
     this.prompt = prompt;
     generateCalls += 1;
+    capturedTemperature = temperature;
+    capturedTopK = topK;
+    capturedTopP = topP;
     return response;
   }
 
@@ -44,9 +53,15 @@ class _StreamingFakeLlmRunner extends _FakeLlmRunner
   Stream<Result<String, LlmError>> generateStream(
     String prompt, {
     double temperature = 0.3,
+    int topK = 1,
+    double topP = 0.95,
+    int? randomSeed,
   }) async* {
     this.prompt = prompt;
     streamCalls += 1;
+    capturedTemperature = temperature;
+    capturedTopK = topK;
+    capturedTopP = topP;
     for (final chunk in chunks) {
       yield Ok(chunk);
     }
@@ -222,6 +237,65 @@ void main() {
     expect(result, isA<Err<AskAnswer, AskError>>());
     expect((result as Err<AskAnswer, AskError>).error, isA<AskLlmError>());
     expect(runner.generateCalls, 1);
+  });
+
+  test(
+    'Ask passes Gemma-recommended sampling (not greedy decoding) to the LLM',
+    () async {
+      // Regression guard: flutter_gemma defaults topK to 1, which forces
+      // greedy decoding and reliably loops on Gemma 3 1B. Ask must override
+      // with Google's recommended config — temperature=1.0, topK=64, topP=0.95.
+      // The numbers come from the Gemma 3 technical report and HF model card.
+      final runner = _FakeLlmRunner(const Ok('Hello [L1].'));
+      final assistant = AskAssistant(
+        runner: runner,
+        searchMemories: (_, {int limit = 3}) async => const Ok([]),
+        searchLogs: (_, {int limit = 3}) async => Ok([
+          SearchHit(
+            logId: 'log_1',
+            fusedScore: 0.5,
+            matchedVia: const {MatchSource.fts},
+            snippet: 'hello',
+            createdAt: DateTime(2026, 5, 8),
+          ),
+        ]),
+      );
+
+      await assistant.ask('hello?');
+      expect(
+        runner.capturedTemperature,
+        1.0,
+        reason: 'temperature must be 1.0 — Gemma 3 official recommendation',
+      );
+      expect(
+        runner.capturedTopK,
+        64,
+        reason:
+            'topK must be 64 — the value that actually defeats loops; '
+            'topK=1 (flutter_gemma default) was the root cause of the bug',
+      );
+    },
+  );
+
+  test('streaming Ask also passes the non-greedy sampling config', () async {
+    final runner = _StreamingFakeLlmRunner(['Hello ', '[L1].']);
+    final assistant = AskAssistant(
+      runner: runner,
+      searchMemories: (_, {int limit = 3}) async => const Ok([]),
+      searchLogs: (_, {int limit = 3}) async => Ok([
+        SearchHit(
+          logId: 'log_1',
+          fusedScore: 0.5,
+          matchedVia: const {MatchSource.fts},
+          snippet: 'hello',
+          createdAt: DateTime(2026, 5, 8),
+        ),
+      ]),
+    );
+
+    await assistant.ask('hello?');
+    expect(runner.capturedTemperature, 1.0);
+    expect(runner.capturedTopK, 64);
   });
 
   test('strips invalid citations from the answer', () async {

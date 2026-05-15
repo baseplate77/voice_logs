@@ -25,6 +25,9 @@ class _FakeRunner implements LlmRunner {
   Future<Result<String, LlmError>> generate(
     String prompt, {
     double temperature = 0.3,
+    int topK = 1,
+    double topP = 0.95,
+    int? randomSeed,
   }) async => const Ok('''
     {
       "memories": [

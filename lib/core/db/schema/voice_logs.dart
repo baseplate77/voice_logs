@@ -22,6 +22,9 @@ class VoiceLogs extends Table {
   /// Cleaned transcript from Gemma. `NULL` until the refine job completes.
   TextColumn get cleanedText => text().nullable()();
 
+  /// Short user-facing title from Gemma. `NULL` until the refine job completes.
+  TextColumn get title => text().nullable()();
+
   /// One of: `recorded` | `refined` | `embedded` | `failed`.
   TextColumn get processingState => text()();
 

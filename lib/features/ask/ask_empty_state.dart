@@ -6,31 +6,44 @@ class AskEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.question_answer_outlined,
-              size: 56,
-              color: Theme.of(context).colorScheme.primary,
+    final theme = Theme.of(context);
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 520),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.10),
+              shape: BoxShape.circle,
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Ask your voice journal',
-              style: Theme.of(context).textTheme.titleLarge,
-              textAlign: TextAlign.center,
+            child: Icon(
+              Icons.auto_awesome,
+              size: 28,
+              color: theme.colorScheme.primary,
             ),
-            const SizedBox(height: 8),
-            const Text(
-              'VoxSynth retrieves relevant local memories and voice-log snippets, '
-              'then streams a structured answer from the on-device model.',
-              textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'How can I help with your journal?',
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
             ),
-          ],
-        ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Ask about people, plans, decisions, or patterns from your local voice logs.',
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+              height: 1.45,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
       ),
     );
   }

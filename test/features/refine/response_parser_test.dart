@@ -11,6 +11,130 @@ void main() {
     );
   });
 
+  test('parses cleanup response with generated title (legacy shape)', () {
+    final parsed = parseCleanupTranscript(
+      '{"cleaned_text":"Today I talked to Raj about the app launch.",'
+      '"title":"Raj call about app launch."}',
+    );
+
+    expect(parsed, isNotNull);
+    expect(parsed!.cleanedText, 'Today I talked to Raj about the app launch.');
+    expect(parsed.title, 'Raj call about app launch');
+  });
+
+  group('parseTitleResponse', () {
+    test('extracts the title key from a well-formed JSON object', () {
+      expect(
+        parseTitleResponse('{"title":"Shivani meeting on Project Atlas"}'),
+        'Shivani meeting on Project Atlas',
+      );
+    });
+
+    test('strips trailing punctuation and wrapping quotes', () {
+      expect(
+        parseTitleResponse('{"title":" "Send revised deck to Shivani." "}'),
+        'Send revised deck to Shivani',
+      );
+    });
+
+    test('returns null when there is no JSON envelope at all', () {
+      expect(parseTitleResponse('Dr. Rao dentist appointment'), isNull);
+    });
+
+    test('handles a malformed JSON via loose extraction', () {
+      expect(
+        parseTitleResponse('{"title":"Pick up Mom from airport" ,'),
+        'Pick up Mom from airport',
+      );
+    });
+
+    test('returns null for whitespace-only responses', () {
+      expect(parseTitleResponse('   \n  '), isNull);
+    });
+
+    test('returns null when the title key resolves to an empty string', () {
+      expect(parseTitleResponse('{"title":""}'), isNull);
+    });
+
+    test('parses a well-formed suggestions response', () {
+      final parsed = parseSuggestionsResponse(
+        '{"suggestions":['
+        '{"chip":"Coffee with Shivani","question":"What did I discuss with Shivani over coffee?"},'
+        '{"chip":"Project Atlas","question":"What is the latest on Project Atlas?"}'
+        ']}',
+      );
+      expect(parsed, isNotNull);
+      expect(parsed, hasLength(2));
+      expect(parsed!.first.chipText, 'Coffee with Shivani');
+      expect(
+        parsed.first.question,
+        'What did I discuss with Shivani over coffee?',
+      );
+    });
+
+    test('suggestions dedupe chips by case-insensitive label', () {
+      final parsed = parseSuggestionsResponse(
+        '{"suggestions":['
+        '{"chip":"Coffee","question":"What did I say about coffee?"},'
+        '{"chip":"coffee","question":"When did I have coffee last?"},'
+        '{"chip":"Atlas","question":"What is the latest on Atlas?"}'
+        ']}',
+      );
+      expect(parsed, isNotNull);
+      expect(parsed!.map((s) => s.chipText), ['Coffee', 'Atlas']);
+    });
+
+    test('suggestions cap at four entries', () {
+      final raw = List.generate(
+        7,
+        (i) => '{"chip":"Topic $i","question":"What is question $i about?"}',
+      ).join(',');
+      final parsed = parseSuggestionsResponse('{"suggestions":[$raw]}');
+      expect(parsed, isNotNull);
+      expect(parsed, hasLength(4));
+    });
+
+    test('suggestions drop generic single-word chips', () {
+      final parsed = parseSuggestionsResponse(
+        '{"suggestions":['
+        '{"chip":"Summary","question":"What is this about?"},'
+        '{"chip":"Coffee with Shivani","question":"What did I discuss with Shivani?"}'
+        ']}',
+      );
+      expect(parsed, isNotNull);
+      expect(parsed!.map((s) => s.chipText), ['Coffee with Shivani']);
+    });
+
+    test('suggestions append a question mark if missing', () {
+      final parsed = parseSuggestionsResponse(
+        '{"suggestions":['
+        '{"chip":"Coffee with Shivani","question":"What did I discuss with Shivani over coffee"}'
+        ']}',
+      );
+      expect(parsed!.first.question.endsWith('?'), isTrue);
+    });
+
+    test('suggestions return null when JSON is malformed', () {
+      expect(parseSuggestionsResponse('not json at all'), isNull);
+      expect(parseSuggestionsResponse('{"suggestions":[{"chip":'), isNull);
+    });
+
+    test('suggestions return empty list when array is empty', () {
+      final parsed = parseSuggestionsResponse('{"suggestions":[]}');
+      expect(parsed, isNotNull);
+      expect(parsed, isEmpty);
+    });
+
+    test('caps overlong titles to about 12 words', () {
+      const long =
+          'this is a deliberately overlong title that should be truncated before twelve words appear';
+      final result = parseTitleResponse('{"title":"$long"}');
+      expect(result, isNotNull);
+      final wordCount = RegExp(r'[A-Za-z0-9]+').allMatches(result!).length;
+      expect(wordCount, lessThanOrEqualTo(12));
+    });
+  });
+
   test('parses cleanup response with unescaped markdown line breaks', () {
     final parsed = parseCleanedTranscript('''
 {

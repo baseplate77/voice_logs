@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app_theme.dart';
 import 'core/background_task_bridge.dart';
 import 'core/intent_bridge.dart';
 import 'core/logger.dart';
@@ -195,10 +196,7 @@ class _VoxSynthAppState extends ConsumerState<VoxSynthApp>
     return MaterialApp(
       navigatorKey: _navigatorKey,
       title: 'VoxSynth',
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
+      theme: buildVoxTheme(),
       home: const VoxHomeScreen(),
     );
   }

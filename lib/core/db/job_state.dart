@@ -40,11 +40,22 @@ enum JobType {
   /// Durable local memory extraction.
   memory('memory'),
 
+  /// Extract tasks, reminders, decisions, and follow-ups.
+  action('action'),
+
   /// Segment enrichment: importance scoring, topics, short summaries.
   enrich('enrich'),
 
   /// Per-log summary generation.
-  summarize('summarize');
+  summarize('summarize'),
+
+  /// Per-canonical-entity relationship / context summary generation.
+  /// Drives the "About / Context" section of the entity detail page.
+  entitySummary('entity_summary'),
+
+  /// Cross-log daily / weekly digest generation. JobContext.logId carries
+  /// the polymorphic digest target id (e.g. `daily:2026-05-15`).
+  digest('digest');
 
   const JobType(this.wire);
 

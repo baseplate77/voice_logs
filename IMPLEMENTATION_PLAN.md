@@ -211,6 +211,175 @@ Replace SmolLM2 as the production LLM with Gemma 3 1B IT Q4 LiteRT-LM via `flutt
 
 ---
 
+## Phase 9 — Magical search (slices 1 + 2)
+
+Lift hybrid search from "list of matched logs" to "land on the exact moment that matched, with the dimensions of your journal as facets."
+
+**In scope:**
+- Per-segment snippets with keyword highlighting. Tapping a result opens `LogDetailScreen` at the matching segment's `startTimeMs` and visually accents the matched range.
+- Faceted filters above the search field:
+  - People / Places / Projects — pickers over `canonical_entities` grouped by `type`. Logic: **AND across types, OR within** (e.g. `(Shivani OR Aman) AND (Cafe Coffee Day)`).
+  - Date range — Today / This week / This month / Custom over `voice_logs.createdAt`.
+  - Tasks — toggle restricting to logs with rows in `action_items`.
+- Local "why this matched" rationale per tile (e.g. "Mentions Shivani · cleaned text" / "Semantically similar — segment at 0:42"). No LLM yet.
+
+**Files:**
+- `lib/features/search/vec_store.dart` — carry `startTimeMs`/`endTimeMs` on `VectorHit`.
+- `lib/features/search/hybrid_retriever.dart` — wire entity-boost path, apply `SearchFilters`, surface `bestSegmentId` + `bestSegmentStartMs/EndMs` + `localReason` on `SearchHit`, pinpoint a segment for FTS-only hits.
+- `lib/features/search/search_filters.dart` *(new, freezed)* — filter model + Riverpod state notifier.
+- `lib/features/search/entity_facet_provider.dart` *(new)* — canonical entities grouped by type.
+- `lib/features/search/search_screen.dart` — filter bar, rationale line, jump-to-moment navigation.
+- `test/features/search/hybrid_retriever_test.dart` — filter + pinpoint cases.
+- `test/features/search/search_filters_test.dart` *(new)* — filter composition logic.
+
+**Out of scope (deferred):**
+- Gemma-generated rationales — Phase 9.1, on-demand on tile expansion.
+- Mood/emotion filter — needs a new refine pass + schema column.
+- Inline action_items rendering in results — toggle filter only this phase.
+
+**Acceptance:**
+- `make codegen`, `make analyze`, `flutter test` clean.
+- Manual: search "coffee with Shivani" → tap result → detail screen opens with audio queued at the matching segment and the matched span accented.
+- No new dependencies. No schema migration.
+
+---
+
+## Phase 10 — Per-log structured summaries
+
+Adds a structured summary card to every refined log: one-liner, three
+bullets, important people/projects, decisions, and follow-ups. Surfaces
+the "what happened" of each log at a glance on the detail screen.
+
+**Implementation shape:**
+- Reuses the existing polymorphic `summaries` table (`type='log'`,
+  `source_id=<logId>`, deterministic `id='log:<logId>'`) added in
+  Phase 9.0. No schema migration.
+- New `JobType.summarize` handler (`lib/features/summarize/summarize_runner.dart`)
+  runs after refine: one Gemma 3 1B call returns a single JSON object with
+  all five fields; one stricter retry on parse failure; best-effort —
+  failure leaves no row and never blocks the pipeline.
+- `LogSummaryRepository` (`lib/core/db/repositories/log_summary_repository.dart`)
+  abstracts the row shape: bullets stored newline-joined in `body`,
+  people/projects/decisions/follow-ups as JSON arrays in
+  `topics_json` / `decisions_json` / `action_items_json`.
+- Detail screen renders `LogSummaryPanel` above the entity chips; widget
+  hides itself until the summarize job lands.
+
+**Files added:**
+- `lib/core/db/repositories/log_summary_repository.dart`
+- `lib/features/summarize/summary_prompt.dart`
+- `lib/features/summarize/summary_response_parser.dart`
+- `lib/features/summarize/summarize_runner.dart`
+- `lib/features/detail/log_summary_panel.dart`
+- `test/features/summarize/summary_response_parser_test.dart`
+- `test/features/summarize/summarize_runner_test.dart`
+- `test/core/db/log_summary_repository_test.dart`
+
+**Files modified:**
+- `lib/core/db/providers.dart` — `logSummaryRepositoryProvider`,
+  `logSummaryForLogProvider`.
+- `lib/core/worker/providers.dart` — `summarizeHandlerProvider`,
+  registered in the worker handler map.
+- `lib/features/refine/refine_runner.dart` — enqueues `summarize` after
+  `embed` on the success path.
+- `lib/features/detail/log_detail_screen.dart` — slots
+  `LogSummaryPanel` above `EntityChips`.
+
+**Acceptance:**
+- `make analyze` and `flutter test` clean.
+- Record a multi-topic log → refine completes → detail screen shows the
+  structured summary card within seconds of refine landing.
+- Parse-failure path: when the LLM never produces parseable JSON, the
+  job completes successfully with no summary row and the detail screen
+  hides the panel cleanly.
+
+**Out of scope (deferred):**
+- Manual "Regenerate summary" button on the detail screen.
+- Linking `people_projects` to canonical entities at write time, and
+  merging `follow_ups` into the existing `action_items` table — the
+  fields are regenerated standalone for v1.
+
+---
+
+## Phase 11 — Daily / weekly digests
+
+Cross-log summaries computed over a calendar window. A "Today" card
+surfaces what happened, people mentioned, tasks created, decisions, and
+mood/theme. A "This week" card surfaces main themes, project progress,
+repeated concerns, and unfinished tasks. On-demand only — no background
+scheduling, no stale cached digests.
+
+**Implementation shape:**
+- Reuses the polymorphic `summaries` table from Phase 10. Rows use
+  `type='daily'` or `type='weekly'`, `source_id=<YYYY-MM-DD>` (the
+  start-of-window date in the user's local timezone), deterministic
+  `id='daily:<date>'` / `id='weekly:<date>'`. No schema migration.
+- `DigestRunner` pulls `voice_logs` (and `LogSummary` rows where
+  present) for the window, builds a single Gemma 3 1B prompt, parses
+  one JSON object, writes via `LogSummaryRepository` under the new
+  types. One stricter retry on parse failure; second failure leaves
+  no row.
+- Runs through the existing single-worker queue — LLM inference stays
+  serial (see CLAUDE.md non-negotiables).
+- Trigger is on-demand only: opening the digest screen enqueues the
+  job if no row exists for the window; the screen shows a spinner and
+  swaps in the card when the row lands. No `workmanager` /
+  `BGTaskScheduler` involvement.
+- Bullets stored newline-joined in `body`. Arrays
+  (`peopleMentioned` / `tasksCreated` / `decisions` for daily;
+  `mainThemes` / `projectProgress` / `repeatedConcerns` /
+  `unfinishedTasks` for weekly) stored in
+  `topics_json` / `decisions_json` / `action_items_json` — exact
+  field mapping documented in `digest_response_parser.dart`.
+
+**Files added:**
+- `lib/features/digest/digest_prompt.dart` — daily + weekly prompt
+  templates.
+- `lib/features/digest/digest_response_parser.dart` — mirrors
+  `summary_response_parser.dart`.
+- `lib/features/digest/digest_runner.dart` — window query, prompt
+  call, parse + retry, repository write.
+- `lib/features/digest/digest_screen.dart` — Today / This week tabs;
+  shows the card or a "Generate" affordance when no row exists.
+- `test/features/digest/digest_response_parser_test.dart`
+- `test/features/digest/digest_runner_test.dart`
+
+**Files modified:**
+- `lib/core/db/repositories/log_summary_repository.dart` — add
+  `digestForWindow(type, date)` lookup and a typed write path; bullets
+  field naming stays generic.
+- `lib/core/worker/providers.dart` — `digestHandlerProvider`,
+  registered in the worker handler map under a new
+  `JobType.digest`.
+- `lib/core/db/job_state.dart` — extend `JobType` with `digest`.
+- `lib/features/debug/pipeline_debug_screen.dart` — add **"Generate
+  today's digest"** and **"Generate this week's digest"** buttons
+  that enqueue the job for the current local date and render the
+  resulting row.
+
+**Acceptance:**
+- `make analyze` and `flutter test` clean.
+- Record a few logs across a day → tap "Generate today's digest" on
+  the debug screen → a digest row lands within ~10–20s with
+  bullets, people, tasks, decisions, mood.
+- Weekly digest spans 7 days ending on the current local date and
+  surfaces themes / progress / concerns / unfinished tasks.
+- Parse-failure path: when the LLM never produces parseable JSON,
+  the job completes successfully with no digest row and the screen
+  shows the empty / retry state.
+- `test/no_network_test.dart` still passes.
+
+**Out of scope (deferred):**
+- Background scheduling at a fixed local time — revisit once the
+  on-demand path is validated.
+- A user-facing entry point in the home nav. The debug screen and
+  a direct route are enough for v1.
+- Linking `peopleMentioned` to canonical entities at write time.
+- Cross-week / monthly digests.
+- Mood timeline visualization.
+
+---
+
 ## Working rules
 
 - One phase per session. Stop at the end of a phase to demo what works.

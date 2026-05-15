@@ -1,6 +1,7 @@
 import '../../core/app_error.dart';
 import '../../core/db/job_state.dart';
 import '../../core/db/repositories/entity_mention_repository.dart';
+import '../../core/db/repositories/prompt_suggestion_repository.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 import '../../core/logger.dart';
 import '../../core/result.dart';
@@ -26,12 +27,18 @@ class LlmRefiner implements JobHandler {
     required this.voiceLogs,
     required this.mentions,
     required this.queue,
+    this.suggestions,
   });
 
   final LlmRunner runner;
   final VoiceLogRepository voiceLogs;
   final EntityMentionRepository mentions;
   final JobQueue queue;
+
+  /// Optional. When provided, refine runs a fourth Gemma stage that
+  /// extracts tap-to-ask suggestion chips from the cleaned text. Suggestion
+  /// failures never abort refine — the chip simply doesn't appear.
+  final PromptSuggestionRepository? suggestions;
 
   final _log = Logger('llm_refiner');
 
@@ -71,21 +78,25 @@ class LlmRefiner implements JobHandler {
     }
 
     final cleanup = await _cleanupTranscript(rawTranscript);
-    final String? cleanedText;
+    final ParsedCleanupTranscript? cleaned;
     switch (cleanup) {
       case Ok(:final value):
-        cleanedText = value;
+        cleaned = value;
       case Err(:final error):
         _log.w('Refine failed during cleanup generation', error: error);
         return Err(error);
     }
-    if (cleanedText == null) {
+    if (cleaned == null) {
       _log.w('Refine cleanup failed or dropped content; using raw transcript');
     }
-    final finalCleanedText = cleanedText ?? rawTranscript;
+    final finalCleanedText = cleaned?.cleanedText ?? rawTranscript;
+    final title = await _resolveTitle(
+      cleanedText: finalCleanedText,
+      legacyTitle: cleaned?.title,
+    );
 
     final Result<List<({String text, String type})>, LlmError> entityResult =
-        cleanedText == null
+        cleaned == null
         ? const Ok(<({String text, String type})>[])
         : await _extractEntitiesForTranscript(finalCleanedText);
     final List<({String text, String type})> parsedMentions;
@@ -108,6 +119,7 @@ class LlmRefiner implements JobHandler {
     final markRes = await voiceLogs.markRefined(
       id: ctx.logId,
       cleanedText: finalCleanedText,
+      title: title,
     );
     switch (markRes) {
       case Ok():
@@ -129,12 +141,21 @@ class LlmRefiner implements JobHandler {
         return Err(error);
     }
 
+    // Suggestion stage — best-effort. Refine never fails on this path.
+    if (suggestions != null && cleaned != null) {
+      await _generateAndPersistSuggestions(
+        logId: ctx.logId,
+        cleanedText: finalCleanedText,
+      );
+    }
+
     await queue.enqueue(logId: ctx.logId, type: JobType.embed);
+    await queue.enqueue(logId: ctx.logId, type: JobType.summarize);
     _log.i('Refine complete in ${total.elapsed}');
     return const Ok(JobSucceeded());
   }
 
-  Future<Result<String?, LlmError>> _cleanupTranscript(
+  Future<Result<ParsedCleanupTranscript?, LlmError>> _cleanupTranscript(
     String rawTranscript,
   ) async {
     final chunks = splitTranscriptForRefine(rawTranscript);
@@ -142,20 +163,25 @@ class LlmRefiner implements JobHandler {
 
     _log.i('Cleanup chunked into ${chunks.length} chunks');
     final cleanedChunks = <String>[];
+    String? title;
     for (var i = 0; i < chunks.length; i++) {
       final chunk = chunks[i];
       final result = await _cleanupChunk(chunk.text);
       switch (result) {
         case Ok(:final value):
-          cleanedChunks.add(value ?? chunk.text);
+          cleanedChunks.add(value?.cleanedText ?? chunk.text);
+          title ??= value?.title;
         case Err(:final error):
           return Err(error);
       }
     }
-    return Ok(_joinCleanedChunks(cleanedChunks));
+    final cleaned = _joinCleanedChunks(cleanedChunks);
+    return Ok(ParsedCleanupTranscript(cleanedText: cleaned, title: title));
   }
 
-  Future<Result<String?, LlmError>> _cleanupChunk(String rawTranscript) async {
+  Future<Result<ParsedCleanupTranscript?, LlmError>> _cleanupChunk(
+    String rawTranscript,
+  ) async {
     final first = await runner.generate(
       cleanupTranscriptPrompt(rawTranscript),
       temperature: kRecordLogTemperature,
@@ -169,13 +195,13 @@ class LlmRefiner implements JobHandler {
         return Err(error);
     }
 
-    var cleaned = parseCleanedTranscript(rawResponse);
+    var cleaned = parseCleanupTranscript(rawResponse);
     if (cleaned != null) {
-      if (_isCleanupContentPreserved(rawTranscript, cleaned)) {
+      if (_isCleanupContentPreserved(rawTranscript, cleaned.cleanedText)) {
         return Ok(cleaned);
       }
       _log.w('Cleanup dropped content; retrying with preservation prompt');
-      return _retryCleanupForPreservation(rawTranscript, cleaned);
+      return _retryCleanupForPreservation(rawTranscript, cleaned.cleanedText);
     }
 
     _log.w('Cleanup parse failed; retrying with stricter prompt');
@@ -185,17 +211,20 @@ class LlmRefiner implements JobHandler {
     );
     switch (retry) {
       case Ok(:final value):
-        cleaned = parseCleanedTranscript(value);
+        cleaned = parseCleanupTranscript(value);
       case Err(:final error):
         return Err(error);
     }
     if (cleaned == null) return const Ok(null);
-    if (_isCleanupContentPreserved(rawTranscript, cleaned)) return Ok(cleaned);
+    if (_isCleanupContentPreserved(rawTranscript, cleaned.cleanedText)) {
+      return Ok(cleaned);
+    }
     _log.w('Cleanup retry dropped content; falling back to raw transcript');
     return const Ok(null);
   }
 
-  Future<Result<String?, LlmError>> _retryCleanupForPreservation(
+  Future<Result<ParsedCleanupTranscript?, LlmError>>
+  _retryCleanupForPreservation(
     String rawTranscript,
     String previousCleanedText,
   ) async {
@@ -206,15 +235,17 @@ class LlmRefiner implements JobHandler {
       ),
       temperature: kRecordLogTemperature,
     );
-    String? cleaned;
+    ParsedCleanupTranscript? cleaned;
     switch (retry) {
       case Ok(:final value):
-        cleaned = parseCleanedTranscript(value);
+        cleaned = parseCleanupTranscript(value);
       case Err(:final error):
         return Err(error);
     }
     if (cleaned == null) return const Ok(null);
-    if (_isCleanupContentPreserved(rawTranscript, cleaned)) return Ok(cleaned);
+    if (_isCleanupContentPreserved(rawTranscript, cleaned.cleanedText)) {
+      return Ok(cleaned);
+    }
     _log.w('Preservation retry still dropped content; falling back to raw');
     return const Ok(null);
   }
@@ -273,6 +304,160 @@ class LlmRefiner implements JobHandler {
     }
     return Ok(mentions);
   }
+
+  /// Dedicated title pass over the cleaned text. Preference order:
+  ///   1. Dedicated Gemma title call (one stricter retry on parse failure).
+  ///   2. Legacy in-cleanup title (older prompts or future model that still
+  ///      embeds it — kept so cached responses don't regress).
+  ///   3. Deterministic [synthesizeFallbackTitle] over the cleaned text.
+  ///   4. Null when the cleaned text is itself empty.
+  Future<String?> _resolveTitle({
+    required String cleanedText,
+    required String? legacyTitle,
+  }) async {
+    final trimmed = cleanedText.trim();
+    if (trimmed.isEmpty) {
+      return _sanitizeOrFallback(legacyTitle, cleanedText);
+    }
+    final titleResult = await runner.generate(
+      generateLogTitlePrompt(trimmed),
+      temperature: kRecordLogTemperature,
+    );
+    String? response;
+    switch (titleResult) {
+      case Ok(:final value):
+        response = value;
+        _log.i('Title response chars=${value.length}');
+      case Err(:final error):
+        _log.w('Title generation failed; falling back', error: error);
+        return _sanitizeOrFallback(legacyTitle, cleanedText);
+    }
+
+    var title = parseTitleResponse(response);
+    if (title != null) return title;
+
+    _log.w('Title parse failed; retrying with stricter prompt');
+    final retry = await runner.generate(
+      generateLogTitleRetryPrompt(trimmed, response),
+      temperature: kRecordLogTemperature,
+    );
+    switch (retry) {
+      case Ok(:final value):
+        title = parseTitleResponse(value);
+      case Err(:final error):
+        _log.w('Title retry failed; falling back', error: error);
+        return _sanitizeOrFallback(legacyTitle, cleanedText);
+    }
+    if (title != null) return title;
+
+    _log.w('Title retry parse failed; falling back');
+    return _sanitizeOrFallback(legacyTitle, cleanedText);
+  }
+
+  String? _sanitizeOrFallback(String? legacyTitle, String cleanedText) {
+    final legacy = legacyTitle?.trim();
+    if (legacy != null && legacy.isNotEmpty) return legacy;
+    return synthesizeFallbackTitle(cleanedText);
+  }
+
+  /// Fourth refine stage. Best-effort: any failure is logged and swallowed
+  /// so chip-less logs still complete refine and reach embed.
+  Future<void> _generateAndPersistSuggestions({
+    required String logId,
+    required String cleanedText,
+  }) async {
+    final repo = suggestions;
+    if (repo == null) return;
+    final trimmed = cleanedText.trim();
+    if (trimmed.isEmpty) return;
+
+    final first = await runner.generate(
+      generateSuggestionsPrompt(trimmed),
+      temperature: kRecordLogTemperature,
+    );
+    String response;
+    switch (first) {
+      case Ok(:final value):
+        response = value;
+        _log.i('Suggestion response chars=${value.length}');
+      case Err(:final error):
+        _log.w('Suggestion stage failed; skipping chips', error: error);
+        return;
+    }
+
+    var parsed = parseSuggestionsResponse(response);
+    if (parsed == null) {
+      _log.w('Suggestion parse failed; retrying with stricter prompt');
+      final retry = await runner.generate(
+        generateSuggestionsRetryPrompt(trimmed, response),
+        temperature: kRecordLogTemperature,
+      );
+      switch (retry) {
+        case Ok(:final value):
+          parsed = parseSuggestionsResponse(value);
+        case Err(:final error):
+          _log.w('Suggestion retry failed; skipping chips', error: error);
+          return;
+      }
+    }
+    if (parsed == null || parsed.isEmpty) {
+      _log.w('Suggestion retry produced nothing usable; skipping chips');
+      return;
+    }
+
+    final candidates = parsed
+        .map(
+          (s) => PromptSuggestionCandidate(
+            chipText: s.chipText,
+            question: s.question,
+          ),
+        )
+        .toList(growable: false);
+    final result = await repo.replaceForLog(
+      logId: logId,
+      candidates: candidates,
+    );
+    switch (result) {
+      case Ok(:final value):
+        _log.i('Stored ${value.length} prompt suggestions');
+      case Err(:final error):
+        _log.w('Failed to persist suggestions; skipping chips', error: error);
+    }
+  }
+}
+
+/// Deterministic fallback used when Gemma omits the title key. Keeps old
+/// backups/tests and occasional malformed model responses from leaving the home
+/// list as an empty title.
+String? synthesizeFallbackTitle(String text) {
+  final normalized = text
+      .replaceAll(RegExp(r'[#*_`>\-]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (normalized.isEmpty) return null;
+
+  final firstSentence = RegExp(
+    r'(.{1,120}?)(?:[.!?]|$)',
+  ).firstMatch(normalized);
+  final source = (firstSentence?.group(1) ?? normalized).trim();
+  final words = RegExp(r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)?")
+      .allMatches(source)
+      .map((m) => m.group(0)!)
+      .where(
+        (w) =>
+            w.length > 1 && !_fallbackTitleDropWords.contains(w.toLowerCase()),
+      )
+      .take(10)
+      .toList(growable: false);
+  final selected = words.isEmpty
+      ? RegExp(r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)?")
+            .allMatches(source)
+            .map((m) => m.group(0)!)
+            .take(10)
+            .toList(growable: false)
+      : words;
+  if (selected.isEmpty) return null;
+  return selected.join(' ');
 }
 
 String _joinCleanedChunks(List<String> chunks) {
@@ -353,6 +538,38 @@ Map<String, int> _contentTokenCounts(List<String> words) {
   }
   return counts;
 }
+
+const Set<String> _fallbackTitleDropWords = {
+  'i',
+  'me',
+  'my',
+  'we',
+  'our',
+  'you',
+  'your',
+  'today',
+  'just',
+  'need',
+  'needs',
+  'about',
+  'talked',
+  'talk',
+  'call',
+  'called',
+  'the',
+  'and',
+  'for',
+  'with',
+  'that',
+  'this',
+  'from',
+  'have',
+  'has',
+  'had',
+  'was',
+  'were',
+  'are',
+};
 
 const Set<String> _lowSignalWords = {
   'the',

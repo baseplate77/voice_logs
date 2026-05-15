@@ -40,7 +40,7 @@ class RefineEvalScreen extends ConsumerWidget {
               padding: const EdgeInsets.all(12),
               child: Text(
                 state.errorMessage!,
-                style: const TextStyle(color: Colors.redAccent),
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           if (state.results.isNotEmpty) _SummaryCard(agg: agg),
@@ -283,7 +283,7 @@ class _CaseTile extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
               'Error: ${result.error}',
-              style: const TextStyle(color: Colors.redAccent),
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
             ),
           ),
         _section('Raw transcript', fixture.rawTranscript),
@@ -354,11 +354,12 @@ class _StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final (color, label) = switch (status) {
-      RefineParseStatus.firstPass => (Colors.green, '1st'),
-      RefineParseStatus.retry => (Colors.orange, 'rty'),
-      RefineParseStatus.fallback => (Colors.red, 'fb'),
-      RefineParseStatus.generationError => (Colors.red.shade900, 'err'),
+      RefineParseStatus.firstPass => (scheme.primary, '1st'),
+      RefineParseStatus.retry => (scheme.tertiary, 'rty'),
+      RefineParseStatus.fallback => (scheme.error, 'fb'),
+      RefineParseStatus.generationError => (scheme.error, 'err'),
     };
     return Container(
       width: 36,

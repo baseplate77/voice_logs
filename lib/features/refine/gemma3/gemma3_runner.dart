@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/services.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
@@ -17,7 +18,7 @@ import '../llm_runner.dart';
 class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
   Gemma3Runner({
     this.assetPath = _defaultAssetPath,
-    this.maxTokens = 1024,
+    this.maxTokens = 2048,
     this.idleTtl = const Duration(minutes: 5),
     this.staleNativeRecoveryDelay = const Duration(seconds: 2),
     PreferredBackend? preferredBackend,
@@ -48,6 +49,15 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
 
   InferenceModel? _model;
   Future<Result<void, LlmError>>? _loading;
+
+  /// Randomness source for per-call sampling seeds. Static so multiple
+  /// Gemma3Runner instances (tests) still get independent trajectories
+  /// without any external coordination.
+  static final math.Random _seedRng = math.Random();
+
+  /// Returns a fresh non-negative 31-bit seed for flutter_gemma's
+  /// `randomSeed` parameter (it stores the value in an int field).
+  int _nextRandomSeed() => _seedRng.nextInt(0x7FFFFFFF);
   Future<void> _opChain = Future.value();
   Timer? _idleTimer;
 
@@ -118,10 +128,19 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
   Future<Result<String, LlmError>> generate(
     String prompt, {
     double temperature = 0.3,
+    int topK = 1,
+    double topP = 0.95,
+    int? randomSeed,
   }) {
     return _runExclusive(
       'generate',
-      () => _generateUnlocked(prompt, temperature: temperature),
+      () => _generateUnlocked(
+        prompt,
+        temperature: temperature,
+        topK: topK,
+        topP: topP,
+        randomSeed: randomSeed,
+      ),
     );
   }
 
@@ -129,6 +148,9 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
   Stream<Result<String, LlmError>> generateStream(
     String prompt, {
     double temperature = 0.3,
+    int topK = 1,
+    double topP = 0.95,
+    int? randomSeed,
   }) {
     // ignore: close_sinks, closed by _generateStreamUnlocked after generation.
     late StreamController<Result<String, LlmError>> controller;
@@ -140,6 +162,9 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
             () => _generateStreamUnlocked(
               prompt,
               temperature: temperature,
+              topK: topK,
+              topP: topP,
+              randomSeed: randomSeed,
               controller: controller,
             ),
           ),
@@ -152,6 +177,9 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
   Future<Result<String, LlmError>> _generateUnlocked(
     String prompt, {
     required double temperature,
+    required int topK,
+    required double topP,
+    required int? randomSeed,
   }) async {
     final out = StringBuffer();
     LlmError? failure;
@@ -168,6 +196,9 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
     await _generateStreamUnlocked(
       prompt,
       temperature: temperature,
+      topK: topK,
+      topP: topP,
+      randomSeed: randomSeed,
       controller: controller,
     );
     await sub.cancel();
@@ -179,6 +210,9 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
   Future<void> _generateStreamUnlocked(
     String prompt, {
     required double temperature,
+    required int topK,
+    required double topP,
+    required int? randomSeed,
     required StreamController<Result<String, LlmError>> controller,
   }) async {
     try {
@@ -187,6 +221,9 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
         final attempt = await _generateStreamAttempt(
           prompt,
           temperature: temperature,
+          topK: topK,
+          topP: topP,
+          randomSeed: randomSeed,
           controller: controller,
         );
         switch (attempt) {
@@ -223,6 +260,9 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
   Future<_GemmaAttemptResult> _generateStreamAttempt(
     String prompt, {
     required double temperature,
+    required int topK,
+    required double topP,
+    required int? randomSeed,
     required StreamController<Result<String, LlmError>> controller,
   }) async {
     final loaded = await _loadUnlocked();
@@ -244,7 +284,17 @@ class Gemma3Runner implements LlmRunner, StreamingLlmRunner {
     final watch = Stopwatch()..start();
     var responseChars = 0;
     try {
-      session = await model.createSession(temperature: temperature, topP: 0.95);
+      // Default randomSeed of 1 (flutter_gemma's value) makes every
+      // generation with the same prompt fully reproducible — including
+      // any loops. Roll a fresh seed each call so a retried Ask explores
+      // a different trajectory.
+      final seed = randomSeed ?? _nextRandomSeed();
+      session = await model.createSession(
+        temperature: temperature,
+        topK: topK,
+        topP: topP,
+        randomSeed: seed,
+      );
       await session.addQueryChunk(Message.text(text: prompt, isUser: true));
       await for (final chunk in session.getResponseAsync()) {
         responseChars += chunk.length;

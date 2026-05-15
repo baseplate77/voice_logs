@@ -25,9 +25,9 @@ class VoiceLogFts {
       rowid,
     ]);
     await _db.customStatement(
-      'INSERT INTO voice_logs_fts(rowid, raw_transcript, cleaned_text) '
-      'VALUES (?, ?, ?)',
-      [rowid, log.rawTranscript, log.cleanedText ?? ''],
+      'INSERT INTO voice_logs_fts(rowid, raw_transcript, cleaned_text, title) '
+      'VALUES (?, ?, ?, ?)',
+      [rowid, log.rawTranscript, log.cleanedText ?? '', log.title ?? ''],
     );
   }
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
+import '../actions/action_screen.dart';
 import '../ask/ask_screen.dart';
 import '../debug/pipeline_debug_screen.dart';
 import '../detail/log_detail_screen.dart';
@@ -37,6 +38,13 @@ class HomeListScreen extends ConsumerWidget {
             onPressed: () => Navigator.of(
               context,
             ).push(MaterialPageRoute<void>(builder: (_) => const AskScreen())),
+          ),
+          IconButton(
+            tooltip: 'Action Inbox',
+            icon: const Icon(Icons.check_circle_outline),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ActionScreen()),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.search),

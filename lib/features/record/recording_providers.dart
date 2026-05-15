@@ -11,6 +11,7 @@ import '../../core/audio_session_bridge.dart';
 import '../../core/background_task_bridge.dart';
 import '../../core/db/job_state.dart';
 import '../../core/db/providers.dart';
+import '../../core/db/repositories/transcript_segment_repository.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 import '../../core/intent_bridge.dart';
 import '../../core/live_activity_bridge.dart';
@@ -41,20 +42,19 @@ final modelBootstrapProvider = Provider<ModelBootstrap>(
 ///
 /// Realtime captions are intentionally disabled because the streaming model's
 /// partial hypotheses are lower quality than completed-recording transcription.
-/// The returned recognizer must be disposed after each transcription so the
-/// large Parakeet native heap is released before Gemma refinement starts.
+/// The recognizer runs Parakeet in a background isolate so synchronous native
+/// decode/model-load work does not freeze the transcribing loader.
 final speechRecognizerFactoryProvider =
     Provider<Future<SpeechRecognizer> Function()>((ref) {
       final bootstrap = ref.watch(modelBootstrapProvider);
       return () async {
         final paths = await bootstrap.ensureParakeet();
-        final runner = ParakeetRunner(paths: paths);
+        final runner = IsolateParakeetRunner(paths: paths);
         final loaded = await runner.load();
         switch (loaded) {
           case Ok():
             return runner;
           case Err(:final error):
-            await runner.dispose();
             throw StateError('Parakeet ASR load failed: ${error.message}');
         }
       };
@@ -96,12 +96,14 @@ class RecordingController extends StateNotifier<RecordingState>
   RecordingController({
     required AudioRecorder recorder,
     required VoiceLogRepository repository,
+    required TranscriptSegmentRepository segmentRepository,
     required Future<SpeechRecognizer> Function() recognizerFactory,
     required JobQueue jobQueue,
     required String docsPath,
     PipelineDebugSink debugSink = const NoopPipelineDebugSink(),
   }) : _recorder = recorder,
        _repository = repository,
+       _segmentRepository = segmentRepository,
        _recognizerFactory = recognizerFactory,
        _jobQueue = jobQueue,
        _docsPath = docsPath,
@@ -112,6 +114,7 @@ class RecordingController extends StateNotifier<RecordingState>
 
   final AudioRecorder _recorder;
   final VoiceLogRepository _repository;
+  final TranscriptSegmentRepository _segmentRepository;
   final Future<SpeechRecognizer> Function() _recognizerFactory;
   final JobQueue _jobQueue;
   final String _docsPath;
@@ -285,8 +288,10 @@ class RecordingController extends StateNotifier<RecordingState>
     }
 
     state = const RecordingTranscribing();
+    await _allowTranscribingIndicatorToPaint();
 
     var rawTranscript = '';
+    List<TranscriptSegmentResult> transcriptSegments = const [];
     SpeechRecognizer? recognizer;
     try {
       final loadWatch = Stopwatch()..start();
@@ -300,16 +305,23 @@ class RecordingController extends StateNotifier<RecordingState>
       );
 
       final transcribeWatch = Stopwatch()..start();
-      final txt = await recognizer.transcribeFile(recorded.audioPath);
+      final txt = await recognizer.transcribeFileDetailed(recorded.audioPath);
       switch (txt) {
         case Ok(:final value):
-          rawTranscript = value;
+          rawTranscript = value.text;
+          transcriptSegments = value.segments;
+          final wordCount = value.segments.fold<int>(
+            0,
+            (sum, s) => sum + s.words.length,
+          );
           _debug.record(
             logId: logId,
             stage: PipelineDebugStage.transcription,
             event: 'succeeded',
             elapsedMs: transcribeWatch.elapsedMilliseconds,
-            message: 'Transcribed ${value.length} characters',
+            message:
+                'Transcribed ${rawTranscript.length} chars, '
+                '${value.segments.length} segments, $wordCount words',
           );
         case Err(:final error):
           _log.w('Transcription failed: ${error.message}');
@@ -364,6 +376,26 @@ class RecordingController extends StateNotifier<RecordingState>
           elapsedMs: persistWatch.elapsedMilliseconds,
           message: 'Saved voice log and FTS row',
         );
+        if (transcriptSegments.isNotEmpty) {
+          final segPersist = await _segmentRepository.replaceForLog(
+            logId: insertedLogId,
+            segments: transcriptSegments,
+          );
+          if (segPersist case Err(:final error)) {
+            // Word-timing persistence failure shouldn't block the user from
+            // seeing their log — degrade to text-only scrubbing.
+            _log.w(
+              'Transcript segment persist failed for $insertedLogId: '
+              '${error.message}',
+            );
+            _debug.record(
+              logId: insertedLogId,
+              stage: PipelineDebugStage.persistence,
+              event: 'failed',
+              message: 'Segment persist failed: ${error.message}',
+            );
+          }
+        }
       case Err(:final error):
         state = RecordingFailed(error.message);
         _debug.record(
@@ -435,6 +467,14 @@ class RecordingController extends StateNotifier<RecordingState>
     }
     unawaited(IntentBridge.reportRecordingState(isRecording: false));
     unawaited(BackgroundTaskBridge.end(bgTaskId));
+  }
+
+  Future<void> _allowTranscribingIndicatorToPaint() async {
+    // Give Flutter one small frame window after the recorder has stopped and
+    // before ASR model load/decode begins. The actual Parakeet work runs in a
+    // background isolate, but this guarantees the transcribing surface is
+    // visible before the memory spike starts.
+    await Future<void>.delayed(const Duration(milliseconds: 16));
   }
 
   void _startWaveformMonitor() {
@@ -544,6 +584,7 @@ final recordingControllerProvider =
       ref.keepAlive();
       final recorder = ref.watch(audioRecorderProvider);
       final repo = ref.watch(voiceLogRepositoryProvider);
+      final segmentRepo = ref.watch(transcriptSegmentRepositoryProvider);
       final recognizerFactory = ref.watch(speechRecognizerFactoryProvider);
       final queue = ref.watch(jobQueueProvider);
       final docsPath = ref.watch(appDocumentsPathProvider);
@@ -551,6 +592,7 @@ final recordingControllerProvider =
       return RecordingController(
         recorder: recorder,
         repository: repo,
+        segmentRepository: segmentRepo,
         recognizerFactory: recognizerFactory,
         jobQueue: queue,
         docsPath: docsPath,

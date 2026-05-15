@@ -6,6 +6,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voxsynth/core/db/database.dart';
 import 'package:voxsynth/core/db/job_state.dart';
+import 'package:voxsynth/core/db/repositories/transcript_segment_repository.dart';
 import 'package:voxsynth/core/db/repositories/voice_log_repository.dart';
 import 'package:voxsynth/core/result.dart';
 import 'package:voxsynth/core/worker/job_queue.dart';
@@ -98,6 +99,11 @@ class _FakeRecognizer implements SpeechRecognizer {
       Ok(output);
 
   @override
+  Future<Result<TranscriptionResult, AsrError>> transcribeFileDetailed(
+    String wavPath,
+  ) async => Ok(TranscriptionResult.textOnly(output));
+
+  @override
   Future<void> dispose() async {
     disposed = true;
   }
@@ -140,6 +146,14 @@ class _FakeStreamingRecognizer implements StreamingSpeechRecognizer {
   }
 
   @override
+  Future<Result<TranscriptionResult, AsrError>> transcribeFileDetailed(
+    String wavPath,
+  ) async {
+    fileTranscriptions++;
+    return Ok(TranscriptionResult.textOnly('file transcript'));
+  }
+
+  @override
   Future<void> dispose() async {}
 }
 
@@ -158,6 +172,7 @@ void main() {
     final controller = RecordingController(
       recorder: recorder,
       repository: repo,
+      segmentRepository: TranscriptSegmentRepository(db),
       recognizerFactory: () async => recognizer,
       jobQueue: JobQueue(db),
       docsPath: tmpDocs(),
@@ -195,6 +210,7 @@ void main() {
     final controller = RecordingController(
       recorder: recorder,
       repository: repo,
+      segmentRepository: TranscriptSegmentRepository(db),
       recognizerFactory: () async => recognizer,
       jobQueue: JobQueue(db),
       docsPath: tmpDocs(),
@@ -224,6 +240,7 @@ void main() {
       final controller = RecordingController(
         recorder: recorder,
         repository: repo,
+        segmentRepository: TranscriptSegmentRepository(db),
         recognizerFactory: () async => recognizer,
         jobQueue: JobQueue(db),
         docsPath: tmpDocs(),
@@ -254,6 +271,7 @@ void main() {
     final controller = RecordingController(
       recorder: _FakeRecorder(),
       repository: repo,
+      segmentRepository: TranscriptSegmentRepository(db),
       recognizerFactory: () async => _FakeRecognizer(''),
       jobQueue: JobQueue(db),
       docsPath: tmpDocs(),

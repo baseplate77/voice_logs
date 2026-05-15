@@ -107,6 +107,15 @@ class CanonicalEntityRepository {
     }
   }
 
+  /// Fetch a single canonical entity by id. Returns null when the row is
+  /// gone (e.g. user deleted it between two background-job stages).
+  Future<CanonicalEntityView?> find(String id) async {
+    final row = await (_db.select(
+      _db.canonicalEntities,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    return row == null ? null : _asView(row);
+  }
+
   /// Bump [mentionCount] by one on an existing canonical entity.
   Future<void> incrementMentionCount(String id) async {
     await _db.customStatement(

@@ -27,6 +27,11 @@ dependencies:
   # Audio capture
   record: ^5.2.0
 
+  # Audio playback for recorded WAV files on the detail screen. Pinned to
+  # 0.9.x — that line is the long-standing stable channel and exposes the
+  # `positionStream` we use for word-level transcript highlighting.
+  just_audio: ^0.9.42
+
   # STT — Parakeet via k2-fsa/sherpa-onnx Flutter bindings. Native libs
   # ship with the plugin; model files in assets/models/parakeet/.
   sherpa_onnx: ^1.12.39
@@ -61,6 +66,18 @@ dependencies:
 
   # Logging
   logger: ^2.5.0
+
+  # Local-only reminder notifications for extracted action items.
+  flutter_local_notifications: ^21.0.0
+  timezone: ^0.11.0
+
+  # Encrypted backup pipeline (settings → Export/Import). Everything runs
+  # locally; share_plus / file_picker only route bytes through the OS
+  # share sheet and document picker — no network.
+  pointycastle: ^3.9.1
+  archive: ^4.0.2
+  share_plus: ^10.1.4
+  file_picker: ^8.1.7
 
 dev_dependencies:
   flutter_test:

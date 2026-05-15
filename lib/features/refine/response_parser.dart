@@ -9,6 +9,15 @@ class ParsedRecordLog {
   final List<({String text, String type})> mentions;
 }
 
+/// Parsed cleanup-stage output. [title] is optional so older prompts/tests and
+/// malformed small-model responses can still refine transcripts successfully.
+class ParsedCleanupTranscript {
+  const ParsedCleanupTranscript({required this.cleanedText, this.title});
+
+  final String cleanedText;
+  final String? title;
+}
+
 const int _kMaxEntities = 15;
 
 /// Canonical entity types the UI knows how to render. Anything the model
@@ -84,6 +93,16 @@ const List<String> _cleanedTextKeys = [
   'text',
 ];
 
+const List<String> _titleKeys = [
+  'title',
+  'auto_title',
+  'autoTitle',
+  'short_title',
+  'shortTitle',
+  'log_title',
+  'logTitle',
+];
+
 const Map<String, int> _minuteWords = {
   'ten': 10,
   'fifteen': 15,
@@ -122,6 +141,11 @@ String repairCleanedTranscript(String cleanedText) {
 
 /// Parse the cleanup-only stage response.
 String? parseCleanedTranscript(String response) {
+  return parseCleanupTranscript(response)?.cleanedText;
+}
+
+/// Parse cleanup output plus the optional Gemma-generated title.
+ParsedCleanupTranscript? parseCleanupTranscript(String response) {
   final json = _extractJson(response);
   if (json == null) return null;
   try {
@@ -129,11 +153,162 @@ String? parseCleanedTranscript(String response) {
     final record = _recordMap(decoded);
     if (record == null) return null;
     final cleaned = _firstString(record, _cleanedTextKeys);
-    return cleaned == null ? null : repairCleanedTranscript(cleaned);
+    if (cleaned == null) return null;
+    final title = _sanitizeTitle(_firstString(record, _titleKeys));
+    return ParsedCleanupTranscript(
+      cleanedText: repairCleanedTranscript(cleaned),
+      title: title,
+    );
   } on Object {
     final cleaned = _looseStringField(json, _cleanedTextKeys);
-    return cleaned == null ? null : repairCleanedTranscript(cleaned);
+    if (cleaned == null) return null;
+    final title = _sanitizeTitle(_looseStringField(json, _titleKeys));
+    return ParsedCleanupTranscript(
+      cleanedText: repairCleanedTranscript(cleaned),
+      title: title,
+    );
   }
+}
+
+/// Parse the dedicated title-stage response. Strict JSON first, then loose
+/// key-extraction. Returns null when neither path yields a sanitized title.
+String? parseTitleResponse(String response) {
+  final json = _extractJson(response);
+  if (json != null) {
+    try {
+      final decoded = jsonDecode(json);
+      final record = _recordMap(decoded);
+      if (record != null) {
+        final sanitized = _sanitizeTitle(_firstString(record, _titleKeys));
+        if (sanitized != null) return sanitized;
+      }
+    } on Object {
+      final sanitized = _sanitizeTitle(_looseStringField(json, _titleKeys));
+      if (sanitized != null) return sanitized;
+    }
+  }
+
+  final loose = _sanitizeTitle(_looseStringField(response, _titleKeys));
+  if (loose != null) return loose;
+  if (RegExp(
+    r'"(?:title|auto_title|short_title|log_title)"\s*:',
+  ).hasMatch(response)) {
+    return null;
+  }
+
+  return null;
+}
+
+/// A single suggestion chip + the question it submits when tapped.
+class ParsedSuggestion {
+  const ParsedSuggestion({required this.chipText, required this.question});
+
+  final String chipText;
+  final String question;
+}
+
+const int _kMinSuggestionChars = 2;
+const int _kMaxChipChars = 40;
+const int _kMaxQuestionChars = 180;
+const int _kMaxSuggestions = 4;
+
+const _genericChipWords = <String>{
+  'summary',
+  'details',
+  'notes',
+  'today',
+  'recap',
+  'overview',
+};
+
+/// Parse the suggestion-stage response. Returns up to four sanitized
+/// suggestions or null if the response could not be parsed (the caller
+/// retries once and then gives up — empty suggestions for a log are
+/// acceptable, the chip just doesn't appear).
+List<ParsedSuggestion>? parseSuggestionsResponse(String response) {
+  final json = _extractJson(response);
+  if (json == null) return null;
+  Map<String, dynamic>? record;
+  try {
+    final decoded = jsonDecode(json);
+    record = _recordMap(decoded);
+  } on Object {
+    return null;
+  }
+  if (record == null) return null;
+
+  final items = _suggestionItems(record);
+  if (items == null) return null;
+
+  final results = <ParsedSuggestion>[];
+  final seenChips = <String>{};
+  for (final item in items) {
+    if (item is! Map) continue;
+    final chip = _sanitizeChip(_dynamicString(item['chip']));
+    final question = _sanitizeQuestion(_dynamicString(item['question']));
+    if (chip == null || question == null) continue;
+    final key = chip.toLowerCase();
+    if (!seenChips.add(key)) continue;
+    results.add(ParsedSuggestion(chipText: chip, question: question));
+    if (results.length >= _kMaxSuggestions) break;
+  }
+  return results;
+}
+
+List<dynamic>? _suggestionItems(Map<String, dynamic> record) {
+  for (final key in const ['suggestions', 'chips', 'prompts', 'items']) {
+    final value = record[key];
+    if (value is List) return value;
+  }
+  // Some small models emit the array at the top level instead of wrapping it.
+  if (record.length == 1) {
+    final only = record.values.first;
+    if (only is List) return only;
+  }
+  return null;
+}
+
+String? _dynamicString(Object? value) {
+  if (value is String) return value;
+  return null;
+}
+
+String? _sanitizeChip(String? raw) {
+  if (raw == null) return null;
+  var chip = raw
+      .replaceAll(RegExp(r'[\r\n]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  chip = chip.replaceAll(RegExp(r'''^["“”'\s]+|["“”'?!.\s]+$'''), '').trim();
+  if (chip.length < _kMinSuggestionChars) return null;
+  if (chip.length > _kMaxChipChars) {
+    chip = chip.substring(0, _kMaxChipChars).trimRight();
+  }
+  // Reject trivial single-word generic chips that add no information.
+  final tokens = chip
+      .toLowerCase()
+      .split(RegExp(r'\W+'))
+      .where((w) => w.isNotEmpty);
+  if (tokens.length == 1 && _genericChipWords.contains(tokens.first)) {
+    return null;
+  }
+  return chip;
+}
+
+String? _sanitizeQuestion(String? raw) {
+  if (raw == null) return null;
+  var q = raw
+      .replaceAll(RegExp(r'[\r\n]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  q = q.replaceAll(RegExp(r'''^["“”'\s]+|["“”'\s]+$'''), '').trim();
+  if (q.length < _kMinSuggestionChars + 4) return null;
+  if (q.length > _kMaxQuestionChars) {
+    q = q.substring(0, _kMaxQuestionChars).trimRight();
+    q = q.replaceAll(RegExp(r'[,;.\s]+$'), '');
+  }
+  if (!q.endsWith('?')) q = '$q?';
+  return q;
 }
 
 /// Parse the entity-only stage response and keep only mentions that can be
@@ -262,6 +437,28 @@ String? _firstString(Map<String, dynamic> map, List<String> keys) {
     if (value is String && value.trim().isNotEmpty) return value;
   }
   return null;
+}
+
+String? _sanitizeTitle(String? raw) {
+  if (raw == null) return null;
+  var title = raw
+      .replaceAll(RegExp(r'[\r\n]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  title = title.replaceAll(RegExp(r'''^["“”'\s]+|["“”'\s]+$'''), '');
+  title = title.replaceAll(RegExp(r'[.!?。]+$'), '').trim();
+  if (title.isEmpty) return null;
+
+  final words = RegExp(
+    r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)?",
+  ).allMatches(title).map((m) => m.group(0)!).toList(growable: false);
+  if (words.length > 12) {
+    final lastEnd = RegExp(
+      r"[A-Za-z0-9]+(?:['’-][A-Za-z0-9]+)?",
+    ).allMatches(title).elementAt(11).end;
+    title = title.substring(0, lastEnd).trim();
+  }
+  return title;
 }
 
 String? _looseStringField(String source, List<String> keys) {

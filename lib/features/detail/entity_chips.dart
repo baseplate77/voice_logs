@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../core/db/repositories/entity_mention_repository.dart';
+import '../entity/entity_detail_screen.dart';
 
 /// Horizontally-scrolling strip of chips for the entity mentions on a
 /// voice log detail page.
+///
+/// Each chip is tappable: it pushes [EntityDetailScreen] for the
+/// canonical entity the mention is linked to. Mentions whose
+/// `canonicalEntityId` is still null (canonicalize hasn't run yet) are
+/// rendered without an onTap so the strip never opens a broken screen.
 class EntityChips extends StatelessWidget {
   const EntityChips({super.key, required this.mentions});
 
@@ -21,10 +27,21 @@ class EntityChips extends StatelessWidget {
         separatorBuilder: (_, _) => const SizedBox(width: 8),
         itemBuilder: (_, i) {
           final m = mentions[i];
-          return Chip(
+          final canonicalId = m.canonicalEntityId;
+          final chip = Chip(
             label: Text(m.text),
             avatar: Text(_iconFor(m.type)),
             visualDensity: VisualDensity.compact,
+          );
+          if (canonicalId == null) return chip;
+          return InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => EntityDetailScreen(entityId: canonicalId),
+              ),
+            ),
+            child: chip,
           );
         },
       ),

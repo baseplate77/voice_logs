@@ -13,6 +13,11 @@ class TranscriptSegments extends Table {
   RealColumn get confidence => real().nullable()();
   IntColumn get createdAt => integer()();
 
+  /// JSON-encoded list of `{word, startMs, endMs}` entries for this segment.
+  /// Null when the recognizer did not provide per-word timing.
+  TextColumn get wordTimingsJson =>
+      text().named('word_timings_json').nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }

@@ -16,6 +16,7 @@ class VoiceLogView {
     required this.audioPath,
     required this.rawTranscript,
     required this.cleanedText,
+    required this.title,
     required this.processingState,
     required this.errorMessage,
   });
@@ -26,12 +27,21 @@ class VoiceLogView {
   final String audioPath;
   final String rawTranscript;
   final String? cleanedText;
+  final String? title;
   final ProcessingState processingState;
   final String? errorMessage;
 
-  /// The user-visible text for this log — prefers the Gemma-cleaned
+  /// The user-visible transcript for this log — prefers the Gemma-cleaned
   /// version and falls back to the raw transcript.
   String get displayText => cleanedText ?? rawTranscript;
+
+  /// Short title shown in log lists. Falls back to transcript text while
+  /// the refine job is still running or if title generation failed.
+  String get displayTitle {
+    final trimmed = title?.trim();
+    if (trimmed != null && trimmed.isNotEmpty) return trimmed;
+    return displayText;
+  }
 
   factory VoiceLogView.fromRow(VoiceLog row) {
     return VoiceLogView(
@@ -41,6 +51,7 @@ class VoiceLogView {
       audioPath: row.audioPath,
       rawTranscript: row.rawTranscript,
       cleanedText: row.cleanedText,
+      title: row.title,
       processingState: ProcessingState.fromWire(row.processingState),
       errorMessage: row.errorMessage,
     );
@@ -121,16 +132,37 @@ class VoiceLogRepository {
     return row == null ? null : VoiceLogView.fromRow(row);
   }
 
+  /// One-shot fetch of every log with `createdAt` in `[start, end)`,
+  /// ordered oldest-first. Powers cross-log work like digests.
+  Future<List<VoiceLogView>> findInWindow({
+    required DateTime start,
+    required DateTime end,
+  }) async {
+    final startMs = start.millisecondsSinceEpoch;
+    final endMs = end.millisecondsSinceEpoch;
+    final query = _db.select(_db.voiceLogs)
+      ..where(
+        (t) =>
+            t.createdAt.isBiggerOrEqualValue(startMs) &
+            t.createdAt.isSmallerThanValue(endMs),
+      )
+      ..orderBy([(t) => OrderingTerm.asc(t.createdAt)]);
+    final rows = await query.get();
+    return rows.map(VoiceLogView.fromRow).toList(growable: false);
+  }
+
   /// Record a successful refine: `cleaned_text` is filled and the state
   /// transitions to [ProcessingState.refined].
   Future<Result<void, VoiceLogStorageError>> markRefined({
     required String id,
     required String cleanedText,
+    String? title,
   }) async {
     try {
       await (_db.update(_db.voiceLogs)..where((t) => t.id.equals(id))).write(
         VoiceLogsCompanion(
           cleanedText: Value(cleanedText),
+          title: Value(title),
           processingState: Value(ProcessingState.refined.wire),
           errorMessage: const Value(null),
         ),
@@ -169,6 +201,33 @@ class VoiceLogRepository {
     }
   }
 
+  /// Update the user-facing title for a log. Trims whitespace; an empty
+  /// trimmed value clears the title so the [VoiceLogView.displayTitle]
+  /// fallback kicks back in. Re-syncs the row's FTS5 entry so search picks
+  /// up the change.
+  Future<Result<void, VoiceLogStorageError>> updateTitle({
+    required String id,
+    required String? title,
+  }) async {
+    try {
+      final trimmed = title?.trim();
+      final value = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+      await (_db.update(_db.voiceLogs)..where((t) => t.id.equals(id))).write(
+        VoiceLogsCompanion(title: Value(value)),
+      );
+      await _fts.sync(id);
+      return const Ok(null);
+    } on Object catch (e, s) {
+      return Err(
+        VoiceLogStorageError(
+          message: 'Failed to update title: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+  }
+
   /// Delete a single log and its dependent rows (mentions, segments).
   /// FTS5 is cleaned up alongside.
   Future<Result<void, VoiceLogStorageError>> delete(String id) async {
@@ -177,10 +236,16 @@ class VoiceLogRepository {
         await _fts.remove(id);
         await _removeMemorySourcesForLog(id);
         await (_db.delete(
+          _db.actionItems,
+        )..where((t) => t.voiceLogId.equals(id))).go();
+        await (_db.delete(
           _db.entityMentions,
         )..where((t) => t.logId.equals(id))).go();
         await (_db.delete(
           _db.voiceLogSegments,
+        )..where((t) => t.logId.equals(id))).go();
+        await (_db.delete(
+          _db.transcriptSegments,
         )..where((t) => t.logId.equals(id))).go();
         await (_db.delete(
           _db.processingJobs,
@@ -205,12 +270,16 @@ class VoiceLogRepository {
       await _db.transaction(() async {
         await _db.customStatement('DELETE FROM voice_logs_fts');
         await _db.customStatement('DELETE FROM memory_items_fts');
+        await _db.delete(_db.askMessages).go();
+        await _db.delete(_db.askThreads).go();
+        await _db.delete(_db.actionItems).go();
         await _db.delete(_db.memoryEntityLinks).go();
         await _db.delete(_db.memorySources).go();
         await _db.delete(_db.memoryEmbeddings).go();
         await _db.delete(_db.memoryItems).go();
         await _db.delete(_db.entityMentions).go();
         await _db.delete(_db.voiceLogSegments).go();
+        await _db.delete(_db.transcriptSegments).go();
         await _db.delete(_db.canonicalEntities).go();
         await _db.delete(_db.processingJobs).go();
         await _db.delete(_db.voiceLogs).go();

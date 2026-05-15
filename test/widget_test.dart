@@ -6,7 +6,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:voxsynth/app.dart';
 import 'package:voxsynth/core/db/database.dart';
 import 'package:voxsynth/core/db/job_state.dart';
+import 'package:voxsynth/core/db/processing_state.dart';
 import 'package:voxsynth/core/db/providers.dart';
+import 'package:voxsynth/core/db/repositories/voice_log_repository.dart';
 import 'package:voxsynth/core/worker/job_handler.dart';
 import 'package:voxsynth/core/worker/providers.dart';
 import 'package:voxsynth/core/worker/worker.dart';
@@ -48,6 +50,60 @@ void main() {
       find.textContaining('Recording starts automatically'),
       findsOneWidget,
     );
+  });
+
+  testWidgets('VoxSynthApp shows imported logs before onboarding', (
+    tester,
+  ) async {
+    final db = VoxSynthDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final tmpDir = Directory.systemTemp.createTempSync('vox_test_');
+    addTearDown(() => tmpDir.deleteSync(recursive: true));
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          appDocumentsPathProvider.overrideWithValue(tmpDir.path),
+          voxSynthDatabaseProvider.overrideWithValue(db),
+          voiceLogsStreamProvider.overrideWith(
+            (_) => Stream.value([
+              VoiceLogView(
+                id: 'imported-log',
+                createdAt: DateTime.fromMillisecondsSinceEpoch(1000),
+                durationMs: 1234,
+                audioPath: 'audio/imported-log.wav',
+                rawTranscript: 'restored journal entry',
+                cleanedText: 'restored journal entry',
+                title: 'restored journal entry',
+                processingState: ProcessingState.embedded,
+                errorMessage: null,
+              ),
+            ]),
+          ),
+          onboardingCompleteProvider.overrideWith(
+            (_) => _FixedOnboardingNotifier(false),
+          ),
+          autoRecordEnabledProvider.overrideWith(
+            (_) => _FixedAutoRecordNotifier(false),
+          ),
+          workerProvider.overrideWith((ref) {
+            final queue = ref.watch(jobQueueProvider);
+            final worker = Worker(
+              queue: queue,
+              handlers: <JobType, JobHandler>{},
+              pollInterval: const Duration(days: 1),
+            );
+            ref.onDispose(worker.stop);
+            return worker;
+          }),
+        ],
+        child: const VoxSynthApp(),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('restored journal entry'), findsOneWidget);
+    expect(find.textContaining('Recording starts automatically'), findsNothing);
   });
 
   testWidgets('VoxSynthApp shows log list when onboarded', (tester) async {

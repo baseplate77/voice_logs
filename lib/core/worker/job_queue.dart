@@ -143,7 +143,11 @@ class JobQueue {
         ProcessingState.recorded => JobType.refine,
         ProcessingState.refined => JobType.embed,
         ProcessingState.embedded =>
-          await _hasUnlinkedMentions(row.id) ? JobType.canonicalize : null,
+          await _hasUnlinkedMentions(row.id)
+              ? JobType.canonicalize
+              : await _hasAnyJobForLogType(row.id, JobType.action)
+              ? null
+              : JobType.action,
         ProcessingState.failed => null,
       };
       if (type == null) continue;
@@ -207,6 +211,17 @@ class JobQueue {
                   JobState.pending.wire,
                   JobState.running.wire,
                 ]),
+              )
+              ..limit(1))
+            .getSingleOrNull();
+    return row != null;
+  }
+
+  Future<bool> _hasAnyJobForLogType(String logId, JobType type) async {
+    final row =
+        await (_db.select(_db.processingJobs)
+              ..where(
+                (t) => t.logId.equals(logId) & t.jobType.equals(type.wire),
               )
               ..limit(1))
             .getSingleOrNull();

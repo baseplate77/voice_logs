@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/db/providers.dart';
+import '../../core/db/repositories/log_summary_repository.dart';
 import '../../core/pipeline_debug.dart';
 import '../../core/pipeline_debug_provider.dart';
+import '../../core/worker/providers.dart';
+import '../digest/digest_runner.dart';
 
 /// In-app debug timeline for per-log pipeline stages and durations.
 class PipelineDebugScreen extends ConsumerWidget {
@@ -26,23 +32,21 @@ class PipelineDebugScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: entries.isEmpty
-          ? const Center(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
-                  'No pipeline events yet. Record a log to see timings.',
-                  textAlign: TextAlign.center,
-                ),
+      body: ListView(
+        children: [
+          const _DigestTestPanel(),
+          if (groups.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'No pipeline events yet. Record a log to see timings.',
+                textAlign: TextAlign.center,
               ),
             )
-          : ListView.builder(
-              itemCount: groups.length,
-              itemBuilder: (context, index) {
-                final group = groups[index];
-                return _LogDebugGroup(group: group);
-              },
-            ),
+          else
+            for (final group in groups) _LogDebugGroup(group: group),
+        ],
+      ),
     );
   }
 
@@ -59,6 +63,208 @@ class PipelineDebugScreen extends ConsumerWidget {
     }).toList();
     groups.sort((a, b) => b.latest.compareTo(a.latest));
     return groups;
+  }
+}
+
+class _DigestTestPanel extends ConsumerWidget {
+  const _DigestTestPanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final today = DigestTarget.today();
+    final week = DigestTarget.weekEndingOn();
+    final repo = ref.watch(logSummaryRepositoryProvider);
+
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Digests', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 4),
+            Text(
+              'Generate a cross-log daily or weekly digest from the existing logs. '
+              'On-demand only — no scheduled jobs.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.today_outlined),
+                    label: const Text("Generate today's digest"),
+                    onPressed: () => _enqueue(context, ref, today),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: FilledButton.tonalIcon(
+                    icon: const Icon(Icons.view_week_outlined),
+                    label: const Text("Generate this week's digest"),
+                    onPressed: () => _enqueue(context, ref, week),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _DigestPreview(
+              title: 'Today · ${today.windowKey}',
+              stream: repo.watchDigest(
+                kind: today.kind,
+                windowKey: today.windowKey,
+              ),
+            ),
+            const SizedBox(height: 8),
+            _DigestPreview(
+              title: 'This week · ${week.label}',
+              stream: repo.watchDigest(
+                kind: week.kind,
+                windowKey: week.windowKey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _enqueue(
+    BuildContext context,
+    WidgetRef ref,
+    DigestTarget target,
+  ) async {
+    final queue = ref.read(jobQueueProvider);
+    // Wake the worker if it's idle so the job picks up immediately.
+    unawaited(ref.read(workerProvider).start());
+    final jobId = await enqueueDigest(queue: queue, target: target);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Enqueued ${target.wire} (job $jobId)')),
+    );
+  }
+}
+
+class _DigestPreview extends StatelessWidget {
+  const _DigestPreview({required this.title, required this.stream});
+
+  final String title;
+  final Stream<DigestView?> stream;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return StreamBuilder<DigestView?>(
+      stream: stream,
+      builder: (context, snapshot) {
+        final digest = snapshot.data;
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Theme.of(context).dividerColor),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: textTheme.labelLarge),
+              const SizedBox(height: 6),
+              if (digest == null)
+                Text(
+                  'No digest yet. Tap the button above to generate.',
+                  style: textTheme.bodySmall,
+                )
+              else
+                _DigestBody(digest: digest),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _DigestBody extends StatelessWidget {
+  const _DigestBody({required this.digest});
+
+  final DigestView digest;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(digest.oneLiner, style: textTheme.bodyMedium),
+        if (digest.bullets.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          for (final bullet in digest.bullets)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 2),
+              child: Text('• $bullet', style: textTheme.bodySmall),
+            ),
+        ],
+        _DigestList(label: _topicsLabel(digest.kind), items: digest.topics),
+        _DigestList(label: _actionsLabel(digest.kind), items: digest.actions),
+        _DigestList(
+          label: _decisionsLabel(digest.kind),
+          items: digest.decisions,
+        ),
+        if (digest.mood != null && digest.mood!.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text('Mood: ${digest.mood}', style: textTheme.bodySmall),
+        ],
+        const SizedBox(height: 6),
+        Text(
+          'Generated ${_clock(digest.generatedAt)}',
+          style: textTheme.labelSmall,
+        ),
+      ],
+    );
+  }
+
+  String _topicsLabel(DigestKind kind) =>
+      kind == DigestKind.daily ? 'People mentioned' : 'Project progress';
+
+  String _actionsLabel(DigestKind kind) =>
+      kind == DigestKind.daily ? 'Tasks created' : 'Unfinished tasks';
+
+  String _decisionsLabel(DigestKind kind) =>
+      kind == DigestKind.daily ? 'Decisions' : 'Repeated concerns';
+
+  String _clock(DateTime t) {
+    final h = t.hour.toString().padLeft(2, '0');
+    final m = t.minute.toString().padLeft(2, '0');
+    return '${t.year}-${t.month.toString().padLeft(2, '0')}-${t.day.toString().padLeft(2, '0')} $h:$m';
+  }
+}
+
+class _DigestList extends StatelessWidget {
+  const _DigestList({required this.label, required this.items});
+
+  final String label;
+  final List<String> items;
+
+  @override
+  Widget build(BuildContext context) {
+    if (items.isEmpty) return const SizedBox.shrink();
+    final textTheme = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: textTheme.labelMedium),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 1),
+              child: Text('• $item', style: textTheme.bodySmall),
+            ),
+        ],
+      ),
+    );
   }
 }
 
@@ -134,8 +340,11 @@ class _DebugEntryTile extends StatelessWidget {
       PipelineDebugStage.embed => Icons.hub_outlined,
       PipelineDebugStage.canonicalize => Icons.link,
       PipelineDebugStage.memory => Icons.psychology_outlined,
+      PipelineDebugStage.action => Icons.check_circle_outline,
       PipelineDebugStage.enrich => Icons.auto_awesome_outlined,
       PipelineDebugStage.summarize => Icons.summarize_outlined,
+      PipelineDebugStage.entitySummary => Icons.badge_outlined,
+      PipelineDebugStage.digest => Icons.calendar_today_outlined,
       PipelineDebugStage.worker => Icons.engineering_outlined,
     };
   }

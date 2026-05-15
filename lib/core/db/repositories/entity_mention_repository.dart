@@ -112,4 +112,57 @@ class EntityMentionRepository {
       (rows) => rows.map(EntityMentionView.fromRow).toList(),
     );
   }
+
+  /// Distinct voice-log ids that have at least one mention linked to
+  /// [canonicalEntityId]. Ordered by most-recent log first. Powers the
+  /// entity detail page's "Conversations / Timeline" section.
+  Future<List<String>> logIdsForEntity(
+    String canonicalEntityId, {
+    int limit = 50,
+  }) async {
+    final rows = await _db
+        .customSelect(
+          'SELECT DISTINCT em.log_id AS log_id, vl.created_at AS created_at '
+          'FROM entity_mentions em '
+          'INNER JOIN voice_logs vl ON vl.id = em.log_id '
+          'WHERE em.canonical_entity_id = ? '
+          'ORDER BY vl.created_at DESC '
+          'LIMIT ?',
+          variables: [
+            Variable<String>(canonicalEntityId),
+            Variable<int>(limit),
+          ],
+          readsFrom: {_db.entityMentions, _db.voiceLogs},
+        )
+        .get();
+    return rows.map((r) => r.read<String>('log_id')).toList(growable: false);
+  }
+
+  /// Reactive variant of [logIdsForEntity]. Emits whenever a relevant log
+  /// is added, refined, or a mention is relinked — useful for the live
+  /// "Conversations" list on the entity detail page.
+  Stream<List<String>> watchLogIdsForEntity(
+    String canonicalEntityId, {
+    int limit = 50,
+  }) {
+    return _db
+        .customSelect(
+          'SELECT DISTINCT em.log_id AS log_id, vl.created_at AS created_at '
+          'FROM entity_mentions em '
+          'INNER JOIN voice_logs vl ON vl.id = em.log_id '
+          'WHERE em.canonical_entity_id = ? '
+          'ORDER BY vl.created_at DESC '
+          'LIMIT ?',
+          variables: [
+            Variable<String>(canonicalEntityId),
+            Variable<int>(limit),
+          ],
+          readsFrom: {_db.entityMentions, _db.voiceLogs},
+        )
+        .watch()
+        .map(
+          (rows) =>
+              rows.map((r) => r.read<String>('log_id')).toList(growable: false),
+        );
+  }
 }

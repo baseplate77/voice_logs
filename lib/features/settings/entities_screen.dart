@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/canonical_entity_repository.dart';
+import '../entity/entity_detail_screen.dart';
 
 /// Read-only list of canonical entities, sorted by mention frequency.
 /// Merge / rename / delete actions are deferred to Phase 6 polish —
@@ -29,6 +30,11 @@ class EntitiesScreen extends ConsumerWidget {
                 title: Text(e.displayName),
                 subtitle: Text(e.type),
                 trailing: Text('${e.mentionCount}'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => EntityDetailScreen(entityId: e.id),
+                  ),
+                ),
               );
             },
           );

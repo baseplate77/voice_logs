@@ -4,16 +4,16 @@ import '../memory/memory_types.dart';
 import '../search/hybrid_retriever.dart';
 
 /// Total character budget for all context items (memories + logs).
-const int kContextCharBudget = 2100;
+const int kContextCharBudget = 3200;
 
 /// Minimum chars per context item to be worth including.
-const int kMinItemChars = 80;
+const int kMinItemChars = 120;
 
 /// Maximum number of memory cards considered for the prompt.
 const int kAskPromptMemoryLimit = 3;
 
 /// Maximum number of voice-log hits considered for the prompt.
-const int kAskPromptLogLimit = 5;
+const int kAskPromptLogLimit = 8;
 
 const _months = [
   'Jan',
@@ -65,26 +65,36 @@ QueryFormat classifyQuery(String question) {
 }
 
 String _formatInstruction(QueryFormat format) {
+  // Each scaffold is intentionally tiny. The 1B model loops when given long
+  // structural prose to imitate, so we use angle-bracket placeholders
+  // (`<answer>`) instead of descriptive prose (`A 2-4 sentence direct
+  // answer…`). Placeholders signal "substitute me", prose tempts the model
+  // to copy. Section headers (`## Details`) are flagged optional so the
+  // model isn't forced to fill a section it has nothing for.
   return switch (format) {
-    QueryFormat.list =>
-      'Answer as a markdown bullet list. Each item on its own line '
-          'starting with "- ". Cite sources as [M1], [L2] inline.',
-    QueryFormat.comparison =>
-      'Answer as a markdown table with columns for each item being '
-          'compared. Use pipe-delimited rows: | Aspect | A | B |. '
-          'Cite sources as [M1], [L2] inline.',
     QueryFormat.factual =>
-      'Answer in one concise sentence with [M1]/[L2] citations. '
-          'No extra headings.',
+      'Format: one or two sentences, inline citations. No headings.',
+    QueryFormat.list =>
+      'Format:\n'
+          '- <topic 1, citation>\n'
+          '- <topic 2, citation>',
+    QueryFormat.comparison =>
+      'Format (markdown table, one row per differentiator):\n'
+          '| Aspect | A | B |\n'
+          '| --- | --- | --- |\n'
+          '| <aspect> | <A value, citation> | <B value, citation> |',
     QueryFormat.summary =>
-      'Answer in 2-4 sentences as a paragraph. '
-          'Cite sources as [M1], [L2] inline.',
+      'Format:\n'
+          '## Summary\n'
+          '<one paragraph, inline citations>\n'
+          '## Highlights\n'
+          '- <bullet, citation>',
     QueryFormat.general =>
-      'Use this structure:\n'
+      'Format:\n'
           '## Answer\n'
-          'Direct answer in 1-3 sentences with [M1]/[L2] citations.\n'
-          '## Evidence\n'
-          '- Cite which sources support each claim.',
+          '<answer, inline citations>\n'
+          '## Details (omit if the answer is already complete)\n'
+          '- <bullet, citation>',
   };
 }
 
@@ -98,17 +108,28 @@ String buildAskPrompt({
 }) {
   final format = classifyQuery(question);
 
+  // Compact, directive preamble. Past iterations stacked four paragraphs of
+  // instructions that competed for the 1B model's attention and contained
+  // contradictions ("be detailed" vs. "stop writing"). The minimal version
+  // below leans on recency: the stop directive lives right before the
+  // generation cursor (`Answer:`) where the model attends most.
   final buffer = StringBuffer()
-    ..writeln('You are VoxSynth, an on-device voice journal assistant.')
     ..writeln(
-      'Answer ONLY from the context below. If the answer is not in the '
-      'context, say exactly: "I don\'t have enough context from your '
-      'voice logs to answer that."',
+      'You are VoxSynth, a voice journal assistant. '
+      'Answer using ONLY the Context below.',
+    )
+    ..writeln()
+    ..writeln('Rules:')
+    ..writeln('- Cite every claim with [L#] or [M#] from the Context.')
+    ..writeln(
+      '- Match the answer length to the Context. '
+      'One sentence is a complete answer when one sentence is all that fits.',
     )
     ..writeln(
-      'Do NOT use outside knowledge. Do NOT guess. '
-      'Cite sources as [M1], [L2], etc.',
+      '- If the Context does not answer the question, reply exactly: '
+      '"I don\'t have enough context from your voice logs to answer that."',
     )
+    ..writeln()
     ..writeln(_formatInstruction(format))
     ..writeln()
     ..writeln('Context:');
@@ -127,10 +148,15 @@ String buildAskPrompt({
     }
   }
 
+  // Recency anchor: small models give the last instruction the most
+  // attention. Placing the stop directive immediately before `Answer:`
+  // dramatically reduces phrase loops compared to burying it in the
+  // preamble. Keep it short — one short sentence beats a paragraph.
   buffer
     ..writeln()
     ..writeln('Question: $question')
     ..writeln()
+    ..writeln('Stop as soon as the answer is complete. Do not repeat.')
     ..writeln('Answer:');
   return buffer.toString();
 }
@@ -156,11 +182,8 @@ List<({String label, String content})> _allocateContext({
 
   for (var i = 0; i < logs.length && i < kAskPromptLogLimit; i++) {
     final hit = logs[i];
-    final date = hit.createdAt != null
-        ? '(${_formatShortDate(hit.createdAt!)}) '
-        : '';
     scored.add((
-      label: '[L${i + 1}] $date',
+      label: '[L${i + 1}] ${formatLogSourceLabel(hit)}:',
       rawContent: _bestLogText(hit),
       score: hit.fusedScore,
     ));
@@ -202,4 +225,12 @@ String _clip(String text, int maxChars) {
   return '${compact.substring(0, maxChars - 1).trimRight()}…';
 }
 
-String _formatShortDate(DateTime dt) => '${_months[dt.month - 1]} ${dt.day}';
+/// User-facing source label for a voice log.
+String formatLogSourceLabel(SearchHit hit) {
+  final date = hit.createdAt != null
+      ? '${_months[hit.createdAt!.month - 1]} ${hit.createdAt!.day} log'
+      : 'Voice log';
+  final title = hit.logTitle?.trim();
+  if (title == null || title.isEmpty) return date;
+  return '$date — $title';
+}

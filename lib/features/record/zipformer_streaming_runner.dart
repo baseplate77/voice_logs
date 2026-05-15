@@ -227,6 +227,17 @@ class ZipformerStreamingRunner implements StreamingSpeechRecognizer {
     }
   }
 
+  @override
+  Future<Result<TranscriptionResult, AsrError>> transcribeFileDetailed(
+    String wavPath,
+  ) async {
+    // Streaming Zipformer doesn't expose per-token timing through the Dart
+    // bindings used here. Word-level scrubbing is provided by the offline
+    // Parakeet path; this wrapper preserves the text-only contract.
+    final text = await transcribeFile(wavPath);
+    return text.map(TranscriptionResult.textOnly);
+  }
+
   void _decodeReady(
     sherpa.OnlineRecognizer recognizer,
     sherpa.OnlineStream stream,

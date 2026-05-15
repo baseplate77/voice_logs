@@ -19,9 +19,17 @@ final class LlmRuntimeError extends LlmError {
   const LlmRuntimeError({required super.message, super.cause, super.stack});
 }
 
-/// Abstract LLM runner. One-shot prompt → response. Keep the interface
-/// minimal so the Gemma-specific bits don't leak into callers; streaming
-/// is a Phase 4.1 concern.
+/// Abstract LLM runner. One-shot prompt → response.
+///
+/// Sampling parameters are exposed so callers can match the model vendor's
+/// recommended config (e.g. Gemma 3: temperature=1.0, topK=64, topP=0.95)
+/// or force deterministic greedy decoding for structured outputs (refine
+/// uses temperature=0.0 + topK=1 so its JSON parses cleanly).
+///
+/// Important: when [topK] is 1, the sampler picks the single highest-
+/// probability token regardless of [temperature]. Passing temperature
+/// without raising topK has no effect — and is the classic cause of phrase
+/// loops on small models.
 abstract class LlmRunner {
   /// Load the model; idempotent.
   Future<Result<void, LlmError>> load();
@@ -30,6 +38,9 @@ abstract class LlmRunner {
   Future<Result<String, LlmError>> generate(
     String prompt, {
     double temperature = 0.3,
+    int topK = 1,
+    double topP = 0.95,
+    int? randomSeed,
   });
 
   /// Unload model weights from memory while keeping the runner reusable.
@@ -47,5 +58,8 @@ abstract interface class StreamingLlmRunner {
   Stream<Result<String, LlmError>> generateStream(
     String prompt, {
     double temperature = 0.3,
+    int topK = 1,
+    double topP = 0.95,
+    int? randomSeed,
   });
 }
