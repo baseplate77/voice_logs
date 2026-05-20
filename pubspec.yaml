@@ -125,6 +125,7 @@ hooks:
 flutter:
   uses-material-design: true
   assets:
+    - assets/images/avatar.png
     # Flutter asset handling is not recursive — listing a directory only
     # bundles files directly inside it. Each model subdir is enumerated
     # separately.

@@ -1,0 +1,21 @@
+{
+  "dart.flutterSdkPath": "/opt/homebrew/share/flutter",
+  "dart.analysisServerFolding": true,
+  "dart.openDevTools": "never",
+  "dart.previewFlutterUiGuides": true,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "Dart-Code.dart-code",
+  "[dart]": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "Dart-Code.dart-code",
+    "editor.selectionHighlight": true,
+    "editor.suggest.snippetsPreventQuickSuggestions": false,
+    "editor.suggestSelection": "first",
+    "editor.tabCompletion": "onlySnippets",
+    "editor.wordBasedSuggestions": "off"
+  },
+  "dart.enableSnippets": true,
+  "dart.renameFilesWithClasses": "prompt",
+  "dart.updateImportsOnRename": true,
+  "dart.completeFunctionCalls": true
+}

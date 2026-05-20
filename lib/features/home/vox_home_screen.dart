@@ -1,25 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../app_theme.dart';
 import '../../core/db/providers.dart';
-import '../actions/action_screen.dart';
-import '../ask/ask_screen.dart';
-import '../debug/pipeline_debug_screen.dart';
 import '../detail/log_detail_screen.dart';
 import '../list/log_row.dart';
 import '../record/recording_providers.dart';
 import '../search/search_screen.dart';
-import '../settings/settings_screen.dart';
 import 'auto_record_provider.dart';
 import 'onboarding_overlay.dart';
 import 'recording_overlay.dart';
 import 'two_tone_palette.dart';
 
-/// Primary screen: recording overlay at the top, log list below.
-///
-/// On cold launch with auto-record enabled, recording starts automatically
-/// after the first frame. First launch shows an onboarding overlay instead
-/// that requests microphone permission.
+/// Primary screen: stateful dashboard.
+/// Renders a premium physical layout: a deep dark base board over which a
+/// custom-clipped warm off-white faceplate sits, revealing the bottom navigation
+/// deck and record button cove below.
 class VoxHomeScreen extends ConsumerStatefulWidget {
   const VoxHomeScreen({super.key});
 
@@ -63,55 +59,14 @@ class _VoxHomeScreenState extends ConsumerState<VoxHomeScreen> {
     final logs = ref.watch(voiceLogsStreamProvider);
     final hasImportedLogs = logs.valueOrNull?.isNotEmpty ?? false;
 
+    // Use dark console background if onboarded or logs exist, showing our physical deck
     return Scaffold(
-      backgroundColor: TwoTonePalette.canvas,
-      appBar: AppBar(
-        backgroundColor: TwoTonePalette.canvas,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        foregroundColor: TwoTonePalette.fgPrimary,
-        title: const Text('VoxSynth'),
-        actions: [
-          IconButton(
-            tooltip: 'Pipeline debug',
-            icon: const Icon(Icons.bug_report_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const PipelineDebugScreen(),
-              ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Ask',
-            icon: const Icon(Icons.question_answer_outlined),
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute<void>(builder: (_) => const AskScreen())),
-          ),
-          IconButton(
-            tooltip: 'Action Inbox',
-            icon: const Icon(Icons.check_circle_outline),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ActionScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const SearchScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
-            ),
-          ),
-        ],
-      ),
+      backgroundColor: (isOnboarded || hasImportedLogs)
+          ? const Color(0xFF121315)
+          : TwoTonePalette.canvas,
       body: isOnboarded || hasImportedLogs
           ? const _MainContent()
-          : const OnboardingOverlay(),
+          : const SafeArea(child: OnboardingOverlay()),
     );
   }
 }
@@ -127,85 +82,309 @@ class _MainContent extends ConsumerWidget {
         recordingState is RecordingActive ||
         recordingState is RecordingTranscribing;
 
-    // Gradient fade sits over the bottom of the scrollable list so log
-    // content visibly dissolves into the recording zone below — softer
-    // than a hairline divider on white-on-white.
-    return Column(
+    final double bottomPadding = MediaQuery.paddingOf(context).bottom;
+    final double navBarHeight =
+        58.0 + bottomPadding; // Reduced to 58.0 base height
+
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        Expanded(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: ColoredBox(
-                  color: TwoTonePalette.canvas,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    opacity: isRecording ? 0.55 : 1.0,
-                    child: logs.when(
-                      data: (rows) {
-                        if (rows.isEmpty) return const _EmptyState();
-                        return ListView.separated(
-                          padding: const EdgeInsets.only(bottom: 32),
-                          itemCount: rows.length,
-                          separatorBuilder: (_, _) => const Divider(
-                            height: 1,
-                            color: TwoTonePalette.slabOnLight,
-                          ),
-                          itemBuilder: (_, i) {
-                            final row = rows[i];
-                            return LogRow(
-                              log: row,
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) =>
-                                      LogDetailScreen(logId: row.id),
+        // 1. Sleek physical dark console background
+        Positioned.fill(child: Container(color: const Color(0xFF121315))),
+
+        // 2. White Canvas Panel (light-themed dashboard plate)
+        Positioned.fill(
+          child: ClipPath(
+            clipper: _WhiteCanvasClipper(bottomNavBarHeight: navBarHeight),
+            child: Container(
+              color: TwoTonePalette.canvas, // warm off-white #F4F4F4
+              child: SafeArea(
+                bottom: false,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Header Title + Avatar
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'VoxSynth',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 2.0,
+                                  fontFamily: 'monospace',
+                                  color: VoxAppColors.muted,
                                 ),
                               ),
-                            );
-                          },
-                        );
-                      },
-                      loading: () => const Center(
-                        child: CircularProgressIndicator.adaptive(),
+                              const SizedBox(height: 4),
+                              Text(
+                                'PRESERVE',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                  fontFamily: 'monospace',
+                                  color: VoxAppColors.accent,
+                                ),
+                              ),
+                              Text(
+                                'EVERY SOUND',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                  fontFamily: 'monospace',
+                                  color: VoxAppColors.primary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: VoxAppColors.primary,
+                                width: 2,
+                              ),
+                            ),
+                            child: const CircleAvatar(
+                              radius: 24,
+                              backgroundImage: AssetImage(
+                                'assets/images/avatar.png',
+                              ),
+                              backgroundColor: VoxAppColors.surfaceHigh,
+                            ),
+                          ),
+                        ],
                       ),
-                      error: (e, _) => Center(child: Text('Error: $e')),
-                    ),
+                      const SizedBox(height: 20),
+                      // Search Bar + Filter Button
+                      Row(
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () => Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const SearchScreen(),
+                                ),
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 12,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: VoxAppColors.outline,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.03,
+                                      ),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.search_rounded,
+                                      color: VoxAppColors.muted,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Text(
+                                      'Search Recordings',
+                                      style: TextStyle(
+                                        color: VoxAppColors.muted,
+                                        fontSize: 15,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          InkWell(
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const SearchScreen(),
+                              ),
+                            ),
+                            borderRadius: BorderRadius.circular(12),
+                            child: Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: VoxAppColors.primary,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Icon(
+                                Icons.tune_rounded,
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      const _DashedDivider(),
+                      const SizedBox(height: 12),
+                      // Logs List View
+                      Expanded(
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 200),
+                          opacity: isRecording ? 0.55 : 1.0,
+                          child: logs.when(
+                            data: (rows) {
+                              if (rows.isEmpty) return const _EmptyState();
+                              return ListView.separated(
+                                padding: EdgeInsets.only(
+                                  bottom: navBarHeight + 36,
+                                  top: 4,
+                                ),
+                                itemCount: rows.length,
+                                separatorBuilder: (_, _) =>
+                                    const SizedBox(height: 10),
+                                itemBuilder: (_, i) {
+                                  final row = rows[i];
+                                  return LogRow(
+                                    log: row,
+                                    onTap: () => Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) =>
+                                            LogDetailScreen(logId: row.id),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            },
+                            loading: () => const Center(
+                              child: CircularProgressIndicator.adaptive(),
+                            ),
+                            error: (e, _) => Center(child: Text('Error: $e')),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
-              const Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: 40,
-                child: IgnorePointer(child: _ScrollFadeEdge()),
-              ),
-            ],
+            ),
           ),
         ),
-        const RecordingOverlay(),
+
+        // 2b. Contour border painted precisely over the clipped canvas edge
+        // Positioned.fill(
+        //   child: IgnorePointer(
+        //     child: CustomPaint(
+        //       painter: _WhiteCanvasBorderPainter(
+        //         bottomNavBarHeight: navBarHeight,
+        //         borderColor: VoxAppColors.outline,
+        //       ),
+        //     ),
+        //   ),
+        // ),
+
+        // 3. Symmetrical Silver Corner Screws / Studs
+        // Placed relative to the corners of the refined faceplate panel
+        const Positioned(left: 12, top: 12, child: _SilverStud()),
+        const Positioned(right: 12, top: 12, child: _SilverStud()),
+        Positioned(
+          left: 12,
+          bottom: navBarHeight + 12,
+          child: const _SilverStud(),
+        ),
+        Positioned(
+          right: 12,
+          bottom: navBarHeight + 12,
+          child: const _SilverStud(),
+        ),
+
+        // 4. The Bottom Nav Bar controls sitting on the exposed dark deck
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: navBarHeight,
+          child: const RecordingOverlay(),
+        ),
       ],
     );
   }
 }
 
-/// Soft top→bottom gradient covering the last 40px of the list zone.
-/// Pinned above the recording overlay so log rows scroll up out of view
-/// behind it, dissolving into the canvas instead of meeting a hard edge.
-class _ScrollFadeEdge extends StatelessWidget {
-  const _ScrollFadeEdge();
+class _DashedDivider extends StatelessWidget {
+  const _DashedDivider();
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boxWidth = constraints.constrainWidth();
+        const dashWidth = 4.0;
+        const dashSpace = 4.0;
+        final dashCount = (boxWidth / (dashWidth + dashSpace)).floor();
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(dashCount, (_) {
+            return SizedBox(
+              width: dashWidth,
+              height: 1,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: VoxAppColors.outline),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
+class _SilverStud extends StatelessWidget {
+  const _SilverStud();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 12,
+      height: 12,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            TwoTonePalette.canvas.withValues(alpha: 0),
-            TwoTonePalette.canvas,
-          ],
+        color: const Color(0xFFE0E0E0),
+        shape: BoxShape.circle,
+        border: Border.all(color: const Color(0xFFB0B0B0), width: 1),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1A000000),
+            blurRadius: 1,
+            offset: Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Container(
+          width: 3,
+          height: 3,
+          decoration: const BoxDecoration(
+            color: Color(0xFF888888),
+            shape: BoxShape.circle,
+          ),
         ),
       ),
     );
@@ -223,9 +402,159 @@ class _EmptyState extends StatelessWidget {
         child: Text(
           'Your journal gets smarter as you record more.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18),
+          style: TextStyle(fontSize: 16, fontFamily: 'monospace'),
         ),
       ),
     );
+  }
+}
+
+const double _whiteCanvasCornerRadius = 40.0;
+const double _whiteCanvasScoopWidth = 135.0;
+const double _whiteCanvasScoopHeight = 62.0;
+
+/// Controls the rounded outer shoulder where the bottom edge turns into the scoop.
+/// Increase this value for a wider/softer scoop edge, decrease for a tighter edge.
+const double _whiteCanvasScoopOuterEdgeRadius = 40.0;
+
+/// Controls the upper curvature of the scoop as it reaches the top center.
+/// Increase this value for a rounder/flatter scoop top, decrease for a sharper top.
+const double _whiteCanvasScoopTopRadius = 8.0;
+
+/// Custom Clipper to shape the white dashboard panel with rounded corners and
+/// a beautiful curved scoop in the bottom center to reveal the record button.
+class _WhiteCanvasClipper extends CustomClipper<Path> {
+  final double bottomNavBarHeight;
+  _WhiteCanvasClipper({required this.bottomNavBarHeight});
+
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    const double cornerRadius = _whiteCanvasCornerRadius;
+    const double scoopWidth = _whiteCanvasScoopWidth;
+    const double scoopHeight = _whiteCanvasScoopHeight;
+    const double scoopOuterEdgeRadius = _whiteCanvasScoopOuterEdgeRadius;
+    const double scoopTopRadius = _whiteCanvasScoopTopRadius;
+    final double centerX = size.width / 2;
+    final double bottomY = size.height - bottomNavBarHeight;
+
+    // Start at top-left
+    path.moveTo(0, cornerRadius);
+    path.quadraticBezierTo(0, 0, cornerRadius, 0);
+    path.lineTo(size.width - cornerRadius, 0);
+    path.quadraticBezierTo(size.width, 0, size.width, cornerRadius);
+
+    // Go down to bottom-right corner of white faceplate
+    path.lineTo(size.width, bottomY - cornerRadius);
+    path.quadraticBezierTo(
+      size.width,
+      bottomY,
+      size.width - cornerRadius,
+      bottomY,
+    );
+
+    // Bottom edge to start of scoop
+    path.lineTo(centerX + scoopWidth / 2 + scoopOuterEdgeRadius, bottomY);
+
+    // Smooth bezier arch going UP
+    path.cubicTo(
+      centerX + scoopWidth / 2 - scoopOuterEdgeRadius * 0.5,
+      bottomY,
+      centerX + scoopWidth / 2 - scoopTopRadius,
+      bottomY - scoopHeight,
+      centerX,
+      bottomY - scoopHeight,
+    );
+    path.cubicTo(
+      centerX - scoopWidth / 2 + scoopTopRadius,
+      bottomY - scoopHeight,
+      centerX - scoopWidth / 2 + scoopOuterEdgeRadius * 0.5,
+      bottomY,
+      centerX - scoopWidth / 2 - scoopOuterEdgeRadius,
+      bottomY,
+    );
+
+    // Bottom edge to bottom-left corner
+    path.lineTo(cornerRadius, bottomY);
+    path.quadraticBezierTo(0, bottomY, 0, bottomY - cornerRadius);
+
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(covariant _WhiteCanvasClipper oldClipper) {
+    return oldClipper.bottomNavBarHeight != bottomNavBarHeight;
+  }
+}
+
+/// Custom Painter to draw a fine outline along the entire clipped boundary of
+/// the white dashboard panel.
+class _WhiteCanvasBorderPainter extends CustomPainter {
+  final double bottomNavBarHeight;
+  final Color borderColor;
+
+  _WhiteCanvasBorderPainter({
+    required this.bottomNavBarHeight,
+    required this.borderColor,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = borderColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    final path = Path();
+    const double cornerRadius = _whiteCanvasCornerRadius;
+    const double scoopWidth = _whiteCanvasScoopWidth;
+    const double scoopHeight = _whiteCanvasScoopHeight;
+    const double scoopOuterEdgeRadius = _whiteCanvasScoopOuterEdgeRadius;
+    const double scoopTopRadius = _whiteCanvasScoopTopRadius;
+    final double centerX = size.width / 2;
+    final double bottomY = size.height - bottomNavBarHeight;
+
+    path.moveTo(0, cornerRadius);
+    path.quadraticBezierTo(0, 0, cornerRadius, 0);
+    path.lineTo(size.width - cornerRadius, 0);
+    path.quadraticBezierTo(size.width, 0, size.width, cornerRadius);
+    path.lineTo(size.width, bottomY - cornerRadius);
+    path.quadraticBezierTo(
+      size.width,
+      bottomY,
+      size.width - cornerRadius,
+      bottomY,
+    );
+    path.lineTo(centerX + scoopWidth / 2 + scoopOuterEdgeRadius, bottomY);
+
+    path.cubicTo(
+      centerX + scoopWidth / 2 - scoopOuterEdgeRadius * 0.5,
+      bottomY,
+      centerX + scoopWidth / 2 - scoopTopRadius,
+      bottomY - scoopHeight,
+      centerX,
+      bottomY - scoopHeight,
+    );
+    path.cubicTo(
+      centerX - scoopWidth / 2 + scoopTopRadius,
+      bottomY - scoopHeight,
+      centerX - scoopWidth / 2 + scoopOuterEdgeRadius * 0.5,
+      bottomY,
+      centerX - scoopWidth / 2 - scoopOuterEdgeRadius,
+      bottomY,
+    );
+
+    path.lineTo(cornerRadius, bottomY);
+    path.quadraticBezierTo(0, bottomY, 0, bottomY - cornerRadius);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _WhiteCanvasBorderPainter oldDelegate) {
+    return oldDelegate.bottomNavBarHeight != bottomNavBarHeight ||
+        oldDelegate.borderColor != borderColor;
   }
 }

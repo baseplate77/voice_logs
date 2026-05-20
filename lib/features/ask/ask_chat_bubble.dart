@@ -33,8 +33,8 @@ class _AskChatBubbleState extends State<AskChatBubble> {
     final isUser = message.role == AskChatRole.user;
     final colorScheme = Theme.of(context).colorScheme;
     final background = isUser
-        ? colorScheme.surfaceContainerHighest
-        : Colors.transparent;
+        ? colorScheme.primary.withValues(alpha: 0.15)
+        : colorScheme.surfaceContainerHigh;
     final foreground = colorScheme.onSurface;
     final references = _referencesFor(message);
 

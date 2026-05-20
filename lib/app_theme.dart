@@ -1,47 +1,51 @@
 import 'package:flutter/material.dart';
 
-/// App-wide visual system: white canvas, bright orchid primary, and soft
+/// App-wide visual system: dark canvas, bright orchid primary, and muted
 /// lavender accent. Keep these constants centralized so feature UI stays
 /// visually consistent instead of drifting into one-off colors.
 class VoxAppColors {
   const VoxAppColors._();
 
-  static const Color primary = Color(0xFFD552A3);
-  static const Color accent = Color(0xFFBDA6CE);
-  static const Color canvas = Color(0xFFFFFFFF);
-  static const Color ink = Color(0xFF211727);
-  static const Color muted = Color(0xFF7D6B86);
-  static const Color soft = Color(0xFFF8F2FA);
-  static const Color softAccent = Color(0xFFF0E7F5);
-  static const Color outline = Color(0xFFE8DDED);
-  static const Color error = Color(0xFFB3266B);
+  static const Color primary = Color(0xFF1D1D1F); // Solid charcoal black
+  static const Color accent = Color(0xFFE13C30);  // Classic retro red
+  static const Color canvas = Color(0xFFF4F4F4);  // Warm light-grey/off-white backdrop
+  static const Color surface = Color(0xFFFFFFFF); // Pure white cards/containers
+  static const Color surfaceHigh = Color(0xFFEBEBEB);
+  static const Color ink = Color(0xFF1D1D1F);
+  static const Color muted = Color(0xFF7A7A7A);
+  static const Color soft = Color(0xFFFAFAFA);
+  static const Color softAccent = Color(0xFFF5EBEB);
+  static const Color outline = Color(0xFFE2E2E2);
+  static const Color error = Color(0xFFD32F2F);
 }
 
 ThemeData buildVoxTheme() {
   const scheme = ColorScheme.light(
     primary: VoxAppColors.primary,
-    primaryContainer: Color(0xFFF9D8EB),
-    onPrimaryContainer: Color(0xFF3A1230),
+    onPrimary: Colors.white,
+    primaryContainer: Color(0xFFF5EBEB),
+    onPrimaryContainer: VoxAppColors.primary,
     secondary: VoxAppColors.accent,
-    onSecondary: VoxAppColors.ink,
+    onSecondary: Colors.white,
     secondaryContainer: VoxAppColors.softAccent,
     onSecondaryContainer: VoxAppColors.ink,
     tertiary: VoxAppColors.accent,
-    onTertiary: VoxAppColors.ink,
-    tertiaryContainer: Color(0xFFEEDFF7),
-    onTertiaryContainer: Color(0xFF2B153A),
+    onTertiary: Colors.white,
+    tertiaryContainer: Color(0xFFF5EBEB),
+    onTertiaryContainer: VoxAppColors.ink,
     error: VoxAppColors.error,
     onSurface: VoxAppColors.ink,
-    surfaceContainerLowest: Colors.white,
-    surfaceContainerLow: Color(0xFFFEF9FF),
-    surfaceContainer: VoxAppColors.soft,
-    surfaceContainerHigh: Color(0xFFF3EAF7),
-    surfaceContainerHighest: VoxAppColors.softAccent,
+    surface: VoxAppColors.surface,
+    surfaceContainerLowest: Color(0xFFFFFFFF),
+    surfaceContainerLow: Color(0xFFFAFAFA),
+    surfaceContainer: VoxAppColors.surface,
+    surfaceContainerHigh: VoxAppColors.surfaceHigh,
+    surfaceContainerHighest: Color(0xFFEBEBEB),
     onSurfaceVariant: VoxAppColors.muted,
     outline: VoxAppColors.outline,
-    outlineVariant: VoxAppColors.outline,
-    shadow: Color(0x22000000),
-    scrim: Color(0x66000000),
+    outlineVariant: Color(0xFFE2E2E2),
+    shadow: Color(0x0F000000),
+    scrim: Color(0x55000000),
   );
 
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
@@ -50,10 +54,22 @@ ThemeData buildVoxTheme() {
     displayColor: VoxAppColors.ink,
   );
 
+  final retroMonospace = const TextStyle(fontFamily: 'monospace');
+
   return base.copyWith(
     scaffoldBackgroundColor: VoxAppColors.canvas,
     canvasColor: VoxAppColors.canvas,
-    textTheme: textTheme,
+    textTheme: textTheme.copyWith(
+      displayLarge: textTheme.displayLarge?.merge(retroMonospace),
+      displayMedium: textTheme.displayMedium?.merge(retroMonospace),
+      displaySmall: textTheme.displaySmall?.merge(retroMonospace),
+      headlineLarge: textTheme.headlineLarge?.merge(retroMonospace),
+      headlineMedium: textTheme.headlineMedium?.merge(retroMonospace),
+      headlineSmall: textTheme.headlineSmall?.merge(retroMonospace),
+      titleLarge: textTheme.titleLarge?.merge(retroMonospace),
+      titleMedium: textTheme.titleMedium?.merge(retroMonospace),
+      titleSmall: textTheme.titleSmall?.merge(retroMonospace),
+    ),
     appBarTheme: AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -65,6 +81,7 @@ ThemeData buildVoxTheme() {
         color: VoxAppColors.ink,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
+        fontFamily: 'monospace',
       ),
     ),
     iconTheme: const IconThemeData(color: VoxAppColors.ink),
@@ -74,37 +91,38 @@ ThemeData buildVoxTheme() {
       space: 1,
     ),
     cardTheme: CardThemeData(
-      elevation: 0,
-      color: VoxAppColors.canvas,
+      elevation: 2,
+      color: VoxAppColors.surface,
       surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.black.withValues(alpha: 0.05),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(16),
         side: const BorderSide(color: VoxAppColors.outline),
       ),
     ),
     chipTheme: base.chipTheme.copyWith(
-      backgroundColor: VoxAppColors.canvas,
+      backgroundColor: VoxAppColors.surface,
       selectedColor: VoxAppColors.primary,
       secondarySelectedColor: VoxAppColors.accent,
       labelStyle: textTheme.labelLarge?.copyWith(color: VoxAppColors.ink),
       secondaryLabelStyle: textTheme.labelLarge?.copyWith(color: Colors.white),
       side: const BorderSide(color: VoxAppColors.outline),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: VoxAppColors.soft,
+      fillColor: VoxAppColors.surface,
       hintStyle: TextStyle(color: VoxAppColors.muted.withValues(alpha: 0.82)),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: VoxAppColors.outline),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: VoxAppColors.outline),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(12),
         borderSide: const BorderSide(color: VoxAppColors.primary, width: 1.4),
       ),
     ),
@@ -112,16 +130,16 @@ ThemeData buildVoxTheme() {
       style: FilledButton.styleFrom(
         backgroundColor: VoxAppColors.primary,
         foregroundColor: Colors.white,
-        disabledBackgroundColor: VoxAppColors.softAccent,
+        disabledBackgroundColor: VoxAppColors.surfaceHigh,
         disabledForegroundColor: VoxAppColors.muted,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: VoxAppColors.primary,
         side: const BorderSide(color: VoxAppColors.outline),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -135,44 +153,44 @@ ThemeData buildVoxTheme() {
     switchTheme: SwitchThemeData(
       thumbColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? VoxAppColors.primary
+            ? VoxAppColors.accent
             : VoxAppColors.muted,
       ),
       trackColor: WidgetStateProperty.resolveWith(
         (states) => states.contains(WidgetState.selected)
-            ? VoxAppColors.primary.withValues(alpha: 0.28)
-            : VoxAppColors.softAccent,
+            ? VoxAppColors.accent.withValues(alpha: 0.28)
+            : VoxAppColors.surfaceHigh,
       ),
     ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(
-      color: VoxAppColors.primary,
-      circularTrackColor: VoxAppColors.softAccent,
+      color: VoxAppColors.accent,
+      circularTrackColor: VoxAppColors.surfaceHigh,
     ),
     bottomSheetTheme: const BottomSheetThemeData(
-      backgroundColor: VoxAppColors.canvas,
+      backgroundColor: VoxAppColors.surface,
       surfaceTintColor: Colors.transparent,
-      modalBackgroundColor: VoxAppColors.canvas,
+      modalBackgroundColor: VoxAppColors.surface,
       showDragHandle: true,
-      dragHandleColor: VoxAppColors.accent,
+      dragHandleColor: VoxAppColors.muted,
     ),
     dialogTheme: DialogThemeData(
-      backgroundColor: VoxAppColors.canvas,
+      backgroundColor: VoxAppColors.surface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: VoxAppColors.ink,
+      backgroundColor: VoxAppColors.primary,
       contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ),
     listTileTheme: ListTileThemeData(
-      iconColor: VoxAppColors.primary,
+      iconColor: VoxAppColors.accent,
       textColor: VoxAppColors.ink,
       subtitleTextStyle: textTheme.bodySmall?.copyWith(
         color: VoxAppColors.muted,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
   );
 }

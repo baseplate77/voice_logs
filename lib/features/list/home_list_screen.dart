@@ -2,17 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/db/providers.dart';
-import '../actions/action_screen.dart';
-import '../ask/ask_screen.dart';
-import '../debug/pipeline_debug_screen.dart';
 import '../detail/log_detail_screen.dart';
 import '../record/record_screen.dart';
 import '../search/search_screen.dart';
-import '../settings/settings_screen.dart';
 import 'log_row.dart';
 
-/// Reverse-chronological list of voice logs with search + settings
-/// entry points in the app bar and a large Record FAB.
+/// Reverse-chronological list of voice logs with a compact title/search
+/// app bar and a large Record FAB.
 class HomeListScreen extends ConsumerWidget {
   const HomeListScreen({super.key});
 
@@ -23,39 +19,14 @@ class HomeListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('VoxSynth'),
         actions: [
-          IconButton(
-            tooltip: 'Pipeline debug',
-            icon: const Icon(Icons.bug_report_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const PipelineDebugScreen(),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: IconButton.filledTonal(
+              tooltip: 'Search journal',
+              icon: const Icon(Icons.search_rounded),
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SearchScreen()),
               ),
-            ),
-          ),
-          IconButton(
-            tooltip: 'Ask',
-            icon: const Icon(Icons.question_answer_outlined),
-            onPressed: () => Navigator.of(
-              context,
-            ).push(MaterialPageRoute<void>(builder: (_) => const AskScreen())),
-          ),
-          IconButton(
-            tooltip: 'Action Inbox',
-            icon: const Icon(Icons.check_circle_outline),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const ActionScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const SearchScreen()),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
             ),
           ),
         ],
@@ -64,8 +35,9 @@ class HomeListScreen extends ConsumerWidget {
         data: (rows) {
           if (rows.isEmpty) return const _EmptyState();
           return ListView.separated(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             itemCount: rows.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
+            separatorBuilder: (_, _) => const SizedBox(height: 6),
             itemBuilder: (_, i) {
               final row = rows[i];
               return LogRow(

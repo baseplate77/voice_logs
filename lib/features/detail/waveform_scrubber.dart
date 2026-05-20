@@ -171,22 +171,45 @@ class _WaveformPainter extends CustomPainter {
     if (peaks.isEmpty) return;
     final barCount = peaks.length;
     final slotWidth = size.width / barCount;
-    final barWidth = (slotWidth * 0.6).clamp(1.0, slotWidth);
+    final barWidth = (slotWidth * 0.55).clamp(1.0, slotWidth);
     final mid = size.height / 2;
-    final playheadIdx = (progress * barCount).floor();
 
-    final unplayed = Paint()..color = barColor;
-    final played = Paint()..color = playedColor;
+    // Symmetrical hardware light grey color for all waveform bars
+    final barPaint = Paint()..color = const Color(0xFFD4D4D4);
 
     for (var i = 0; i < barCount; i++) {
-      final h = (peaks[i] * size.height).clamp(2.0, size.height);
+      final h = (peaks[i] * size.height).clamp(3.0, size.height);
       final x = slotWidth * i + (slotWidth - barWidth) / 2;
       final rect = Rect.fromLTWH(x, mid - h / 2, barWidth, h);
       canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(1)),
-        i <= playheadIdx ? played : unplayed,
+        RRect.fromRectAndRadius(rect, const Radius.circular(1.5)),
+        barPaint,
       );
     }
+
+    // Prominent vertical seek bar line in retro-red
+    final seekX = progress * size.width;
+    final seekPaint = Paint()
+      ..color = const Color(0xFFE13C30)
+      ..strokeWidth = 2.0
+      ..style = PaintingStyle.stroke;
+    
+    canvas.drawLine(
+      Offset(seekX, 0),
+      Offset(seekX, size.height),
+      seekPaint,
+    );
+
+    // Anchor playhead dot in the center of the seek line
+    final dotPaint = Paint()
+      ..color = const Color(0xFFE13C30)
+      ..style = PaintingStyle.fill;
+    
+    canvas.drawCircle(
+      Offset(seekX, mid),
+      4.5,
+      dotPaint,
+    );
   }
 
   @override

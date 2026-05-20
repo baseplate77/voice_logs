@@ -30,9 +30,11 @@ class AskComposer extends StatelessWidget {
             constraints: const BoxConstraints(maxWidth: 760),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: colorScheme.surfaceContainer,
+                color: colorScheme.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: colorScheme.outlineVariant),
+                border: Border.all(
+                  color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                ),
               ),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(18, 7, 7, 7),

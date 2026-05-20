@@ -2,19 +2,19 @@ import 'package:flutter/material.dart';
 
 import '../../app_theme.dart';
 
-/// Home/recording palette mapped onto the app-wide white + orchid/lavender
-/// visual system. Kept as a small facade so older home widgets stay simple.
+/// Home/recording palette mapped onto the app-wide dark + orchid visual
+/// system. Kept as a small facade so older home widgets stay simple.
 class TwoTonePalette {
   const TwoTonePalette._();
 
-  /// White content canvas.
+  /// Dark content canvas.
   static const Color canvas = VoxAppColors.canvas;
 
   /// Saturated action surface.
   static const Color slab = VoxAppColors.primary;
 
-  /// Soft lavender highlight on the canvas zone.
-  static const Color slabOnLight = VoxAppColors.softAccent;
+  /// Subtle surface elevation on the canvas zone.
+  static const Color slabOnLight = VoxAppColors.surface;
 
   /// Body text on the canvas zone.
   static const Color fgPrimary = VoxAppColors.ink;
@@ -26,7 +26,7 @@ class TwoTonePalette {
   static const Color fgMuted = VoxAppColors.muted;
 
   /// Primary action accent — recording, playhead, active states.
-  static const Color accentRed = VoxAppColors.primary;
+  static const Color accentRed = VoxAppColors.accent;
 
   /// Soft accent wash used for pressed/active states.
   static const Color accentRedSoft = VoxAppColors.softAccent;

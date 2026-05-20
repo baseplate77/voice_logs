@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/material.dart';
 import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -50,6 +51,8 @@ void main() {
       find.textContaining('Recording starts automatically'),
       findsOneWidget,
     );
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 100));
   });
 
   testWidgets('VoxSynthApp shows imported logs before onboarding', (
@@ -102,8 +105,10 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('restored journal entry'), findsOneWidget);
+    expect(find.text('restored journal entry'), findsNWidgets(2));
     expect(find.textContaining('Recording starts automatically'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 100));
   });
 
   testWidgets('VoxSynthApp shows log list when onboarded', (tester) async {
@@ -142,6 +147,8 @@ void main() {
 
     expect(find.text('VoxSynth'), findsOneWidget);
     expect(find.textContaining('smarter'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(milliseconds: 100));
   });
 }
 

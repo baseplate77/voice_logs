@@ -53,6 +53,12 @@ class AudioPlayerController {
   /// Seek to [position]. Clamped to the loaded clip duration by just_audio.
   Future<void> seek(Duration position) => _player.seek(position);
 
+  /// Current volume, in the range [0.0, 1.0].
+  double get volume => _player.volume;
+
+  /// Adjust the playback volume, in the range [0.0, 1.0].
+  Future<void> setVolume(double volume) => _player.setVolume(volume);
+
   /// Release native resources. Idempotent.
   Future<void> dispose() async {
     if (_disposed) return;
