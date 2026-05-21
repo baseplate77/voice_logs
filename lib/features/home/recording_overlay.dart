@@ -6,6 +6,7 @@ import 'package:iconsax/iconsax.dart';
 import '../../app_theme.dart';
 import '../../core/logger.dart';
 import '../ask/ask_screen.dart';
+import '../garden/vox_garden_screen.dart';
 import '../record/record_screen.dart';
 import '../record/recording_providers.dart';
 import '../record/transcribing_indicator.dart';
@@ -117,20 +118,39 @@ class _IdleDeck extends StatelessWidget {
         // Sidebar Navigation Actions - lowered using top: 12 padding
         Positioned.fill(
           child: Padding(
-            padding: EdgeInsets.only(left: 48.w, right: 48.w, top: 12.h),
+            padding: EdgeInsets.only(left: 36.w, right: 36.w, top: 12.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                IconButton(
-                  icon: Icon(
-                    Iconsax.message_text,
-                    color: Colors.white,
-                    size: 26.r,
-                  ),
-                  tooltip: 'Chat',
-                  onPressed: () => Navigator.of(context).push(
-                    MaterialPageRoute<void>(builder: (_) => const AskScreen()),
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Iconsax.message_text,
+                        color: Colors.white,
+                        size: 26.r,
+                      ),
+                      tooltip: 'Chat',
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(builder: (_) => const AskScreen()),
+                      ),
+                    ),
+                    SizedBox(width: 10.w),
+                    IconButton(
+                      icon: Icon(
+                        Icons.yard_outlined,
+                        color: Colors.white,
+                        size: 26.r,
+                      ),
+                      tooltip: 'Synthia Garden',
+                      onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => const VoxGardenScreen(),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 IconButton(
                   icon: Icon(

@@ -31,6 +31,9 @@ class VoiceLogs extends Table {
   /// Last-error message if [processingState] is `failed`.
   TextColumn get errorMessage => text().nullable()();
 
+  /// The emotional plant category extracted by Gemma: e.g. sakura, lavender, cactus, etc.
+  TextColumn get flowerType => text().nullable()();
+
   /// Number of times a pipeline stage has been retried for this log.
   IntColumn get retryCount => integer().withDefault(const Constant(0))();
 

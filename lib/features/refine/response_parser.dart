@@ -172,31 +172,61 @@ ParsedCleanupTranscript? parseCleanupTranscript(String response) {
 
 /// Parse the dedicated title-stage response. Strict JSON first, then loose
 /// key-extraction. Returns null when neither path yields a sanitized title.
-String? parseTitleResponse(String response) {
+class TitleAndFlowerType {
+  const TitleAndFlowerType({this.title, this.flowerType});
+  final String? title;
+  final String? flowerType;
+}
+
+const Set<String> _validFlowerTypes = {
+  'sakura',
+  'lavender',
+  'cactus',
+  'sunflower',
+  'fern',
+  'mushroom',
+  'rose',
+};
+
+String? _sanitizeFlowerType(String? raw) {
+  if (raw == null) return null;
+  final normalized = raw.trim().toLowerCase();
+  if (_validFlowerTypes.contains(normalized)) return normalized;
+  if (normalized.contains('cherry') || normalized.contains('sakura') || normalized.contains('bloom') || normalized.contains('blossom') || normalized.contains('joy')) return 'sakura';
+  if (normalized.contains('laven') || normalized.contains('peace') || normalized.contains('calm')) return 'lavender';
+  if (normalized.contains('cact') || normalized.contains('stress') || normalized.contains('vent') || normalized.contains('sad')) return 'cactus';
+  if (normalized.contains('sun') || normalized.contains('work') || normalized.contains('prod')) return 'sunflower';
+  if (normalized.contains('fern') || normalized.contains('learn') || normalized.contains('grow')) return 'fern';
+  if (normalized.contains('shroom') || normalized.contains('mush') || normalized.contains('dream') || normalized.contains('thought') || normalized.contains('mus')) return 'mushroom';
+  if (normalized.contains('rose') || normalized.contains('friend') || normalized.contains('family') || normalized.contains('connect') || normalized.contains('love')) return 'rose';
+  return 'sakura';
+}
+
+/// Parse the dedicated title-stage response. Strict JSON first, then loose
+/// key-extraction. Returns both title and flower type.
+TitleAndFlowerType parseTitleResponse(String response) {
   final json = _extractJson(response);
+  String? title;
+  String? flowerType;
+
   if (json != null) {
     try {
       final decoded = jsonDecode(json);
       final record = _recordMap(decoded);
       if (record != null) {
-        final sanitized = _sanitizeTitle(_firstString(record, _titleKeys));
-        if (sanitized != null) return sanitized;
+        title = _sanitizeTitle(_firstString(record, _titleKeys));
+        flowerType = _sanitizeFlowerType(_firstString(record, const ['flower_type', 'flowerType', 'flower', 'vibe', 'type']));
       }
     } on Object {
-      final sanitized = _sanitizeTitle(_looseStringField(json, _titleKeys));
-      if (sanitized != null) return sanitized;
+      title = _sanitizeTitle(_looseStringField(json, _titleKeys));
+      flowerType = _sanitizeFlowerType(_looseStringField(json, const ['flower_type', 'flowerType', 'flower', 'vibe', 'type']));
     }
   }
 
-  final loose = _sanitizeTitle(_looseStringField(response, _titleKeys));
-  if (loose != null) return loose;
-  if (RegExp(
-    r'"(?:title|auto_title|short_title|log_title)"\s*:',
-  ).hasMatch(response)) {
-    return null;
-  }
+  title ??= _sanitizeTitle(_looseStringField(response, _titleKeys));
+  flowerType ??= _sanitizeFlowerType(_looseStringField(response, const ['flower_type', 'flowerType', 'flower', 'vibe', 'type']));
 
-  return null;
+  return TitleAndFlowerType(title: title, flowerType: flowerType);
 }
 
 /// A single suggestion chip + the question it submits when tapped.

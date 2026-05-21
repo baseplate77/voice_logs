@@ -83,7 +83,7 @@ class VoxSynthDatabase extends _$VoxSynthDatabase {
   VoxSynthDatabase(super.e);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -111,6 +111,9 @@ class VoxSynthDatabase extends _$VoxSynthDatabase {
       }
       if (from < 14) {
         await m.addColumn(entitySummaries, entitySummaries.structuredFacts);
+      }
+      if (from < 15) {
+        await m.addColumn(voiceLogs, voiceLogs.flowerType);
       }
     },
   );

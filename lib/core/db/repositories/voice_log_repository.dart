@@ -19,6 +19,7 @@ class VoiceLogView {
     required this.title,
     required this.processingState,
     required this.errorMessage,
+    this.flowerType,
   });
 
   final String id;
@@ -30,6 +31,7 @@ class VoiceLogView {
   final String? title;
   final ProcessingState processingState;
   final String? errorMessage;
+  final String? flowerType;
 
   /// The user-visible transcript for this log — prefers the Gemma-cleaned
   /// version and falls back to the raw transcript.
@@ -54,6 +56,7 @@ class VoiceLogView {
       title: row.title,
       processingState: ProcessingState.fromWire(row.processingState),
       errorMessage: row.errorMessage,
+      flowerType: row.flowerType,
     );
   }
 }
@@ -157,12 +160,14 @@ class VoiceLogRepository {
     required String id,
     required String cleanedText,
     String? title,
+    String? flowerType,
   }) async {
     try {
       await (_db.update(_db.voiceLogs)..where((t) => t.id.equals(id))).write(
         VoiceLogsCompanion(
           cleanedText: Value(cleanedText),
           title: Value(title),
+          flowerType: Value(flowerType),
           processingState: Value(ProcessingState.refined.wire),
           errorMessage: const Value(null),
         ),

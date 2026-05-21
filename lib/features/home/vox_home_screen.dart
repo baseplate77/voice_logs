@@ -5,6 +5,7 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../app_theme.dart';
 import '../../core/db/providers.dart';
 import '../detail/log_detail_screen.dart';
+import '../garden/vox_garden_screen.dart';
 import '../list/log_row.dart';
 import '../record/recording_providers.dart';
 import '../search/search_screen.dart';
@@ -107,28 +108,46 @@ class _MainContent extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Header Title
-                      Text.rich(
-                        TextSpan(
-                          children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text.rich(
                             TextSpan(
-                              text: 'VoxSynth',
-                              style: TextStyle(
-                                fontSize: 28.sp,
-                                fontFamily: 'NDot',
-                                color: VoxAppColors.primary,
+                              children: [
+                                TextSpan(
+                                  text: 'VoxSynth',
+                                  style: TextStyle(
+                                    fontSize: 28.sp,
+                                    fontFamily: 'NDot',
+                                    color: VoxAppColors.primary,
+                                  ),
+                                ),
+                                TextSpan(
+                                  text: '.',
+                                  style: TextStyle(
+                                    fontSize: 28.sp,
+                                    fontFamily: 'NDot',
+                                    color: VoxAppColors.accent,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            style: IconButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              side: const BorderSide(color: VoxAppColors.outline),
+                            ),
+                            icon: const Icon(Icons.yard_outlined, color: VoxAppColors.primary),
+                            tooltip: 'Synthia Garden',
+                            onPressed: () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: (_) => const VoxGardenScreen(),
                               ),
                             ),
-                            TextSpan(
-                              text: '.',
-                              style: TextStyle(
-                                fontSize: 28.sp,
-                                fontFamily: 'NDot',
-                                color: VoxAppColors.accent,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                       SizedBox(height: 20.h),
                       // Search Bar + Filter Button

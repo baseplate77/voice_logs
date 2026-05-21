@@ -90,7 +90,7 @@ class LlmRefiner implements JobHandler {
       _log.w('Refine cleanup failed or dropped content; using raw transcript');
     }
     final finalCleanedText = cleaned?.cleanedText ?? rawTranscript;
-    final title = await _resolveTitle(
+    final titleAndFlower = await _resolveTitle(
       cleanedText: finalCleanedText,
       legacyTitle: cleaned?.title,
     );
@@ -119,7 +119,8 @@ class LlmRefiner implements JobHandler {
     final markRes = await voiceLogs.markRefined(
       id: ctx.logId,
       cleanedText: finalCleanedText,
-      title: title,
+      title: titleAndFlower.title,
+      flowerType: titleAndFlower.flowerType,
     );
     switch (markRes) {
       case Ok():
@@ -311,13 +312,16 @@ class LlmRefiner implements JobHandler {
   ///      embeds it — kept so cached responses don't regress).
   ///   3. Deterministic [synthesizeFallbackTitle] over the cleaned text.
   ///   4. Null when the cleaned text is itself empty.
-  Future<String?> _resolveTitle({
+  Future<TitleAndFlowerType> _resolveTitle({
     required String cleanedText,
     required String? legacyTitle,
   }) async {
     final trimmed = cleanedText.trim();
     if (trimmed.isEmpty) {
-      return _sanitizeOrFallback(legacyTitle, cleanedText);
+      return TitleAndFlowerType(
+        title: _sanitizeOrFallback(legacyTitle, cleanedText),
+        flowerType: 'sakura',
+      );
     }
     final titleResult = await runner.generate(
       generateLogTitlePrompt(trimmed),
@@ -330,11 +334,14 @@ class LlmRefiner implements JobHandler {
         _log.i('Title response chars=${value.length}');
       case Err(:final error):
         _log.w('Title generation failed; falling back', error: error);
-        return _sanitizeOrFallback(legacyTitle, cleanedText);
+        return TitleAndFlowerType(
+          title: _sanitizeOrFallback(legacyTitle, cleanedText),
+          flowerType: 'sakura',
+        );
     }
 
-    var title = parseTitleResponse(response);
-    if (title != null) return title;
+    var result = parseTitleResponse(response);
+    if (result.title != null) return result;
 
     _log.w('Title parse failed; retrying with stricter prompt');
     final retry = await runner.generate(
@@ -343,15 +350,21 @@ class LlmRefiner implements JobHandler {
     );
     switch (retry) {
       case Ok(:final value):
-        title = parseTitleResponse(value);
+        result = parseTitleResponse(value);
       case Err(:final error):
         _log.w('Title retry failed; falling back', error: error);
-        return _sanitizeOrFallback(legacyTitle, cleanedText);
+        return TitleAndFlowerType(
+          title: _sanitizeOrFallback(legacyTitle, cleanedText),
+          flowerType: 'sakura',
+        );
     }
-    if (title != null) return title;
+    if (result.title != null) return result;
 
     _log.w('Title retry parse failed; falling back');
-    return _sanitizeOrFallback(legacyTitle, cleanedText);
+    return TitleAndFlowerType(
+      title: _sanitizeOrFallback(legacyTitle, cleanedText),
+      flowerType: result.flowerType ?? 'sakura',
+    );
   }
 
   String? _sanitizeOrFallback(String? legacyTitle, String cleanedText) {

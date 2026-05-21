@@ -246,36 +246,55 @@ $previousResponse
 /// cannot drop the cleaned transcript along with it.
 String generateLogTitlePrompt(String cleanedText) {
   return '''
-You are VoxSynth's local log titler.
-Read the cleaned transcript and return one short title that captures the core
-of the log — what it is fundamentally about.
+You are VoxSynth's local log titler and emotional vibe classifier.
+Read the cleaned transcript and return one short title that captures the core of the log, and classify its primary vibe into one of 7 flower types.
 
 Return exactly one minified JSON object and nothing else:
-{"title":"..."}
+{"title":"...", "flower_type":"sakura|lavender|cactus|sunflower|fern|mushroom|rose"}
 
-Rules:
+Flower Classification Rules (choose the single best fit):
+- sakura: Joy, wins, happy milestones, celebrations, excitement, or bright positive highlights.
+- lavender: Peace, rest, mindfulness, quiet reflection, relaxation, sleep preparation, or gratitude.
+- cactus: Stress, high pressure, challenges, venting, sadness, or emotional resilience.
+- sunflower: Energy, focus, high productivity, sports/workouts, task planning, or career action.
+- fern: Self-growth, learning, studying, technical summaries, coding notes, or reading lists.
+- mushroom: Deep/shower thoughts, random musings, creative ideas, poetry, or dream diaries.
+- rose: Social connection, family catch-ups, dinner with friends, dates, or expressions of appreciation.
+
+Title Rules:
 - 4-10 specific words. No trailing punctuation. No quotes.
 - Capture the dominant topic, not the first sentence.
 - Prefer names of people, places, projects, and the main action or decision.
 - Avoid generic openers like "Voice note about", "I", or "Notes on".
-- If there are multiple unrelated topics, name the most important one.
-- If the transcript is empty or unintelligible, return {"title":""}.
+- If the transcript is empty or unintelligible, return {"title":"","flower_type":"sakura"}.
 
 Examples:
 Cleaned transcript: I met Shivani at Cafe Coffee Day for Project Atlas around 3 PM. I need to send the notes later.
-Output: {"title":"Shivani meeting on Project Atlas notes"}
+Output: {"title":"Shivani meeting on Project Atlas notes","flower_type":"rose"}
 
 Cleaned transcript: I need to send the revised deck to Shivani before Friday morning.
-Output: {"title":"Send revised deck to Shivani by Friday"}
+Output: {"title":"Send revised deck to Shivani by Friday","flower_type":"sunflower"}
 
 Cleaned transcript: I have a dentist appointment with Dr. Rao on Monday at 9:30. Remember the insurance card and X-ray reports.
-Output: {"title":"Dr. Rao dentist appointment with documents"}
+Output: {"title":"Dr. Rao dentist appointment with documents","flower_type":"sunflower"}
 
 Cleaned transcript: Pick up Mom from the airport, Terminal 2, at 6:45. The flight is Air India 101.
-Output: {"title":"Pick up Mom from airport Terminal 2"}
+Output: {"title":"Pick up Mom from airport Terminal 2","flower_type":"rose"}
 
-Cleaned transcript: Tasks for tomorrow:\\n- Call Dr. Rao at 9:30.\\n- Send Project Atlas notes to Shivani.\\n- Buy milk and eggs.
-Output: {"title":"Tomorrow tasks for Dr. Rao and Shivani"}
+Cleaned transcript: Got the promotion today! So incredibly happy and excited for what's next.
+Output: {"title":"Celebration for job promotion achievement","flower_type":"sakura"}
+
+Cleaned transcript: Exhausted. The deadline is tomorrow and we are struggling with database crashes.
+Output: {"title":"Database crashes and high deadline stress","flower_type":"cactus"}
+
+Cleaned transcript: studied native architectures today. Thinking about how it applies to state.
+Output: {"title":"Study notes on native state architectures","flower_type":"fern"}
+
+Cleaned transcript: Had a weird dream about floating dot matrices. Maybe a cool concept for a game.
+Output: {"title":"Creative game idea about floating dot matrices","flower_type":"mushroom"}
+
+Cleaned transcript: Wrapping up the evening. Reflecting on a quiet, peaceful walk by the lake.
+Output: {"title":"Quiet evening walk reflection by the lake","flower_type":"lavender"}
 
 Cleaned transcript:
 """
@@ -291,8 +310,8 @@ String generateLogTitleRetryPrompt(
 ) {
   return '''
 Your previous response was invalid. Return exactly one valid minified JSON
-object with a single "title" key, and no markdown or prose:
-{"title":"4-10 word topic-first title"}
+object with "title" and "flower_type" keys, and no markdown or prose:
+{"title":"4-10 word topic-first title","flower_type":"sakura|lavender|cactus|sunflower|fern|mushroom|rose"}
 
 Cleaned transcript:
 """
