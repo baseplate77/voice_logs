@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/canonical_entity_repository.dart';
@@ -97,7 +98,7 @@ class _SearchResults extends ConsumerWidget {
         }
         return ListView.separated(
           itemCount: rows.length,
-          separatorBuilder: (_, _) => const Divider(height: 1),
+          separatorBuilder: (_, _) => Divider(height: 1.h),
           itemBuilder: (_, i) => _ResultTile(hit: rows[i], query: query),
         );
       },
@@ -127,7 +128,7 @@ class _ResultTile extends StatelessWidget {
         children: [
           if (hit.localReason.isNotEmpty)
             Padding(
-              padding: const EdgeInsets.only(top: 2),
+              padding: EdgeInsets.only(top: 2.h),
               child: Text(
                 hit.localReason,
                 style: theme.textTheme.bodySmall?.copyWith(
@@ -136,7 +137,7 @@ class _ResultTile extends StatelessWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.only(top: 2),
+            padding: EdgeInsets.only(top: 2.h),
             child: Text(
               _sourceLabel(hit.matchedVia),
               style: theme.textTheme.bodySmall?.copyWith(
@@ -169,14 +170,14 @@ class _FilterBar extends ConsumerWidget {
     final notifier = ref.read(searchFiltersProvider.notifier);
     final facetedAsync = ref.watch(facetedEntitiesProvider);
     return SizedBox(
-      height: 48,
+      height: 48.h,
       child: ListView(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+        padding: EdgeInsets.symmetric(horizontal: 12.w),
         children: [
           for (final facet in EntityFacet.values)
             Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: EdgeInsets.only(right: 8.w),
               child: _EntityFacetChip(
                 facet: facet,
                 selectedCount: filters.entityIdsByFacet[facet]?.length ?? 0,
@@ -188,14 +189,14 @@ class _FilterBar extends ConsumerWidget {
               ),
             ),
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: EdgeInsets.only(right: 8.w),
             child: _DateRangeChip(
               range: filters.dateRange,
               onPick: notifier.setDateRange,
             ),
           ),
           Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: EdgeInsets.only(right: 8.w),
             child: FilterChip(
               label: const Text('Tasks'),
               selected: filters.requireActionItems,
@@ -217,7 +218,7 @@ class _FilterBar extends ConsumerWidget {
     final facetedAsync = ref.read(facetedEntitiesProvider);
     final entities = facetedAsync.maybeWhen(
       data: (f) => f.forFacet(facet),
-      orElse: () => const <CanonicalEntityView>[],
+      orElse: () => <CanonicalEntityView>[],
     );
     if (entities.isEmpty) return;
     await showModalBottomSheet<void>(
@@ -250,7 +251,7 @@ class _EntityFacetChip extends StatelessWidget {
       label: Text(label),
       selected: selectedCount > 0,
       onPressed: disabled ? null : onTap,
-      avatar: const Icon(Icons.filter_list, size: 18),
+      avatar: Icon(Icons.filter_list, size: 18.r),
     );
   }
 }
@@ -265,7 +266,7 @@ class _EntityPickerSheet extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(searchFiltersProvider);
     final notifier = ref.read(searchFiltersProvider.notifier);
-    final selected = filters.entityIdsByFacet[facet] ?? const <String>{};
+    final selected = filters.entityIdsByFacet[facet] ?? <String>{};
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -274,14 +275,14 @@ class _EntityPickerSheet extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(facet.label, style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            SizedBox(height: 8.h),
             // Each chip is a filter toggle; the trailing arrow button on
             // the right opens the entity detail page directly without
             // toggling the filter. Keeps the primary action (filter) on
             // the chip itself and the navigation as an explicit affordance.
             for (final e in entities)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: EdgeInsets.only(bottom: 4.h),
                 child: Row(
                   children: [
                     Expanded(
@@ -292,7 +293,7 @@ class _EntityPickerSheet extends ConsumerWidget {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.arrow_forward, size: 18),
+                      icon: Icon(Icons.arrow_forward, size: 18.r),
                       tooltip: 'Open ${e.displayName}',
                       onPressed: () {
                         Navigator.of(context).pop();
@@ -325,7 +326,7 @@ class _DateRangeChip extends StatelessWidget {
     return InputChip(
       label: Text(label),
       selected: !range.isUnbounded,
-      avatar: const Icon(Icons.calendar_today_outlined, size: 16),
+      avatar: Icon(Icons.calendar_today_outlined, size: 16.r),
       onPressed: () => _openMenu(context),
     );
   }

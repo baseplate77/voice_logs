@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../app_theme.dart';
 import '../../core/db/providers.dart';
@@ -84,7 +85,7 @@ class _MainContent extends ConsumerWidget {
 
     final double bottomPadding = MediaQuery.paddingOf(context).bottom;
     final double navBarHeight =
-        58.0 + bottomPadding; // Reduced to 58.0 base height
+        58.0.h + bottomPadding; // Reduced to 58.0 base height
 
     return Stack(
       clipBehavior: Clip.none,
@@ -101,70 +102,35 @@ class _MainContent extends ConsumerWidget {
               child: SafeArea(
                 bottom: false,
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                  padding: EdgeInsets.fromLTRB(20.w, 20.h, 20.w, 0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Header Title + Avatar
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'VoxSynth',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 2.0,
-                                  fontFamily: 'monospace',
-                                  color: VoxAppColors.muted,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'PRESERVE',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                  fontFamily: 'monospace',
-                                  color: VoxAppColors.accent,
-                                ),
-                              ),
-                              Text(
-                                'EVERY SOUND',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                  fontFamily: 'monospace',
-                                  color: VoxAppColors.primary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              border: Border.all(
+                      // Header Title
+                      Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: 'VoxSynth',
+                              style: TextStyle(
+                                fontSize: 28.sp,
+                                fontFamily: 'NDot',
                                 color: VoxAppColors.primary,
-                                width: 2,
                               ),
                             ),
-                            child: const CircleAvatar(
-                              radius: 24,
-                              backgroundImage: AssetImage(
-                                'assets/images/avatar.png',
+                            TextSpan(
+                              text: '.',
+                              style: TextStyle(
+                                fontSize: 28.sp,
+                                fontFamily: 'NDot',
+                                color: VoxAppColors.accent,
+                                fontWeight: FontWeight.bold,
                               ),
-                              backgroundColor: VoxAppColors.surfaceHigh,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20.h),
                       // Search Bar + Filter Button
                       Row(
                         children: [
@@ -175,15 +141,15 @@ class _MainContent extends ConsumerWidget {
                                   builder: (_) => const SearchScreen(),
                                 ),
                               ),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(12.r),
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 14,
-                                  vertical: 12,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: 14.w,
+                                  vertical: 12.h,
                                 ),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12.r),
                                   border: Border.all(
                                     color: VoxAppColors.outline,
                                   ),
@@ -192,24 +158,28 @@ class _MainContent extends ConsumerWidget {
                                       color: Colors.black.withValues(
                                         alpha: 0.03,
                                       ),
-                                      blurRadius: 4,
-                                      offset: const Offset(0, 2),
+                                      blurRadius: 4.r,
+                                      offset: Offset(0.w, 2.h),
                                     ),
                                   ],
                                 ),
-                                child: const Row(
+                                child: Row(
                                   children: [
                                     Icon(
                                       Icons.search_rounded,
                                       color: VoxAppColors.muted,
-                                      size: 20,
+                                      size: 20.r,
                                     ),
-                                    const SizedBox(width: 10),
-                                    Text(
-                                      'Search Recordings',
-                                      style: TextStyle(
-                                        color: VoxAppColors.muted,
-                                        fontSize: 15,
+                                    SizedBox(width: 10.w),
+                                    Flexible(
+                                      child: Text(
+                                        'Search Recordings',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          color: VoxAppColors.muted,
+                                          fontSize: 15.sp,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -217,33 +187,33 @@ class _MainContent extends ConsumerWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: 12.w),
                           InkWell(
                             onTap: () => Navigator.of(context).push(
                               MaterialPageRoute<void>(
                                 builder: (_) => const SearchScreen(),
                               ),
                             ),
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(12.r),
                             child: Container(
-                              width: 48,
-                              height: 48,
+                              width: 48.w,
+                              height: 48.h,
                               decoration: BoxDecoration(
                                 color: VoxAppColors.primary,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(12.r),
                               ),
-                              child: const Icon(
+                              child: Icon(
                                 Icons.tune_rounded,
                                 color: Colors.white,
-                                size: 20,
+                                size: 20.r,
                               ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 20),
+                      SizedBox(height: 20.h),
                       const _DashedDivider(),
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12.h),
                       // Logs List View
                       Expanded(
                         child: AnimatedOpacity(
@@ -254,12 +224,12 @@ class _MainContent extends ConsumerWidget {
                               if (rows.isEmpty) return const _EmptyState();
                               return ListView.separated(
                                 padding: EdgeInsets.only(
-                                  bottom: navBarHeight + 36,
-                                  top: 4,
+                                  bottom: navBarHeight + 36.h,
+                                  top: 4.h,
                                 ),
                                 itemCount: rows.length,
                                 separatorBuilder: (_, _) =>
-                                    const SizedBox(height: 10),
+                                    SizedBox(height: 10.h),
                                 itemBuilder: (_, i) {
                                   final row = rows[i];
                                   return LogRow(
@@ -303,24 +273,14 @@ class _MainContent extends ConsumerWidget {
 
         // 3. Symmetrical Silver Corner Screws / Studs
         // Placed relative to the corners of the refined faceplate panel
-        const Positioned(left: 12, top: 12, child: _SilverStud()),
-        const Positioned(right: 12, top: 12, child: _SilverStud()),
-        Positioned(
-          left: 12,
-          bottom: navBarHeight + 12,
-          child: const _SilverStud(),
-        ),
-        Positioned(
-          right: 12,
-          bottom: navBarHeight + 12,
-          child: const _SilverStud(),
-        ),
+        Positioned(left: 12.w, top: 12.h, child: const _SilverStud()),
+        Positioned(right: 12.w, top: 12.h, child: const _SilverStud()),
 
         // 4. The Bottom Nav Bar controls sitting on the exposed dark deck
         Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
+          left: 0.w,
+          right: 0.w,
+          bottom: 0.h,
           height: navBarHeight,
           child: const RecordingOverlay(),
         ),
@@ -345,8 +305,8 @@ class _DashedDivider extends StatelessWidget {
           children: List.generate(dashCount, (_) {
             return SizedBox(
               width: dashWidth,
-              height: 1,
-              child: DecoratedBox(
+              height: 1.h,
+              child: const DecoratedBox(
                 decoration: BoxDecoration(color: VoxAppColors.outline),
               ),
             );
@@ -363,24 +323,24 @@ class _SilverStud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 12,
-      height: 12,
+      width: 12.w,
+      height: 12.h,
       decoration: BoxDecoration(
         color: const Color(0xFFE0E0E0),
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFB0B0B0), width: 1),
-        boxShadow: const [
+        border: Border.all(color: const Color(0xFFB0B0B0), width: 1.w),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x1A000000),
-            blurRadius: 1,
-            offset: Offset(0, 1),
+            color: const Color(0x1A000000),
+            blurRadius: 1.r,
+            offset: Offset(0.w, 1.h),
           ),
         ],
       ),
       child: Center(
         child: Container(
-          width: 3,
-          height: 3,
+          width: 3.w,
+          height: 3.h,
           decoration: const BoxDecoration(
             color: Color(0xFF888888),
             shape: BoxShape.circle,
@@ -396,30 +356,40 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.r),
         child: Text(
           'Your journal gets smarter as you record more.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16, fontFamily: 'monospace'),
+          style: TextStyle(fontSize: 16.sp, fontFamily: 'monospace'),
         ),
       ),
     );
   }
 }
 
-const double _whiteCanvasCornerRadius = 40.0;
-const double _whiteCanvasScoopWidth = 135.0;
-const double _whiteCanvasScoopHeight = 62.0;
+/// White canvas scoop design values, based on the iPhone 17 Pro Max
+/// ScreenUtil baseline. Keep these as plain design units; the getters below
+/// convert them to responsive runtime pixels.
+double _whiteCanvasCornerRadius = 40.0;
+double _whiteCanvasScoopWidth = 135.0;
+double _whiteCanvasScoopHeight = 58.0;
 
 /// Controls the rounded outer shoulder where the bottom edge turns into the scoop.
 /// Increase this value for a wider/softer scoop edge, decrease for a tighter edge.
-const double _whiteCanvasScoopOuterEdgeRadius = 40.0;
+double _whiteCanvasScoopOuterEdgeRadius = 40.0;
 
 /// Controls the upper curvature of the scoop as it reaches the top center.
 /// Increase this value for a rounder/flatter scoop top, decrease for a sharper top.
-const double _whiteCanvasScoopTopRadius = 8.0;
+double _whiteCanvasScoopTopRadius = 10.0;
+
+double get _responsiveWhiteCanvasCornerRadius => _whiteCanvasCornerRadius.r;
+double get _responsiveWhiteCanvasScoopWidth => _whiteCanvasScoopWidth.w;
+double get _responsiveWhiteCanvasScoopHeight => _whiteCanvasScoopHeight.h;
+double get _responsiveWhiteCanvasScoopOuterEdgeRadius =>
+    _whiteCanvasScoopOuterEdgeRadius.r;
+double get _responsiveWhiteCanvasScoopTopRadius => _whiteCanvasScoopTopRadius.r;
 
 /// Custom Clipper to shape the white dashboard panel with rounded corners and
 /// a beautiful curved scoop in the bottom center to reveal the record button.
@@ -430,11 +400,12 @@ class _WhiteCanvasClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
     final path = Path();
-    const double cornerRadius = _whiteCanvasCornerRadius;
-    const double scoopWidth = _whiteCanvasScoopWidth;
-    const double scoopHeight = _whiteCanvasScoopHeight;
-    const double scoopOuterEdgeRadius = _whiteCanvasScoopOuterEdgeRadius;
-    const double scoopTopRadius = _whiteCanvasScoopTopRadius;
+    final double cornerRadius = _responsiveWhiteCanvasCornerRadius;
+    final double scoopWidth = _responsiveWhiteCanvasScoopWidth;
+    final double scoopHeight = _responsiveWhiteCanvasScoopHeight;
+    final double scoopOuterEdgeRadius =
+        _responsiveWhiteCanvasScoopOuterEdgeRadius;
+    final double scoopTopRadius = _responsiveWhiteCanvasScoopTopRadius;
     final double centerX = size.width / 2;
     final double bottomY = size.height - bottomNavBarHeight;
 
@@ -490,6 +461,7 @@ class _WhiteCanvasClipper extends CustomClipper<Path> {
 
 /// Custom Painter to draw a fine outline along the entire clipped boundary of
 /// the white dashboard panel.
+// ignore: unused_element
 class _WhiteCanvasBorderPainter extends CustomPainter {
   final double bottomNavBarHeight;
   final Color borderColor;
@@ -504,14 +476,15 @@ class _WhiteCanvasBorderPainter extends CustomPainter {
     final paint = Paint()
       ..color = borderColor
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2;
+      ..strokeWidth = 1.2.r;
 
     final path = Path();
-    const double cornerRadius = _whiteCanvasCornerRadius;
-    const double scoopWidth = _whiteCanvasScoopWidth;
-    const double scoopHeight = _whiteCanvasScoopHeight;
-    const double scoopOuterEdgeRadius = _whiteCanvasScoopOuterEdgeRadius;
-    const double scoopTopRadius = _whiteCanvasScoopTopRadius;
+    final double cornerRadius = _responsiveWhiteCanvasCornerRadius;
+    final double scoopWidth = _responsiveWhiteCanvasScoopWidth;
+    final double scoopHeight = _responsiveWhiteCanvasScoopHeight;
+    final double scoopOuterEdgeRadius =
+        _responsiveWhiteCanvasScoopOuterEdgeRadius;
+    final double scoopTopRadius = _responsiveWhiteCanvasScoopTopRadius;
     final double centerX = size.width / 2;
     final double bottomY = size.height - bottomNavBarHeight;
 

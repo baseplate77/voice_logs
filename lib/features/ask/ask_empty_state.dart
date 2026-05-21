@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Empty state shown before the first Ask message.
 class AskEmptyState extends StatelessWidget {
@@ -13,19 +14,19 @@ class AskEmptyState extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            width: 56,
-            height: 56,
+            width: 56.w,
+            height: 56.h,
             decoration: BoxDecoration(
               color: theme.colorScheme.primary.withValues(alpha: 0.10),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.auto_awesome,
-              size: 28,
+              size: 28.r,
               color: theme.colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 18),
+          SizedBox(height: 18.h),
           Text(
             'How can I help with your journal?',
             style: theme.textTheme.headlineSmall?.copyWith(
@@ -34,12 +35,12 @@ class AskEmptyState extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 10),
+          SizedBox(height: 10.h),
           Text(
             'Ask about people, plans, decisions, or patterns from your local voice logs.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-              height: 1.45,
+              height: 1.45.h,
             ),
             textAlign: TextAlign.center,
           ),

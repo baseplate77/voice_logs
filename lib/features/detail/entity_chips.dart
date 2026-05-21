@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/repositories/entity_mention_repository.dart';
 import '../entity/entity_detail_screen.dart';
@@ -19,12 +20,12 @@ class EntityChips extends StatelessWidget {
   Widget build(BuildContext context) {
     if (mentions.isEmpty) return const SizedBox.shrink();
     return SizedBox(
-      height: 40,
+      height: 40.h,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: 16.w),
         itemCount: mentions.length,
-        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        separatorBuilder: (_, _) => SizedBox(width: 8.w),
         itemBuilder: (_, i) {
           final m = mentions[i];
           final canonicalId = m.canonicalEntityId;
@@ -35,7 +36,7 @@ class EntityChips extends StatelessWidget {
           );
           if (canonicalId == null) return chip;
           return InkWell(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(20.r),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => EntityDetailScreen(entityId: canonicalId),

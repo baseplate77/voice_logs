@@ -1,6 +1,8 @@
 import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../app_theme.dart';
 import '../../core/db/processing_state.dart';
@@ -23,7 +25,8 @@ class LogRow extends ConsumerStatefulWidget {
   ConsumerState<LogRow> createState() => _LogRowState();
 }
 
-class _LogRowState extends ConsumerState<LogRow> with SingleTickerProviderStateMixin {
+class _LogRowState extends ConsumerState<LogRow>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   bool _hadTitleAtMount = false;
 
@@ -67,12 +70,14 @@ class _LogRowState extends ConsumerState<LogRow> with SingleTickerProviderStateM
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final log = widget.log;
-    final mentions = ref.watch(voiceLogMentionsProvider(log.id)).valueOrNull ?? [];
-    
+    final mentions =
+        ref.watch(voiceLogMentionsProvider(log.id)).valueOrNull ?? [];
+
     final hasTitle = _hasRealTitle(log);
     final titleText = hasTitle ? log.title! : '';
-    
-    final isTitlePending = !hasTitle && log.processingState == ProcessingState.recorded;
+
+    final isTitlePending =
+        !hasTitle && log.processingState == ProcessingState.recorded;
 
     return Card(
       margin: EdgeInsets.zero,
@@ -81,13 +86,13 @@ class _LogRowState extends ConsumerState<LogRow> with SingleTickerProviderStateM
       shadowColor: Colors.black.withValues(alpha: 0.04),
       color: Colors.white,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: const BorderSide(color: VoxAppColors.outline, width: 1),
+        borderRadius: BorderRadius.circular(16.r),
+        side: BorderSide(color: VoxAppColors.outline, width: 1.w),
       ),
       child: InkWell(
         onTap: widget.onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 14.0),
+          padding: EdgeInsets.symmetric(horizontal: 16.0.w, vertical: 14.0.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -97,19 +102,19 @@ class _LogRowState extends ConsumerState<LogRow> with SingleTickerProviderStateM
                 children: [
                   // Symmetrical Dark Mic Block
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: 42.w,
+                    height: 42.h,
                     decoration: BoxDecoration(
                       color: VoxAppColors.primary, // dark charcoal
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(8.r),
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.mic_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: 20.r,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: 12.w),
                   // Expanded block for Title & Date
                   Expanded(
                     child: Column(
@@ -118,38 +123,41 @@ class _LogRowState extends ConsumerState<LogRow> with SingleTickerProviderStateM
                         isTitlePending
                             ? const _GenerativeTitleLoader()
                             : hasTitle && _controller.value < 1.0
-                                ? _TitleReveal(animation: _controller, text: titleText)
-                                : Text(
-                                    titleText.isEmpty ? 'New Voice Log' : titleText,
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      fontWeight: FontWeight.w900,
-                                      fontFamily: 'monospace',
-                                      color: titleText.isEmpty 
-                                          ? theme.colorScheme.onSurfaceVariant 
-                                          : theme.colorScheme.onSurface,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                            ? _TitleReveal(
+                                animation: _controller,
+                                text: titleText,
+                              )
+                            : Text(
+                                titleText.isEmpty ? 'New Voice Log' : titleText,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  fontFamily: 'monospace',
+                                  color: titleText.isEmpty
+                                      ? theme.colorScheme.onSurfaceVariant
+                                      : theme.colorScheme.onSurface,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                         Text(
                           _formatDate(log.createdAt),
                           style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 12.sp,
                             color: VoxAppColors.muted,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         if (log.rawTranscript.isNotEmpty) ...[
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6.h),
                           Text(
                             log.rawTranscript,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
-                              fontSize: 13,
+                              fontSize: 13.sp,
                               color: VoxAppColors.muted,
                               fontFamily: 'monospace',
-                              height: 1.3,
+                              height: 1.3.h,
                             ),
                           ),
                         ],
@@ -159,40 +167,13 @@ class _LogRowState extends ConsumerState<LogRow> with SingleTickerProviderStateM
                 ],
               ),
               if (mentions.isNotEmpty) ...[
-                const SizedBox(height: 10),
+                SizedBox(height: 10.h),
                 Wrap(
                   spacing: 6,
                   runSpacing: 6,
                   children: mentions.map((m) => _TagChip(mention: m)).toList(),
                 ),
               ],
-              const SizedBox(height: 12),
-              // Dotted Separator line
-              const _CardDashedDivider(),
-              const SizedBox(height: 12),
-              // Bottom Section: Preview Waveform and Play Button
-              Row(
-                children: [
-                  Expanded(
-                    child: _PreviewWaveform(logId: log.id, durationMs: log.durationMs),
-                  ),
-                  const SizedBox(width: 14),
-                  // Classic Square Black Play Button
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: VoxAppColors.primary,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.play_arrow_rounded,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
         ),
@@ -201,72 +182,27 @@ class _LogRowState extends ConsumerState<LogRow> with SingleTickerProviderStateM
   }
 
   String _formatDate(DateTime date) {
-    final months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     final m = months[date.month - 1];
-    final h = date.hour > 12 ? date.hour - 12 : (date.hour == 0 ? 12 : date.hour);
+    final h = date.hour > 12
+        ? date.hour - 12
+        : (date.hour == 0 ? 12 : date.hour);
     final min = date.minute.toString().padLeft(2, '0');
     final ampm = date.hour >= 12 ? 'PM' : 'AM';
     return '$m ${date.day} at $h:$min$ampm';
-  }
-}
-
-class _CardDashedDivider extends StatelessWidget {
-  const _CardDashedDivider();
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final boxWidth = constraints.constrainWidth();
-        const dashWidth = 3.0;
-        const dashSpace = 3.0;
-        final dashCount = (boxWidth / (dashWidth + dashSpace)).floor();
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: List.generate(dashCount, (_) {
-            return SizedBox(
-              width: dashWidth,
-              height: 1,
-              child: DecoratedBox(
-                decoration: BoxDecoration(color: VoxAppColors.outline),
-              ),
-            );
-          }),
-        );
-      },
-    );
-  }
-}
-
-class _PreviewWaveform extends StatelessWidget {
-  const _PreviewWaveform({required this.logId, required this.durationMs});
-  final String logId;
-  final int durationMs;
-
-  @override
-  Widget build(BuildContext context) {
-    // Generate a beautiful, clean pseudo-waveform based on logId hash for consistent styling
-    final random = Random(logId.hashCode);
-    final barCount = 28;
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(barCount, (index) {
-        // Create organic symmetric looking heights
-        final distanceToCenter = (index - barCount / 2).abs() / (barCount / 2);
-        final factor = 1.0 - distanceToCenter;
-        final rawHeight = 3.0 + 15.0 * factor + random.nextDouble() * 6.0;
-        final height = rawHeight.clamp(4.0, 24.0);
-
-        return Container(
-          width: 3.5,
-          height: height,
-          decoration: BoxDecoration(
-            color: index % 3 == 0 ? const Color(0xFFDCDCDC) : const Color(0xFFEBEBEB),
-            borderRadius: BorderRadius.circular(1.5),
-          ),
-        );
-      }),
-    );
   }
 }
 
@@ -279,32 +215,40 @@ class _TagChip extends StatelessWidget {
     final color = _colorForType(mention.type);
     final icon = _iconForType(mention.type);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withValues(alpha: 0.15), width: 0.8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            icon,
-            size: 10,
-            color: color,
+    final maxChipWidth = max(80.0, MediaQuery.sizeOf(context).width - 96.w);
+
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxWidth: maxChipWidth),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8.r),
+          border: Border.all(
+            color: color.withValues(alpha: 0.15),
+            width: 0.8.w,
           ),
-          const SizedBox(width: 4),
-          Text(
-            mention.text,
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.bold,
-              color: color,
-              fontFamily: 'monospace',
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 10.r, color: color),
+            SizedBox(width: 4.w),
+            Flexible(
+              child: Text(
+                mention.text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 10.sp,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                  fontFamily: 'monospace',
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -345,10 +289,12 @@ class _TitleReveal extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final base = theme.textTheme.titleMedium?.copyWith(
-      fontWeight: FontWeight.bold,
-      fontFamily: 'monospace',
-    ) ?? const TextStyle();
+    final base =
+        theme.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.bold,
+          fontFamily: 'monospace',
+        ) ??
+        const TextStyle();
     return AnimatedBuilder(
       animation: animation,
       builder: (context, _) {
@@ -418,30 +364,29 @@ class _GenerativeTitleLoaderState extends State<_GenerativeTitleLoader>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final primaryColor = VoxAppColors.accent;
-    final accentColor = VoxAppColors.muted;
+    const primaryColor = VoxAppColors.accent;
+    const accentColor = VoxAppColors.muted;
 
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
         final t = _controller.value;
         return Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             Transform.rotate(
               angle: t * 2 * pi,
               child: ShaderMask(
-                shaderCallback: (bounds) => LinearGradient(
+                shaderCallback: (bounds) => const LinearGradient(
                   colors: [primaryColor, accentColor],
                 ).createShader(bounds),
-                child: const Icon(
+                child: Icon(
                   Icons.auto_awesome_rounded,
-                  size: 14,
+                  size: 14.r,
                   color: Colors.white,
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6.w),
             Expanded(
               child: ShaderMask(
                 blendMode: BlendMode.srcATop,
@@ -471,7 +416,7 @@ class _GenerativeTitleLoaderState extends State<_GenerativeTitleLoader>
                 ),
               ),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: 6.w),
             _MicroWaveform(controller: _controller),
           ],
         );
@@ -495,12 +440,14 @@ class _MicroWaveform extends StatelessWidget {
         final height = 4.0 + 12.0 * scale;
 
         return Container(
-          width: 2.5,
+          width: 2.5.w,
           height: height,
-          margin: const EdgeInsets.symmetric(horizontal: 1.0),
+          margin: EdgeInsets.symmetric(horizontal: 1.0.w),
           decoration: BoxDecoration(
-            color: const Color(0xFFE13C30).withValues(alpha: index.isEven ? 0.8 : 0.4),
-            borderRadius: BorderRadius.circular(1.0),
+            color: const Color(
+              0xFFE13C30,
+            ).withValues(alpha: index.isEven ? 0.8 : 0.4),
+            borderRadius: BorderRadius.circular(1.0.r),
           ),
         );
       }),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'ask_answer_view.dart';
 import 'ask_chat_message.dart';
@@ -50,14 +51,14 @@ class _AskChatBubbleState extends State<AskChatBubble> {
           surfaceTintColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.only(
-              topLeft: const Radius.circular(20),
-              topRight: const Radius.circular(20),
+              topLeft: Radius.circular(20.r),
+              topRight: Radius.circular(20.r),
               bottomLeft: Radius.circular(isUser ? 20 : 6),
               bottomRight: Radius.circular(isUser ? 6 : 20),
             ),
           ),
           child: Padding(
-            padding: const EdgeInsets.all(14),
+            padding: EdgeInsets.all(14.r),
             child: DefaultTextStyle.merge(
               style: TextStyle(color: foreground),
               child: Column(
@@ -72,25 +73,25 @@ class _AskChatBubbleState extends State<AskChatBubble> {
                       onTapCitation: _onTapCitation,
                     ),
                   if (message.streaming) ...[
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8.h),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         SizedBox.square(
                           dimension: 12,
                           child: CircularProgressIndicator(
-                            strokeWidth: 2,
+                            strokeWidth: 2.r,
                             color: foreground,
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8.w),
                         const Text('Streaming locally'),
                       ],
                     ),
                   ],
                   if (!isUser && !message.streaming && references.isNotEmpty)
                     Padding(
-                      padding: const EdgeInsets.only(top: 10),
+                      padding: EdgeInsets.only(top: 10.h),
                       child: _ReferenceSummary(
                         citations: references,
                         expanded: _referencesExpanded,
@@ -105,13 +106,13 @@ class _AskChatBubbleState extends State<AskChatBubble> {
                       _referencesExpanded &&
                       (message.memoryHits.isNotEmpty ||
                           message.logHits.isNotEmpty)) ...[
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10.h),
                     Divider(
-                      height: 1,
-                      thickness: 1,
+                      height: 1.h,
+                      thickness: 1.r,
                       color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: 10.h),
                     AskContextPanel(
                       message: message,
                       onOpenLog: widget.onOpenLog,
@@ -163,12 +164,12 @@ class _ReferenceSummary extends StatelessWidget {
           onPressed: onToggle,
           icon: Icon(
             expanded ? Icons.expand_less : Icons.expand_more,
-            size: 16,
+            size: 16.r,
           ),
           label: Text('References (${citations.length})'),
           style: OutlinedButton.styleFrom(
             visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 6.h),
             side: BorderSide(
               color: scheme.outlineVariant.withValues(alpha: 0.8),
             ),
@@ -262,7 +263,9 @@ class _RoundReferenceChip extends StatelessWidget {
       message: citation.marker,
       child: Material(
         color: accent,
-        shape: CircleBorder(side: BorderSide(color: scheme.surface, width: 2)),
+        shape: CircleBorder(
+          side: BorderSide(color: scheme.surface, width: 2.w),
+        ),
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
@@ -272,7 +275,7 @@ class _RoundReferenceChip extends StatelessWidget {
               child: Text(
                 citation.marker.substring(1, citation.marker.length - 1),
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.w800,
                   color: foreground,
                 ),
@@ -303,7 +306,9 @@ class _MoreReferenceChip extends StatelessWidget {
       message: 'Show $count more reference(s)',
       child: Material(
         color: scheme.surfaceContainerHighest,
-        shape: CircleBorder(side: BorderSide(color: scheme.surface, width: 2)),
+        shape: CircleBorder(
+          side: BorderSide(color: scheme.surface, width: 2.w),
+        ),
         child: InkWell(
           onTap: onTap,
           customBorder: const CircleBorder(),
@@ -313,7 +318,7 @@ class _MoreReferenceChip extends StatelessWidget {
               child: Text(
                 '+$count',
                 style: TextStyle(
-                  fontSize: 10,
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.w800,
                   color: scheme.onSurfaceVariant,
                 ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'ask_citation_parser.dart';
 
@@ -61,7 +62,7 @@ class _MarkdownAnswerBody extends StatelessWidget {
     while (offset < text.length) {
       final line = _lineAt(text, offset);
       if (line.content.trim().isEmpty) {
-        blocks.add(const SizedBox(height: 8));
+        blocks.add(SizedBox(height: 8.h));
         offset = line.nextOffset;
         continue;
       }
@@ -71,7 +72,7 @@ class _MarkdownAnswerBody extends StatelessWidget {
         blocks.add(
           _MarkdownAnswerTable(rows: table.rows, onTapCitation: onTapCitation),
         );
-        blocks.add(const SizedBox(height: 12));
+        blocks.add(SizedBox(height: 12.h));
         offset = table.nextOffset;
         continue;
       }
@@ -83,7 +84,7 @@ class _MarkdownAnswerBody extends StatelessWidget {
         // bubble and keeps the answer feeling like a single unit.
         blocks.add(
           Padding(
-            padding: EdgeInsets.only(top: blocks.isEmpty ? 0 : 8, bottom: 4),
+            padding: EdgeInsets.only(top: blocks.isEmpty ? 0 : 8, bottom: 4.h),
             child: RichText(
               text: _inlineSpan(
                 context,
@@ -102,12 +103,12 @@ class _MarkdownAnswerBody extends StatelessWidget {
       if (bullet != null) {
         blocks.add(
           Padding(
-            padding: const EdgeInsets.only(bottom: 4),
+            padding: EdgeInsets.only(bottom: 4.h),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: 18,
+                  width: 18.w,
                   child: Text(bullet.marker, style: _bodyStyle(context)),
                 ),
                 Expanded(
@@ -130,7 +131,7 @@ class _MarkdownAnswerBody extends StatelessWidget {
       final paragraph = _paragraphAt(offset);
       blocks.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+          padding: EdgeInsets.only(bottom: 8.h),
           child: RichText(
             text: _inlineSpan(
               context,
@@ -216,7 +217,7 @@ class _MarkdownAnswerTable extends StatelessWidget {
               children: [
                 for (final cell in normalized[rowIndex])
                   Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.r),
                     child: RichText(
                       text: _inlineSpan(
                         context,
@@ -300,8 +301,8 @@ List<TextSpan> _inlineMarkdownTextSpans(String text, TextStyle base) {
 }
 
 TextStyle _bodyStyle(BuildContext context) {
-  return Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45) ??
-      const TextStyle(fontSize: 15, height: 1.45);
+  return Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45.h) ??
+      TextStyle(fontSize: 15.sp, height: 1.45.h);
 }
 
 TextStyle _headingStyle(BuildContext context, int level) {
@@ -334,20 +335,20 @@ class _CitationChip extends StatelessWidget {
     final background = isLog ? scheme.primary : scheme.tertiary;
     final foreground = isLog ? scheme.onPrimary : scheme.onTertiary;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
+      padding: EdgeInsets.symmetric(horizontal: 2.w),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(10.r),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 1.h),
           decoration: BoxDecoration(
             color: background.withValues(alpha: 0.18),
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(10.r),
           ),
           child: Text(
             citation.marker,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 12.sp,
               fontWeight: FontWeight.w600,
               color: foreground.computeLuminance() > 0.5
                   ? scheme.onSurface
@@ -415,11 +416,7 @@ String _hideInlineCitationMarkers(String answer) {
 }
 
 class _Line {
-  const _Line({
-    required this.content,
-    required this.end,
-    required this.nextOffset,
-  });
+  _Line({required this.content, required this.end, required this.nextOffset});
 
   final String content;
   final int end;
@@ -427,28 +424,28 @@ class _Line {
 }
 
 class _Heading {
-  const _Heading({required this.level, required this.content});
+  _Heading({required this.level, required this.content});
 
   final int level;
   final String content;
 }
 
 class _Paragraph {
-  const _Paragraph({required this.text, required this.nextOffset});
+  _Paragraph({required this.text, required this.nextOffset});
 
   final String text;
   final int nextOffset;
 }
 
 class _Bullet {
-  const _Bullet({required this.marker, required this.content});
+  _Bullet({required this.marker, required this.content});
 
   final String marker;
   final String content;
 }
 
 class _TableBlock {
-  const _TableBlock({required this.rows, required this.nextOffset});
+  _TableBlock({required this.rows, required this.nextOffset});
 
   final List<List<String>> rows;
   final int nextOffset;

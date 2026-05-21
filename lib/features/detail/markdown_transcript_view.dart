@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/repositories/entity_mention_repository.dart';
 
@@ -29,7 +30,7 @@ class MarkdownTranscriptView extends StatelessWidget {
     while (offset < text.length) {
       final line = _lineAt(text, offset);
       if (line.content.trim().isEmpty) {
-        blocks.add(const SizedBox(height: 8));
+        blocks.add(SizedBox(height: 8.h));
         offset = line.nextOffset;
         continue;
       }
@@ -37,7 +38,7 @@ class MarkdownTranscriptView extends StatelessWidget {
       final table = _tableAt(offset);
       if (table != null) {
         blocks.add(_MarkdownTable(rows: table.rows));
-        blocks.add(const SizedBox(height: 12));
+        blocks.add(SizedBox(height: 12.h));
         offset = table.nextOffset;
         continue;
       }
@@ -46,12 +47,12 @@ class MarkdownTranscriptView extends StatelessWidget {
       if (bullet != null) {
         blocks.add(
           Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+            padding: EdgeInsets.only(bottom: 6.h),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(
-                  width: 24,
+                  width: 24.w,
                   child: Text(
                     bullet.marker,
                     style: Theme.of(context).textTheme.bodyLarge,
@@ -77,7 +78,7 @@ class MarkdownTranscriptView extends StatelessWidget {
       final paragraph = _paragraphAt(offset);
       blocks.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 12),
+          padding: EdgeInsets.only(bottom: 12.h),
           child: SelectableText.rich(
             _highlightedSpan(context, paragraph.text, paragraph.start),
           ),
@@ -138,8 +139,8 @@ class MarkdownTranscriptView extends StatelessWidget {
     int globalStart,
   ) {
     final base =
-        Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5) ??
-        const TextStyle(fontSize: 16, height: 1.5);
+        Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5.h) ??
+        TextStyle(fontSize: 16.sp, height: 1.5.h);
     final highlightStyle = base.copyWith(
       backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
       color: Theme.of(context).colorScheme.onTertiaryContainer,
@@ -211,7 +212,7 @@ class _MarkdownTable extends StatelessWidget {
               children: [
                 for (final cell in normalized[rowIndex])
                   Padding(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(8.r),
                     child: SelectableText(
                       cell,
                       style: rowIndex == 0
@@ -268,7 +269,7 @@ List<String> _splitTableCells(String line) {
 }
 
 class _Line {
-  const _Line({
+  _Line({
     required this.content,
     required this.start,
     required this.end,
@@ -282,7 +283,7 @@ class _Line {
 }
 
 class _Paragraph {
-  const _Paragraph({
+  _Paragraph({
     required this.text,
     required this.start,
     required this.nextOffset,
@@ -294,7 +295,7 @@ class _Paragraph {
 }
 
 class _Bullet {
-  const _Bullet({
+  _Bullet({
     required this.marker,
     required this.content,
     required this.contentStart,
@@ -306,7 +307,7 @@ class _Bullet {
 }
 
 class _TableBlock {
-  const _TableBlock({required this.rows, required this.nextOffset});
+  _TableBlock({required this.rows, required this.nextOffset});
 
   final List<List<String>> rows;
   final int nextOffset;

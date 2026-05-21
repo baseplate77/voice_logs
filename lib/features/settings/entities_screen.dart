@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/canonical_entity_repository.dart';
@@ -23,7 +24,7 @@ class EntitiesScreen extends ConsumerWidget {
           }
           return ListView.separated(
             itemCount: rows.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
+            separatorBuilder: (_, _) => Divider(height: 1.h),
             itemBuilder: (_, i) {
               final e = rows[i];
               return ListTile(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voxsynth/core/db/repositories/entity_mention_repository.dart';
 import 'package:voxsynth/features/detail/markdown_transcript_view.dart';
@@ -15,8 +16,10 @@ void main() {
 ''';
 
     await tester.pumpWidget(
-      const MaterialApp(
-        home: Scaffold(
+      ScreenUtilInit(
+        designSize: const Size(440, 956),
+        builder: (_, child) => MaterialApp(home: child),
+        child: const Scaffold(
           body: MarkdownTranscriptView(
             text: text,
             mentions: [

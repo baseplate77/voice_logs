@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'refine_eval_case.dart';
 import 'refine_eval_controller.dart';
@@ -37,14 +38,14 @@ class RefineEvalScreen extends ConsumerWidget {
           _ControlBar(state: state, controller: controller),
           if (state.errorMessage != null)
             Padding(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(12.r),
               child: Text(
                 state.errorMessage!,
                 style: TextStyle(color: Theme.of(context).colorScheme.error),
               ),
             ),
           if (state.results.isNotEmpty) _SummaryCard(agg: agg),
-          const Divider(height: 1),
+          Divider(height: 1.h),
           Expanded(child: _CaseList(state: state)),
         ],
       ),
@@ -131,7 +132,7 @@ class _ControlBar extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8.h),
           if (running)
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -143,7 +144,7 @@ class _ControlBar extends StatelessWidget {
                             ' — ${state.cases[state.currentIndex!].id}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4.h),
                 LinearProgressIndicator(value: progress),
               ],
             )
@@ -173,12 +174,12 @@ class _SummaryCard extends StatelessWidget {
     return Card(
       margin: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.r),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Summary', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 8),
+            SizedBox(height: 8.h),
             _row(
               'Parses',
               'first ${agg.firstPassParses} / retry ${agg.retryParses} / '
@@ -204,11 +205,11 @@ class _SummaryCard extends StatelessWidget {
 
   Widget _row(String label, String value) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: EdgeInsets.symmetric(vertical: 2.h),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 200, child: Text(label)),
+          SizedBox(width: 200.w, child: Text(label)),
           Expanded(
             child: Text(
               value,
@@ -233,10 +234,10 @@ class _CaseList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (state.results.isEmpty && !state.running) {
-      return const Center(
+      return Center(
         child: Padding(
-          padding: EdgeInsets.all(24),
-          child: Text(
+          padding: EdgeInsets.all(24.r),
+          child: const Text(
             'No results yet. Press Run to evaluate the bundled fixture.',
             textAlign: TextAlign.center,
           ),
@@ -280,7 +281,7 @@ class _CaseTile extends StatelessWidget {
       children: [
         if (result.error != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 8),
+            padding: EdgeInsets.only(bottom: 8.h),
             child: Text(
               'Error: ${result.error}',
               style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -289,19 +290,19 @@ class _CaseTile extends StatelessWidget {
         _section('Raw transcript', fixture.rawTranscript),
         _section('Expected cleaned', fixture.expectedCleanedText),
         _section('Predicted cleaned', result.predictedCleanedText),
-        const SizedBox(height: 8),
+        SizedBox(height: 8.h),
         Text(
           'Expected entities (${fixture.expectedEntities.length})',
           style: Theme.of(context).textTheme.labelMedium,
         ),
         _entityList(fixture.expectedEntities),
-        const SizedBox(height: 4),
+        SizedBox(height: 4.h),
         Text(
           'Predicted entities (${result.predictedEntities.length})',
           style: Theme.of(context).textTheme.labelMedium,
         ),
         _entityList(result.predictedEntities),
-        const SizedBox(height: 6),
+        SizedBox(height: 6.h),
         Text(
           'Phenomena: ${fixture.phenomena.join(", ")}',
           style: Theme.of(context).textTheme.bodySmall,
@@ -312,12 +313,12 @@ class _CaseTile extends StatelessWidget {
 
   Widget _section(String label, String body) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
-          const SizedBox(height: 2),
+          SizedBox(height: 2.h),
           SelectableText(body),
         ],
       ),
@@ -326,9 +327,9 @@ class _CaseTile extends StatelessWidget {
 
   Widget _entityList(List<RefineEvalEntity> entities) {
     if (entities.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 4),
-        child: Text('—', style: TextStyle(color: Colors.grey)),
+      return Padding(
+        padding: EdgeInsets.symmetric(vertical: 4.h),
+        child: const Text('—', style: TextStyle(color: Colors.grey)),
       );
     }
     return Wrap(
@@ -362,19 +363,19 @@ class _StatusBadge extends StatelessWidget {
       RefineParseStatus.generationError => (scheme.error, 'err'),
     };
     return Container(
-      width: 36,
-      height: 28,
+      width: 36.w,
+      height: 28.h,
       alignment: Alignment.center,
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(6.r),
         border: Border.all(color: color),
       ),
       child: Text(
         label,
         style: TextStyle(
           color: color,
-          fontSize: 11,
+          fontSize: 11.sp,
           fontWeight: FontWeight.w700,
         ),
       ),

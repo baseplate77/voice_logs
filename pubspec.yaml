@@ -78,6 +78,8 @@ dependencies:
   archive: ^4.0.2
   share_plus: ^10.1.4
   file_picker: ^8.1.7
+  flutter_screenutil: ^5.9.3
+  iconsax: ^0.0.8
 
 dev_dependencies:
   flutter_test:
@@ -146,3 +148,16 @@ flutter:
     # Refine eval fixture (50 cases) used by the in-app refine eval debug
     # screen and the fixture-shape test in test/features/refine/.
     - assets/eval/refine_eval_cases.json
+
+  fonts:
+    - family: NDot
+      fonts:
+        - asset: assets/fonts/NDot57.ttf
+        - asset: assets/fonts/NDot55.ttf
+          weight: 500
+    - family: SpecialElite
+      fonts:
+        - asset: assets/fonts/SpecialElite-Regular.ttf
+    - family: AbrilFatface
+      fonts:
+        - asset: assets/fonts/AbrilFatface-Regular.ttf

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/prompt_suggestion_repository.dart';
@@ -32,7 +33,7 @@ class _PromptSuggestionChipsState extends ConsumerState<PromptSuggestionChips> {
   static const _selector = PromptSuggestionSelector();
 
   List<PromptSuggestionView>? _picked;
-  Set<String> _lastPoolIds = const {};
+  Set<String> _lastPoolIds = {};
 
   void _rollIfPoolChanged(List<PromptSuggestionView> pool) {
     final ids = pool.map((s) => s.id).toSet();
@@ -51,7 +52,7 @@ class _PromptSuggestionChipsState extends ConsumerState<PromptSuggestionChips> {
       data: (pool) {
         if (pool.isEmpty) return const SizedBox.shrink();
         _rollIfPoolChanged(pool);
-        final picked = _picked ?? const [];
+        final picked = _picked ?? [];
         if (picked.isEmpty) return const SizedBox.shrink();
         return _ChipRow(
           suggestions: picked,
@@ -63,7 +64,7 @@ class _PromptSuggestionChipsState extends ConsumerState<PromptSuggestionChips> {
           },
         );
       },
-      loading: () => const SizedBox.shrink(),
+      loading: SizedBox.shrink,
       error: (_, _) => const SizedBox.shrink(),
     );
   }
@@ -90,7 +91,7 @@ class _ChipRow extends StatelessWidget {
             ActionChip(
               avatar: Icon(
                 Icons.auto_awesome,
-                size: 16,
+                size: 16.r,
                 color: theme.colorScheme.primary,
               ),
               label: Text(suggestion.chipText),
@@ -100,9 +101,9 @@ class _ChipRow extends StatelessWidget {
               backgroundColor: theme.colorScheme.surface,
               side: BorderSide(color: theme.colorScheme.outlineVariant),
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(18.r),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: 10.w, vertical: 8.h),
               onPressed: () => onTap(suggestion),
             ),
         ],

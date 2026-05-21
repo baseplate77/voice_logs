@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/log_summary_repository.dart';
@@ -36,9 +37,9 @@ class PipelineDebugScreen extends ConsumerWidget {
         children: [
           const _DigestTestPanel(),
           if (groups.isEmpty)
-            const Padding(
-              padding: EdgeInsets.all(24),
-              child: Text(
+            Padding(
+              padding: EdgeInsets.all(24.r),
+              child: const Text(
                 'No pipeline events yet. Record a log to see timings.',
                 textAlign: TextAlign.center,
               ),
@@ -76,20 +77,20 @@ class _DigestTestPanel extends ConsumerWidget {
     final repo = ref.watch(logSummaryRepositoryProvider);
 
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.r),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text('Digests', style: Theme.of(context).textTheme.titleMedium),
-            const SizedBox(height: 4),
+            SizedBox(height: 4.h),
             Text(
               'Generate a cross-log daily or weekly digest from the existing logs. '
               'On-demand only — no scheduled jobs.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12.h),
             Row(
               children: [
                 Expanded(
@@ -99,7 +100,7 @@ class _DigestTestPanel extends ConsumerWidget {
                     onPressed: () => _enqueue(context, ref, today),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8.w),
                 Expanded(
                   child: FilledButton.tonalIcon(
                     icon: const Icon(Icons.view_week_outlined),
@@ -109,7 +110,7 @@ class _DigestTestPanel extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12.h),
             _DigestPreview(
               title: 'Today · ${today.windowKey}',
               stream: repo.watchDigest(
@@ -117,7 +118,7 @@ class _DigestTestPanel extends ConsumerWidget {
                 windowKey: today.windowKey,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8.h),
             _DigestPreview(
               title: 'This week · ${week.label}',
               stream: repo.watchDigest(
@@ -161,16 +162,16 @@ class _DigestPreview extends StatelessWidget {
       builder: (context, snapshot) {
         final digest = snapshot.data;
         return Container(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(12.r),
           decoration: BoxDecoration(
             border: Border.all(color: Theme.of(context).dividerColor),
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(8.r),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title, style: textTheme.labelLarge),
-              const SizedBox(height: 6),
+              SizedBox(height: 6.h),
               if (digest == null)
                 Text(
                   'No digest yet. Tap the button above to generate.',
@@ -199,10 +200,10 @@ class _DigestBody extends StatelessWidget {
       children: [
         Text(digest.oneLiner, style: textTheme.bodyMedium),
         if (digest.bullets.isNotEmpty) ...[
-          const SizedBox(height: 8),
+          SizedBox(height: 8.h),
           for (final bullet in digest.bullets)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: EdgeInsets.symmetric(vertical: 2.h),
               child: Text('• $bullet', style: textTheme.bodySmall),
             ),
         ],
@@ -213,10 +214,10 @@ class _DigestBody extends StatelessWidget {
           items: digest.decisions,
         ),
         if (digest.mood != null && digest.mood!.isNotEmpty) ...[
-          const SizedBox(height: 6),
+          SizedBox(height: 6.h),
           Text('Mood: ${digest.mood}', style: textTheme.bodySmall),
         ],
-        const SizedBox(height: 6),
+        SizedBox(height: 6.h),
         Text(
           'Generated ${_clock(digest.generatedAt)}',
           style: textTheme.labelSmall,
@@ -252,14 +253,14 @@ class _DigestList extends StatelessWidget {
     if (items.isEmpty) return const SizedBox.shrink();
     final textTheme = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.only(top: 6),
+      padding: EdgeInsets.only(top: 6.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label, style: textTheme.labelMedium),
           for (final item in items)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 1),
+              padding: EdgeInsets.symmetric(vertical: 1.h),
               child: Text('• $item', style: textTheme.bodySmall),
             ),
         ],
@@ -269,7 +270,7 @@ class _DigestList extends StatelessWidget {
 }
 
 class _DebugGroup {
-  const _DebugGroup({required this.logId, required this.entries});
+  _DebugGroup({required this.logId, required this.entries});
 
   final String logId;
   final List<PipelineDebugEntry> entries;
@@ -290,7 +291,7 @@ class _LogDebugGroup extends StatelessWidget {
         ? '${latest.stage.label} • ${latest.event}'
         : '${latest.stage.label} • ${latest.event} • $latestElapsed';
     return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      margin: EdgeInsets.symmetric(horizontal: 12.w, vertical: 6.h),
       child: ExpansionTile(
         initiallyExpanded: group.entries.length <= 8,
         title: Text(
@@ -323,7 +324,7 @@ class _DebugEntryTile extends StatelessWidget {
     ].join('  ·  ');
     return ListTile(
       dense: true,
-      leading: Icon(_iconFor(entry.stage), size: 20),
+      leading: Icon(_iconFor(entry.stage), size: 20.r),
       title: Text('${entry.stage.label}: ${entry.event}'),
       subtitle: Text('${entry.message}\n$meta'),
       isThreeLine: true,

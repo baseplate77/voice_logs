@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/canonical_entity_repository.dart';
@@ -75,14 +76,14 @@ class _EntityDetailContent extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           _Header(entity: entity, labels: labels),
-          const SizedBox(height: 20),
+          SizedBox(height: 20.h),
           _SectionTitle(labels.context),
           _SummaryCard(
             summary: summaryAsync.value,
             fallbackText: 'Building a summary from your logs…',
           ),
           _StructuredFactsBlock(summary: summaryAsync.value),
-          const SizedBox(height: 20),
+          SizedBox(height: 20.h),
           if (entity.type.toUpperCase() == 'PROJECT')
             ..._decisionsSection(theme, actionsAsync, labels),
           _SectionTitle(labels.openTasks),
@@ -90,7 +91,7 @@ class _EntityDetailContent extends ConsumerWidget {
             actionsAsync: actionsAsync,
             includeTypes: _openTaskTypesFor(entity.type),
           ),
-          const SizedBox(height: 20),
+          SizedBox(height: 20.h),
           _SectionTitle(labels.conversations),
           _LogList(logsAsync: logsAsync),
         ],
@@ -110,7 +111,7 @@ class _EntityDetailContent extends ConsumerWidget {
         includeTypes: const {VoiceActionType.decision},
         emptyHint: 'No decisions captured yet.',
       ),
-      const SizedBox(height: 20),
+      SizedBox(height: 20.h),
     ];
   }
 
@@ -118,13 +119,13 @@ class _EntityDetailContent extends ConsumerWidget {
     // For projects, decisions get their own section above, so the
     // "Open tasks" block only shows actionable items.
     if (entityType.toUpperCase() == 'PROJECT') {
-      return const {
+      return {
         VoiceActionType.task,
         VoiceActionType.reminder,
         VoiceActionType.followUp,
       };
     }
-    return const {
+    return {
       VoiceActionType.task,
       VoiceActionType.reminder,
       VoiceActionType.decision,
@@ -146,7 +147,7 @@ class _Header extends StatelessWidget {
     return Row(
       children: [
         CircleAvatar(
-          radius: 28,
+          radius: 28.r,
           backgroundColor: scheme.primaryContainer,
           child: Text(
             _avatarText(entity.displayName),
@@ -156,7 +157,7 @@ class _Header extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(width: 14),
+        SizedBox(width: 14.w),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -167,14 +168,14 @@ class _Header extends StatelessWidget {
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 4),
+              SizedBox(height: 4.h),
               Row(
                 children: [
                   Chip(
                     label: Text(labels.typeLabel),
                     visualDensity: VisualDensity.compact,
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8.w),
                   Text(
                     '${entity.mentionCount} mention${entity.mentionCount == 1 ? '' : 's'}',
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -210,7 +211,7 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.only(bottom: 8.h),
       child: Text(
         text.toUpperCase(),
         style: theme.textTheme.labelMedium?.copyWith(
@@ -237,13 +238,13 @@ class _SummaryCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: theme.colorScheme.surfaceContainerHighest,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14.r)),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: EdgeInsets.all(14.r),
         child: Text(
           hasText ? text : fallbackText,
           style: theme.textTheme.bodyMedium?.copyWith(
-            height: 1.45,
+            height: 1.45.h,
             color: hasText
                 ? theme.colorScheme.onSurface
                 : theme.colorScheme.onSurfaceVariant,
@@ -278,13 +279,13 @@ class _StructuredFactsBlock extends StatelessWidget {
     ];
 
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: EdgeInsets.only(top: 10.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (inlineLines.isNotEmpty) ...[
             ...inlineLines,
-            const SizedBox(height: 8),
+            SizedBox(height: 8.h),
           ],
           if (facts.keyFacts.isNotEmpty) ...[
             Text(
@@ -295,19 +296,19 @@ class _StructuredFactsBlock extends StatelessWidget {
                 letterSpacing: 0.5,
               ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: 4.h),
             for (final fact in facts.keyFacts)
               Padding(
-                padding: const EdgeInsets.only(bottom: 2),
+                padding: EdgeInsets.only(bottom: 2.h),
                 child: Text(
                   '• $fact',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: scheme.onSurface,
-                    height: 1.35,
+                    height: 1.35.h,
                   ),
                 ),
               ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8.h),
           ],
           if (facts.recentThemes.isNotEmpty)
             Wrap(
@@ -337,7 +338,7 @@ class _InlineMeta extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: EdgeInsets.only(bottom: 2.h),
       child: RichText(
         text: TextSpan(
           style: theme.textTheme.bodySmall?.copyWith(
@@ -374,9 +375,9 @@ class _LogList extends StatelessWidget {
           children: [for (final log in logs.take(20)) _LogTile(log: log)],
         );
       },
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: LinearProgressIndicator(),
+      loading: () => Padding(
+        padding: EdgeInsets.symmetric(vertical: 12.h),
+        child: const LinearProgressIndicator(),
       ),
       error: (e, _) => Text('Error: $e'),
     );
@@ -451,9 +452,9 @@ class _ActionList extends StatelessWidget {
           ],
         );
       },
-      loading: () => const Padding(
-        padding: EdgeInsets.symmetric(vertical: 12),
-        child: LinearProgressIndicator(),
+      loading: () => Padding(
+        padding: EdgeInsets.symmetric(vertical: 12.h),
+        child: const LinearProgressIndicator(),
       ),
       error: (e, _) => Text('Error: $e'),
     );
@@ -516,7 +517,7 @@ class _EmptyHint extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4.h),
       child: Text(
         text,
         style: theme.textTheme.bodyMedium?.copyWith(
@@ -531,7 +532,7 @@ class _EmptyHint extends StatelessWidget {
 /// Section copy adapter — keeps the underlying widgets identical and just
 /// swaps the human-readable labels by canonical entity type.
 class _SectionLabels {
-  const _SectionLabels({
+  _SectionLabels({
     required this.typeLabel,
     required this.conversations,
     required this.openTasks,
@@ -548,14 +549,14 @@ class _SectionLabels {
   factory _SectionLabels.forType(String type) {
     switch (type.toUpperCase()) {
       case 'PERSON':
-        return const _SectionLabels(
+        return _SectionLabels(
           typeLabel: 'Person',
           conversations: 'Conversations',
           openTasks: 'Open tasks',
           context: 'About',
         );
       case 'PROJECT':
-        return const _SectionLabels(
+        return _SectionLabels(
           typeLabel: 'Project',
           conversations: 'Timeline',
           openTasks: 'Open tasks',
@@ -563,7 +564,7 @@ class _SectionLabels {
           decisions: 'Decisions',
         );
       case 'PLACE':
-        return const _SectionLabels(
+        return _SectionLabels(
           typeLabel: 'Place',
           conversations: 'Visits',
           openTasks: 'Related tasks',

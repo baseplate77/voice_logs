@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+import '../../app_theme.dart';
 import '../../core/db/providers.dart';
 import '../detail/log_detail_screen.dart';
 import '../record/record_screen.dart';
@@ -17,10 +19,33 @@ class HomeListScreen extends ConsumerWidget {
     final logs = ref.watch(voiceLogsStreamProvider);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('VoxSynth'),
+        title: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: 'VoxSynth',
+                style: TextStyle(
+                  fontFamily: 'NDot',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20.sp,
+                  color: VoxAppColors.primary,
+                ),
+              ),
+              TextSpan(
+                text: '.',
+                style: TextStyle(
+                  fontFamily: 'NDot',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20.sp,
+                  color: VoxAppColors.accent,
+                ),
+              ),
+            ],
+          ),
+        ),
         actions: [
           Padding(
-            padding: const EdgeInsets.only(right: 12),
+            padding: EdgeInsets.only(right: 12.w),
             child: IconButton.filledTonal(
               tooltip: 'Search journal',
               icon: const Icon(Icons.search_rounded),
@@ -35,9 +60,9 @@ class HomeListScreen extends ConsumerWidget {
         data: (rows) {
           if (rows.isEmpty) return const _EmptyState();
           return ListView.separated(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: EdgeInsets.symmetric(horizontal: 12.w, vertical: 8.h),
             itemCount: rows.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 6),
+            separatorBuilder: (_, _) => SizedBox(height: 6.h),
             itemBuilder: (_, i) {
               final row = rows[i];
               return LogRow(
@@ -71,13 +96,13 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.r),
         child: Text(
           'Your journal gets smarter as you record more.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 18),
+          style: TextStyle(fontSize: 18.sp),
         ),
       ),
     );

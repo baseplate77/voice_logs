@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../detail/log_detail_screen.dart';
@@ -83,21 +84,21 @@ class _EmptyState extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(24.r),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.check_circle_outline,
-              size: 56,
+              size: 56.r,
               color: Theme.of(context).colorScheme.primary,
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.h),
             Text(
               'No actions yet',
               style: Theme.of(context).textTheme.titleLarge,
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8.h),
             const Text(
               'Tasks, reminders, decisions, and follow-ups extracted from your '
               'voice logs will appear here. Future reminders can schedule local '

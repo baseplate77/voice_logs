@@ -1,6 +1,7 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../app_theme.dart';
 import '../../core/logger.dart';
@@ -26,7 +27,7 @@ class RecordingOverlay extends ConsumerWidget {
 
     final double bottomPadding = MediaQuery.paddingOf(context).bottom;
     final double barHeight =
-        58.0 + bottomPadding; // Reduced base height to 58.0
+        58.0.h + bottomPadding; // Reduced base height to 58.0
 
     return SizedBox(
       height: barHeight,
@@ -36,10 +37,10 @@ class RecordingOverlay extends ConsumerWidget {
         children: [
           // Content aligned within the 64px zone, leaving safe area spacing below
           Positioned(
-            left: 0,
-            right: 0,
-            top: 0,
-            height: 58,
+            left: 0.w,
+            right: 0.w,
+            top: 0.h,
+            height: 58.h,
             child: AnimatedSize(
               duration: const Duration(milliseconds: 240),
               curve: Curves.easeOut,
@@ -86,20 +87,17 @@ class _LargeRecordButton extends StatelessWidget {
       onTap: onPressed,
       customBorder: const CircleBorder(),
       child: Container(
-        width: 100,
-        height: 100,
+        width: 95.r,
+        height: 95.r,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: Colors
-              .transparent, // transparent inside so the dark background shows through
+          color: Colors.transparent,
           border: Border.all(
             color: Colors.white.withValues(alpha: 0.95),
-            width: 1.5,
+            width: 1.5.r,
           ),
         ),
-        padding: const EdgeInsets.all(
-          9,
-        ), // creates the perfect 9px gap all around for the dual-ring effect
+        padding: EdgeInsets.all(9.r),
         child: child,
       ),
     );
@@ -119,19 +117,27 @@ class _IdleDeck extends StatelessWidget {
         // Sidebar Navigation Actions - lowered using top: 12 padding
         Positioned.fill(
           child: Padding(
-            padding: const EdgeInsets.only(left: 48, right: 48, top: 12),
+            padding: EdgeInsets.only(left: 48.w, right: 48.w, top: 12.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 IconButton(
-                  icon: const CustomHomeIcon(color: Colors.white, size: 26),
+                  icon: Icon(
+                    Iconsax.message_text,
+                    color: Colors.white,
+                    size: 26.r,
+                  ),
                   tooltip: 'Chat',
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(builder: (_) => const AskScreen()),
                   ),
                 ),
                 IconButton(
-                  icon: const CustomSettingsIcon(color: Colors.white, size: 26),
+                  icon: Icon(
+                    Iconsax.setting_2,
+                    color: Colors.white,
+                    size: 26.r,
+                  ),
                   tooltip: 'Settings',
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -145,9 +151,9 @@ class _IdleDeck extends StatelessWidget {
         ),
         // Symmetrical large tactile Record Button sitting precisely inside the scoop
         Positioned(
-          top: -46, // Adjusted top position for 58px bar height
-          left: 0,
-          right: 0,
+          top: -46.h, // Adjusted top position for 58px bar height
+          left: 0.w,
+          right: 0.w,
           child: Center(
             child: _LargeRecordButton(
               onPressed: onStart,
@@ -157,22 +163,22 @@ class _IdleDeck extends StatelessWidget {
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 4,
-                      offset: const Offset(0, 3),
+                      blurRadius: 4.r,
+                      offset: Offset(0.w, 3.h),
                     ),
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.25),
-                      blurRadius: 8,
-                      offset: const Offset(0, 1),
+                      blurRadius: 8.r,
+                      offset: Offset(0.w, 1.h),
                     ),
                   ],
                   gradient: const RadialGradient(
                     center: Alignment(-0.25, -0.25),
                     radius: 0.85,
                     colors: [
-                      Color(0xFFFF3B30), // bright retro red
-                      Color(0xFFC71C1C), // deep red
-                      Color(0xFF800606), // darker red for shadowy median effect
+                      Color(0xFFFF3B30),
+                      Color(0xFFC71C1C),
+                      Color(0xFF800606),
                     ],
                     stops: [0.0, 0.75, 1.0],
                   ),
@@ -202,7 +208,7 @@ class _ActiveDeck extends StatelessWidget {
       children: [
         Positioned.fill(
           child: Padding(
-            padding: const EdgeInsets.only(left: 36, right: 36, top: 12),
+            padding: EdgeInsets.only(left: 36.w, right: 36.w, top: 12.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -210,11 +216,11 @@ class _ActiveDeck extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const _PulsingDot(),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8.w),
                     Text(
                       'REC',
                       style: labelCaps(VoxAppColors.accent).copyWith(
-                        fontSize: 10,
+                        fontSize: 10.sp,
                         letterSpacing: 1.5,
                         color: VoxAppColors.accent,
                       ),
@@ -223,8 +229,8 @@ class _ActiveDeck extends StatelessWidget {
                 ),
                 Text(
                   '$minutes:$seconds',
-                  style: const TextStyle(
-                    fontSize: 15,
+                  style: TextStyle(
+                    fontSize: 15.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                     fontFamily: 'monospace',
@@ -236,9 +242,9 @@ class _ActiveDeck extends StatelessWidget {
         ),
         // Stop button nested inside the scoop
         Positioned(
-          top: -36,
-          left: 0,
-          right: 0,
+          top: -46.h,
+          left: 0.w,
+          right: 0.w,
           child: Center(
             child: _LargeRecordButton(
               onPressed: () async => onStop(),
@@ -248,8 +254,8 @@ class _ActiveDeck extends StatelessWidget {
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 4,
-                      offset: const Offset(0, 3),
+                      blurRadius: 4.r,
+                      offset: Offset(0.w, 3.h),
                     ),
                   ],
                   gradient: const RadialGradient(
@@ -265,16 +271,16 @@ class _ActiveDeck extends StatelessWidget {
                 ),
                 child: Center(
                   child: Container(
-                    width: 20,
-                    height: 20,
+                    width: 20.r,
+                    height: 20.r,
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(4.r),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.3),
-                          blurRadius: 2,
-                          offset: const Offset(0, 1),
+                          blurRadius: 2.r,
+                          offset: Offset(0.w, 1.h),
                         ),
                       ],
                     ),
@@ -298,16 +304,16 @@ class _TranscribingDeck extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        const Positioned.fill(
+        Positioned.fill(
           child: Padding(
-            padding: EdgeInsets.only(left: 36, right: 36, top: 12),
+            padding: EdgeInsets.only(left: 36.w, right: 36.w, top: 12.h),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'VOXSYNTH',
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 9.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white54,
                     letterSpacing: 2.0,
@@ -317,7 +323,7 @@ class _TranscribingDeck extends StatelessWidget {
                 Text(
                   'PROCESSING...',
                   style: TextStyle(
-                    fontSize: 9,
+                    fontSize: 9.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white54,
                     letterSpacing: 1.0,
@@ -330,9 +336,9 @@ class _TranscribingDeck extends StatelessWidget {
         ),
         // Transcribing indicator in the scoop
         Positioned(
-          top: -36,
-          left: 0,
-          right: 0,
+          top: -46.h,
+          left: 0.w,
+          right: 0.w,
           child: Center(
             child: _LargeRecordButton(
               onPressed: () {},
@@ -343,12 +349,14 @@ class _TranscribingDeck extends StatelessWidget {
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
+                      blurRadius: 4.r,
+                      offset: Offset(0.w, 2.h),
                     ),
                   ],
                 ),
-                child: const Center(child: TranscribingIndicator(size: 24)),
+                child: Center(
+                  child: TranscribingIndicator(size: 24.r, color: Colors.white),
+                ),
               ),
             ),
           ),
@@ -371,16 +379,16 @@ class _FailedDeck extends StatelessWidget {
       children: [
         Positioned.fill(
           child: Padding(
-            padding: const EdgeInsets.only(left: 24, right: 90, top: 12),
+            padding: EdgeInsets.only(left: 24.w, right: 90.w, top: 12.h),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
                 message,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.redAccent,
-                  fontSize: 10,
+                  fontSize: 10.sp,
                   fontWeight: FontWeight.bold,
                   fontFamily: 'monospace',
                 ),
@@ -390,9 +398,9 @@ class _FailedDeck extends StatelessWidget {
         ),
         // Retry circular button inside the scoop
         Positioned(
-          top: -36,
-          left: 0,
-          right: 0,
+          top: -46.h,
+          left: 0.w,
+          right: 0.w,
           child: Center(
             child: _LargeRecordButton(
               onPressed: () async => onRetry(),
@@ -402,8 +410,8 @@ class _FailedDeck extends StatelessWidget {
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 4,
-                      offset: const Offset(0, 3),
+                      blurRadius: 4.r,
+                      offset: Offset(0.w, 3.h),
                     ),
                   ],
                   gradient: const RadialGradient(
@@ -417,10 +425,10 @@ class _FailedDeck extends StatelessWidget {
                     stops: [0.0, 0.75, 1.0],
                   ),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.refresh_rounded,
                   color: Colors.white,
-                  size: 26,
+                  size: 26.r,
                 ),
               ),
             ),
@@ -462,8 +470,8 @@ class _PulsingDotState extends State<_PulsingDot>
     return FadeTransition(
       opacity: Tween<double>(begin: 0.3, end: 1.0).animate(_controller),
       child: Container(
-        width: 8,
-        height: 8,
+        width: 8.r,
+        height: 8.r,
         decoration: const BoxDecoration(
           color: VoxAppColors.accent,
           shape: BoxShape.circle,
@@ -471,120 +479,4 @@ class _PulsingDotState extends State<_PulsingDot>
       ),
     );
   }
-}
-
-/// Custom painted premium outline Home icon (pentagonal shield house).
-class CustomHomeIcon extends StatelessWidget {
-  final Color color;
-  final double size;
-
-  const CustomHomeIcon({super.key, required this.color, this.size = 28});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size),
-      painter: _HomeIconPainter(color: color),
-    );
-  }
-}
-
-class _HomeIconPainter extends CustomPainter {
-  final Color color;
-  _HomeIconPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final w = size.width;
-    final h = size.height;
-
-    final path = Path();
-    path.moveTo(w / 2, 0); // Peak
-    path.lineTo(w * 0.1, h * 0.45); // Left roof
-    path.quadraticBezierTo(w * 0.1, h * 0.85, w * 0.22, h * 0.9); // Left corner
-    path.quadraticBezierTo(w / 2, h * 0.98, w * 0.78, h * 0.9); // Bottom curve
-    path.quadraticBezierTo(
-      w * 0.9,
-      h * 0.85,
-      w * 0.9,
-      h * 0.45,
-    ); // Right corner
-    path.close();
-
-    canvas.drawPath(path, paint);
-
-    // Inner door curved line
-    final doorPath = Path();
-    doorPath.moveTo(w * 0.36, h * 0.65);
-    doorPath.quadraticBezierTo(w / 2, h * 0.76, w * 0.64, h * 0.65);
-    canvas.drawPath(doorPath, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _HomeIconPainter oldDelegate) => false;
-}
-
-/// Custom painted premium outline Settings icon (hexagonal industrial nut).
-class CustomSettingsIcon extends StatelessWidget {
-  final Color color;
-  final double size;
-
-  const CustomSettingsIcon({super.key, required this.color, this.size = 28});
-
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size),
-      painter: _SettingsIconPainter(color: color),
-    );
-  }
-}
-
-class _SettingsIconPainter extends CustomPainter {
-  final Color color;
-  _SettingsIconPainter({required this.color});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    final w = size.width;
-    final h = size.height;
-    final cx = w / 2;
-    final cy = h / 2;
-    final r = w / 2;
-
-    // Draw Hexagonal outer border
-    final path = Path();
-    for (int i = 0; i < 6; i++) {
-      final double angle = (i * 60 - 30) * math.pi / 180;
-      final double x = cx + r * 0.95 * math.cos(angle);
-      final double y = cy + r * 0.95 * math.sin(angle);
-      if (i == 0) {
-        path.moveTo(x, y);
-      } else {
-        path.lineTo(x, y);
-      }
-    }
-    path.close();
-    canvas.drawPath(path, paint);
-
-    // Inner core circle cutout
-    canvas.drawCircle(Offset(cx, cy), r * 0.32, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _SettingsIconPainter oldDelegate) => false;
 }

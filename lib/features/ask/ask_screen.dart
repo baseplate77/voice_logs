@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/prompt_suggestion_repository.dart';
@@ -251,11 +252,11 @@ class _AskScreenState extends ConsumerState<AskScreen> {
           child: StreamBuilder(
             stream: repo.watchThreads(),
             builder: (context, snapshot) {
-              final threads = snapshot.data ?? const [];
+              final threads = snapshot.data ?? [];
               if (threads.isEmpty) {
-                return const Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Center(child: Text('No Ask chats yet.')),
+                return Padding(
+                  padding: EdgeInsets.all(24.r),
+                  child: const Center(child: Text('No Ask chats yet.')),
                 );
               }
               return ListView.builder(
@@ -395,7 +396,7 @@ class _AskScreenState extends ConsumerState<AskScreen> {
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const AskEmptyState(),
-                            const SizedBox(height: 26),
+                            SizedBox(height: 26.h),
                             PromptSuggestionChips(onChipTapped: _submitChip),
                           ],
                         ),

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -117,14 +118,14 @@ class _ExportBackupScreenState extends ConsumerState<ExportBackupScreen> {
       appBar: AppBar(title: const Text('Export encrypted backup')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20.r),
           children: [
-            const Text(
+            Text(
               'Your passphrase is the only way to decrypt this file. '
               "Store it somewhere safe — we can't recover it.",
-              style: TextStyle(fontSize: 14),
+              style: TextStyle(fontSize: 14.sp),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24.h),
             TextField(
               controller: _pass1,
               autocorrect: false,
@@ -135,7 +136,7 @@ class _ExportBackupScreenState extends ConsumerState<ExportBackupScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12.h),
             TextField(
               controller: _pass2,
               autocorrect: false,
@@ -146,28 +147,28 @@ class _ExportBackupScreenState extends ConsumerState<ExportBackupScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24.h),
             FilledButton(
               key: _exportButtonKey,
               onPressed: _busy ? null : _export,
               child: Text(_busy ? 'Working…' : 'Export'),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.h),
             if (_statusMessage != null && _busy)
               Row(
                 children: [
-                  const SizedBox.square(
+                  SizedBox.square(
                     dimension: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(strokeWidth: 2.r),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10.w),
                   Expanded(child: Text(_statusMessage!)),
                 ],
               ),
             if (_result != null && !_busy) _ResultCard(result: _result!),
             if (_error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: EdgeInsets.only(top: 12.h),
                 child: Text(
                   _error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -189,24 +190,24 @@ class _ResultCard extends StatelessWidget {
     final sizeMb = (result.totalBytes / (1024 * 1024)).toStringAsFixed(1);
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.r),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Backup created',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16.sp),
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6.h),
             Text(
               '${result.logCount} logs, ${result.audioFileCount} audio files',
             ),
             Text('Size: $sizeMb MB'),
-            const SizedBox(height: 4),
+            SizedBox(height: 4.h),
             Text(
               p.basename(result.filePath),
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 12.sp,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),

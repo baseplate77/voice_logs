@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/entity_mention_repository.dart';
@@ -48,7 +49,7 @@ class AskContextPanel extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 4),
+          padding: EdgeInsets.symmetric(vertical: 4.h),
           child: Text(
             'Sources',
             style: Theme.of(context).textTheme.labelMedium,
@@ -70,15 +71,15 @@ class _IndexBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
       decoration: BoxDecoration(
         color: scheme.primary.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(8.r),
       ),
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 11,
+          fontSize: 11.sp,
           fontWeight: FontWeight.w700,
           color: scheme.primary,
         ),
@@ -123,7 +124,7 @@ class _LogTile extends ConsumerWidget {
     final entityMentions = mentionsAsync.maybeWhen(
       data: (m) =>
           m.where((e) => e.canonicalEntityId != null).toList(growable: false),
-      orElse: () => const <EntityMentionView>[],
+      orElse: () => <EntityMentionView>[],
     );
     final seenIds = <String>{};
     final uniqueEntities = <EntityMentionView>[];
@@ -133,7 +134,7 @@ class _LogTile extends ConsumerWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
+      padding: EdgeInsets.only(bottom: 4.h),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -160,7 +161,7 @@ class _LogTile extends ConsumerWidget {
                       label: Text(m.text),
                       avatar: Icon(
                         _entityIcon(m.type),
-                        size: 14,
+                        size: 14.r,
                         color: theme.colorScheme.primary,
                       ),
                       visualDensity: VisualDensity.compact,

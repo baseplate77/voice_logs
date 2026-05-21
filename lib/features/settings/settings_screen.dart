@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../actions/action_screen.dart';
@@ -36,7 +37,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1.h),
           ListTile(
             leading: const Icon(Icons.check_circle_outline),
             title: const Text('Action Inbox'),
@@ -67,7 +68,7 @@ class SettingsScreen extends ConsumerWidget {
               MaterialPageRoute<void>(builder: (_) => const RefineEvalScreen()),
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1.h),
           ListTile(
             leading: const Icon(Icons.lock_outline),
             title: const Text('Export encrypted backup'),
@@ -90,7 +91,7 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1.h),
           ListTile(
             leading: Icon(Icons.delete_forever, color: scheme.error),
             title: Text(

@@ -11,7 +11,7 @@ import 'audio_player_controller.dart';
 /// Bucketed peak summary used to paint a waveform. Stored as a list of
 /// normalized magnitudes in `[0.0, 1.0]`, one entry per render bucket.
 class WaveformPeaks {
-  const WaveformPeaks({required this.peaks, required this.totalMs});
+  WaveformPeaks({required this.peaks, required this.totalMs});
 
   final List<double> peaks;
   final int totalMs;
@@ -23,18 +23,18 @@ class WaveformPeaks {
 /// off disk so it doesn't allocate a buffer the size of the full clip.
 Future<WaveformPeaks> loadWaveformPeaks(
   String absolutePath, {
-  int bucketCount = 200,
+  int bucketCount = 65,
 }) async {
   if (bucketCount <= 0) {
     throw ArgumentError.value(bucketCount, 'bucketCount');
   }
   if (!File(absolutePath).existsSync()) {
-    return const WaveformPeaks(peaks: [], totalMs: 0);
+    return WaveformPeaks(peaks: [], totalMs: 0);
   }
   final info = await readPcm16WavInfo(absolutePath);
   final totalSamples = info.dataBytes ~/ 2;
   if (totalSamples <= 0) {
-    return const WaveformPeaks(peaks: [], totalMs: 0);
+    return WaveformPeaks(peaks: [], totalMs: 0);
   }
   final samplesPerBucket = (totalSamples / bucketCount).ceil();
   final peaks = Float32List(bucketCount);
@@ -170,46 +170,78 @@ class _WaveformPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (peaks.isEmpty) return;
     final barCount = peaks.length;
-    final slotWidth = size.width / barCount;
-    final barWidth = (slotWidth * 0.55).clamp(1.0, slotWidth);
+    final spacing = size.width / barCount;
+    final vSpacing = spacing.clamp(4.5, 12.0);
+    // Dynamic dot radius based on screen density & spacing
+    final dotRadius = (spacing * 0.28).clamp(1.5, 5.0);
     final mid = size.height / 2;
+    final maxDotsPerSide = (size.height / 2) ~/ vSpacing;
 
-    // Symmetrical hardware light grey color for all waveform bars
-    final barPaint = Paint()..color = const Color(0xFFD4D4D4);
-
+    // 1. Draw a uniform background grid of faint dots
+    final gridPaint = Paint()..color = const Color(0xFFEAEAEA);
     for (var i = 0; i < barCount; i++) {
-      final h = (peaks[i] * size.height).clamp(3.0, size.height);
-      final x = slotWidth * i + (slotWidth - barWidth) / 2;
-      final rect = Rect.fromLTWH(x, mid - h / 2, barWidth, h);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(rect, const Radius.circular(1.5)),
-        barPaint,
-      );
+      final x = spacing * i + spacing / 2;
+      for (var j = 1; j <= maxDotsPerSide; j++) {
+        canvas.drawCircle(Offset(x, mid - j * vSpacing), dotRadius, gridPaint);
+        canvas.drawCircle(Offset(x, mid + j * vSpacing), dotRadius, gridPaint);
+      }
     }
 
-    // Prominent vertical seek bar line in retro-red
     final seekX = progress * size.width;
+
+    // 2. Draw the centerline and active amplitude dots
+    for (var i = 0; i < barCount; i++) {
+      final x = spacing * i + spacing / 2;
+      final isPlayed = x < seekX;
+      final baseColor = isPlayed ? playedColor : barColor;
+
+      // Centerline dot
+      final centerlinePaint = Paint()
+        ..color = isPlayed ? playedColor : barColor;
+      canvas.drawCircle(Offset(x, mid), dotRadius * 1.1, centerlinePaint);
+
+      // Active amplitude dots
+      final level = peaks[i];
+      final activeDots = (level * maxDotsPerSide).round().clamp(
+        0,
+        maxDotsPerSide,
+      );
+
+      for (var j = 1; j <= activeDots; j++) {
+        double opacity = 1.0 - (j / (maxDotsPerSide + 1)) * 0.7;
+        // Remaining (unplayed) dots are soft and faded for elegant contrast
+        if (!isPlayed) {
+          opacity *= 0.45;
+        }
+        final activePaint = Paint()
+          ..color = baseColor.withValues(alpha: opacity.clamp(0.0, 1.0));
+
+        canvas.drawCircle(
+          Offset(x, mid - j * vSpacing),
+          dotRadius,
+          activePaint,
+        );
+        canvas.drawCircle(
+          Offset(x, mid + j * vSpacing),
+          dotRadius,
+          activePaint,
+        );
+      }
+    }
+
+    // 3. Draw playhead seek line and center playhead dot
     final seekPaint = Paint()
       ..color = const Color(0xFFE13C30)
       ..strokeWidth = 2.0
       ..style = PaintingStyle.stroke;
-    
-    canvas.drawLine(
-      Offset(seekX, 0),
-      Offset(seekX, size.height),
-      seekPaint,
-    );
 
-    // Anchor playhead dot in the center of the seek line
+    canvas.drawLine(Offset(seekX, 0), Offset(seekX, size.height), seekPaint);
+
     final dotPaint = Paint()
       ..color = const Color(0xFFE13C30)
       ..style = PaintingStyle.fill;
-    
-    canvas.drawCircle(
-      Offset(seekX, mid),
-      4.5,
-      dotPaint,
-    );
+
+    canvas.drawCircle(Offset(seekX, mid), 4.5, dotPaint);
   }
 
   @override

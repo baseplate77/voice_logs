@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path/path.dart' as p;
 
 import '../../app_theme.dart';
@@ -26,7 +27,8 @@ String _firstLine(String text) {
 
 String _statusText(ProcessingState state) {
   return switch (state) {
-    ProcessingState.recorded => 'Refining transcript and extracting entities...',
+    ProcessingState.recorded =>
+      'Refining transcript and extracting entities...',
     ProcessingState.refined => 'Embedding transcript for semantic search...',
     ProcessingState.embedded => 'Ready for semantic/entity search',
     ProcessingState.failed => 'Processing failed',
@@ -105,15 +107,20 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
         child: Stack(
           children: [
             // Four Corner Screws/Studs
-            const Positioned(left: 10, top: 10, child: _SilverStud()),
-            const Positioned(right: 10, top: 10, child: _SilverStud()),
-            const Positioned(left: 10, bottom: 10, child: _SilverStud()),
-            const Positioned(right: 10, bottom: 10, child: _SilverStud()),
+            Positioned(left: 10.w, top: 10.h, child: const _SilverStud()),
+            Positioned(right: 10.w, top: 10.h, child: const _SilverStud()),
+            Positioned(left: 10.w, bottom: 10.h, child: const _SilverStud()),
+            Positioned(right: 10.w, bottom: 10.h, child: const _SilverStud()),
 
             logAsync.when(
               data: (log) {
                 if (log == null) {
-                  return const Center(child: Text('Voice log not found', style: TextStyle(fontFamily: 'monospace')));
+                  return const Center(
+                    child: Text(
+                      'Voice log not found',
+                      style: TextStyle(fontFamily: 'monospace'),
+                    ),
+                  );
                 }
                 final absoluteAudio = _resolveAudio(log);
                 if (File(absoluteAudio).existsSync()) {
@@ -121,50 +128,56 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   _ensureAudioLoaded(absoluteAudio);
                 }
                 final fallback = log.cleanedText ?? log.rawTranscript;
-                final mentions = mentionsAsync.value ?? const [];
-                final segments = segmentsAsync.value ?? const [];
+                final mentions = mentionsAsync.value ?? [];
+                final segments = segmentsAsync.value ?? [];
 
                 return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 20.0.w,
+                    vertical: 12.0.h,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Header Row
-                      const SizedBox(height: 12),
+                      SizedBox(height: 12.h),
                       _buildHeader(context, log),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8.h),
                       const _DashedDivider(),
-                      const SizedBox(height: 16),
+                      SizedBox(height: 16.h),
 
                       // Symmetrical Playback Controller Card
-                      _PlaybackCard(
-                        audio: _audio,
-                        peaksFuture: _peaksFuture,
-                      ),
-                      const SizedBox(height: 16),
+                      _PlaybackCard(audio: _audio, peaksFuture: _peaksFuture),
+                      SizedBox(height: 16.h),
 
                       // Optional Processing Info Status
                       if (log.processingState != ProcessingState.embedded) ...[
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14.w,
+                            vertical: 8.h,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(8.r),
                             border: Border.all(color: VoxAppColors.outline),
                           ),
                           child: Row(
                             children: [
-                              const SizedBox(
-                                width: 12,
-                                height: 12,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: VoxAppColors.accent),
+                              SizedBox(
+                                width: 12.w,
+                                height: 12.h,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2.r,
+                                  color: VoxAppColors.accent,
+                                ),
                               ),
-                              const SizedBox(width: 10),
+                              SizedBox(width: 10.w),
                               Expanded(
                                 child: Text(
                                   _statusText(log.processingState),
-                                  style: const TextStyle(
-                                    fontSize: 11,
+                                  style: TextStyle(
+                                    fontSize: 11.sp,
                                     fontStyle: FontStyle.italic,
                                     color: VoxAppColors.muted,
                                   ),
@@ -173,30 +186,30 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                             ],
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12.h),
                       ],
 
                       // Log summary & tagging chip container
                       if (mentions.isNotEmpty) ...[
                         EntityChips(mentions: mentions),
-                        const SizedBox(height: 12),
+                        SizedBox(height: 12.h),
                       ],
-                      
+
                       LogSummaryPanel(logId: widget.logId),
 
                       // Expanded Transcript Card
                       Expanded(
                         child: Container(
-                          margin: const EdgeInsets.only(top: 8, bottom: 16),
+                          margin: EdgeInsets.only(top: 8.h, bottom: 16.h),
                           decoration: BoxDecoration(
                             color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(16.r),
                             border: Border.all(color: VoxAppColors.outline),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(alpha: 0.03),
-                                blurRadius: 6,
-                                offset: const Offset(0, 3),
+                                blurRadius: 6.r,
+                                offset: Offset(0.w, 3.h),
                               ),
                             ],
                           ),
@@ -205,31 +218,42 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                             children: [
                               // Transcript Header Label
                               Padding(
-                                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  12,
+                                  16,
+                                  8,
+                                ),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.description_outlined, size: 14, color: VoxAppColors.accent),
-                                    const SizedBox(width: 6),
+                                    Icon(
+                                      Icons.description_outlined,
+                                      size: 14.r,
+                                      color: VoxAppColors.accent,
+                                    ),
+                                    SizedBox(width: 6.w),
                                     Text(
                                       'JOURNAL TRANSCRIPT',
                                       style: TextStyle(
                                         fontFamily: 'monospace',
-                                        fontSize: 11,
+                                        fontSize: 11.sp,
                                         fontWeight: FontWeight.w900,
                                         letterSpacing: 1.5,
-                                        color: VoxAppColors.ink.withValues(alpha: 0.8),
+                                        color: VoxAppColors.ink.withValues(
+                                          alpha: 0.8,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                               const _DashedDivider(),
-                              
+
                               // Main Transcript scrollable zone
                               Expanded(
                                 child: segments.isEmpty
                                     ? SingleChildScrollView(
-                                        padding: const EdgeInsets.all(16),
+                                        padding: EdgeInsets.all(16.r),
                                         child: MarkdownTranscriptView(
                                           text: fallback,
                                           mentions: mentions,
@@ -251,24 +275,34 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                       // Failed error view warning
                       if (log.processingState == ProcessingState.failed) ...[
                         Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          padding: EdgeInsets.symmetric(vertical: 4.h),
                           child: Text(
                             'Refinement failed: ${log.errorMessage ?? "unknown"}',
-                            style: const TextStyle(color: VoxAppColors.error, fontSize: 12),
+                            style: TextStyle(
+                              color: VoxAppColors.error,
+                              fontSize: 12.sp,
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 8),
+                        SizedBox(height: 8.h),
                       ],
 
                       // base Action buttons (Delete, Share, Rename)
                       _buildBottomActions(context, log),
-                      const SizedBox(height: 8),
+                      SizedBox(height: 8.h),
                     ],
                   ),
                 );
               },
-              loading: () => const Center(child: CircularProgressIndicator(color: VoxAppColors.accent)),
-              error: (e, _) => Center(child: Text('Error: $e', style: const TextStyle(fontFamily: 'monospace'))),
+              loading: () => const Center(
+                child: CircularProgressIndicator(color: VoxAppColors.accent),
+              ),
+              error: (e, _) => Center(
+                child: Text(
+                  'Error: $e',
+                  style: const TextStyle(fontFamily: 'monospace'),
+                ),
+              ),
             ),
           ],
         ),
@@ -284,24 +318,24 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
         GestureDetector(
           onTap: () => Navigator.of(context).pop(),
           child: Container(
-            width: 38,
-            height: 38,
+            width: 38.w,
+            height: 38.h,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: VoxAppColors.outline, width: 1),
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: VoxAppColors.outline, width: 1.w),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 3,
-                  offset: const Offset(0, 1.5),
+                  blurRadius: 3.r,
+                  offset: Offset(0.w, 1.5.h),
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.chevron_left_rounded,
               color: VoxAppColors.ink,
-              size: 22,
+              size: 22.r,
             ),
           ),
         ),
@@ -309,14 +343,14 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
         // Uppercase, monospaced title
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            padding: EdgeInsets.symmetric(horizontal: 16.0.w),
             child: Text(
               _firstLine(log.displayTitle).toUpperCase(),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: 'monospace',
-                fontSize: 13,
+                fontSize: 13.sp,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.2,
                 color: VoxAppColors.ink,
@@ -327,17 +361,17 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
 
         // Settings / Options Popup Button
         Container(
-          width: 38,
-          height: 38,
+          width: 38.w,
+          height: 38.h,
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: VoxAppColors.outline, width: 1),
+            borderRadius: BorderRadius.circular(8.r),
+            border: Border.all(color: VoxAppColors.outline, width: 1.w),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 3,
-                offset: const Offset(0, 1.5),
+                blurRadius: 3.r,
+                offset: Offset(0.w, 1.5.h),
               ),
             ],
           ),
@@ -350,18 +384,36 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
               ),
             ),
             child: PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded, color: VoxAppColors.ink, size: 20),
+              icon: Icon(
+                Icons.more_vert_rounded,
+                color: VoxAppColors.ink,
+                size: 20.r,
+              ),
               padding: EdgeInsets.zero,
               onSelected: _onAction,
               itemBuilder: (_) => [
                 if (log.processingState == ProcessingState.failed)
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'retry',
-                    child: Text('Retry refinement', style: TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                    child: Text(
+                      'Retry refinement',
+                      style: TextStyle(
+                        fontFamily: 'monospace',
+                        fontSize: 13.sp,
+                      ),
+                    ),
                   ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'delete',
-                  child: Text('Delete Log', style: TextStyle(fontFamily: 'monospace', fontSize: 13, color: VoxAppColors.accent, fontWeight: FontWeight.bold)),
+                  child: Text(
+                    'Delete Log',
+                    style: TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 13.sp,
+                      color: VoxAppColors.accent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -384,26 +436,26 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
               }
             },
             child: Container(
-              height: 48,
+              height: 48.h,
               decoration: BoxDecoration(
                 color: VoxAppColors.accent,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
                 boxShadow: [
                   BoxShadow(
                     color: VoxAppColors.accent.withValues(alpha: 0.15),
-                    blurRadius: 4,
-                    offset: const Offset(0, 2),
+                    blurRadius: 4.r,
+                    offset: Offset(0.w, 2.h),
                   ),
                 ],
               ),
-              child: const Center(
+              child: Center(
                 child: Text(
                   'DELETE',
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     letterSpacing: 1.0,
                   ),
                 ),
@@ -411,7 +463,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10.w),
 
         // Sizable Share Button
         Expanded(
@@ -419,26 +471,29 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Raw transcript copied to clipboard!', style: TextStyle(fontFamily: 'monospace')),
+                  content: Text(
+                    'Raw transcript copied to clipboard!',
+                    style: TextStyle(fontFamily: 'monospace'),
+                  ),
                   duration: Duration(seconds: 2),
                 ),
               );
             },
             child: Container(
-              height: 48,
+              height: 48.h,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: VoxAppColors.outline, width: 1.2),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: VoxAppColors.outline, width: 1.2.w),
               ),
-              child: const Center(
+              child: Center(
                 child: Text(
                   'SHARE',
                   style: TextStyle(
                     color: VoxAppColors.ink,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     letterSpacing: 1.0,
                   ),
                 ),
@@ -446,27 +501,27 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        SizedBox(width: 10.w),
 
         // Sizable Rename Button
         Expanded(
           child: GestureDetector(
             onTap: () => _onEditTitle(log),
             child: Container(
-              height: 48,
+              height: 48.h,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: VoxAppColors.outline, width: 1.2),
+                borderRadius: BorderRadius.circular(8.r),
+                border: Border.all(color: VoxAppColors.outline, width: 1.2.w),
               ),
-              child: const Center(
+              child: Center(
                 child: Text(
                   'RENAME',
                   style: TextStyle(
                     color: VoxAppColors.ink,
                     fontWeight: FontWeight.bold,
                     fontFamily: 'monospace',
-                    fontSize: 13,
+                    fontSize: 13.sp,
                     letterSpacing: 1.0,
                   ),
                 ),
@@ -485,25 +540,42 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: const BorderSide(color: VoxAppColors.outline),
         ),
-        title: const Text(
+        title: Text(
           'DELETE VOICE LOG?',
-          style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
+          ),
         ),
-        content: const Text(
+        content: Text(
           'Are you sure you want to permanently delete this voice log? This cannot be undone.',
-          style: TextStyle(fontSize: 14),
+          style: TextStyle(fontSize: 14.sp),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('CANCEL', style: TextStyle(color: VoxAppColors.muted, fontFamily: 'monospace')),
+            child: const Text(
+              'CANCEL',
+              style: TextStyle(
+                color: VoxAppColors.muted,
+                fontFamily: 'monospace',
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('DELETE', style: TextStyle(color: VoxAppColors.accent, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            child: const Text(
+              'DELETE',
+              style: TextStyle(
+                color: VoxAppColors.accent,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+              ),
+            ),
           ),
         ],
       ),
@@ -545,13 +617,10 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
   }
 }
 
-/// Custom Playback Controller Card that groups the Scrubbing Waveform, Elapsed/Remaining Timer 
+/// Custom Playback Controller Card that groups the Scrubbing Waveform, Elapsed/Remaining Timer
 /// labels, dedicated backward/forward Skip square buttons, Charcoal Play square button, and customized Volume slider.
 class _PlaybackCard extends StatefulWidget {
-  const _PlaybackCard({
-    required this.audio,
-    required this.peaksFuture,
-  });
+  const _PlaybackCard({required this.audio, required this.peaksFuture});
 
   final AudioPlayerController audio;
   final Future<WaveformPeaks>? peaksFuture;
@@ -602,16 +671,16 @@ class _PlaybackCardState extends State<_PlaybackCard> {
     final currentMs = _position.inMilliseconds;
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: EdgeInsets.all(18.r),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: VoxAppColors.outline, width: 1.2),
+        borderRadius: BorderRadius.circular(16.r),
+        border: Border.all(color: VoxAppColors.outline, width: 1.2.w),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 3.5),
+            blurRadius: 8.r,
+            offset: Offset(0.w, 3.5.h),
           ),
         ],
       ),
@@ -620,22 +689,23 @@ class _PlaybackCardState extends State<_PlaybackCard> {
         children: [
           // Waveform Scrubber
           SizedBox(
-            height: 52,
+            height: 52.h,
             child: widget.peaksFuture == null
                 ? const SizedBox.shrink()
                 : FutureBuilder<WaveformPeaks>(
                     future: widget.peaksFuture,
                     builder: (context, snapshot) {
-                      final peaks = snapshot.data ?? const WaveformPeaks(peaks: [], totalMs: 0);
+                      final peaks =
+                          snapshot.data ?? WaveformPeaks(peaks: [], totalMs: 0);
                       return WaveformScrubber(
                         peaks: peaks,
                         controller: widget.audio,
-                        height: 52,
+                        height: 52.h,
                       );
                     },
                   ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8.h),
 
           // Duration Labels Row
           Row(
@@ -643,27 +713,27 @@ class _PlaybackCardState extends State<_PlaybackCard> {
             children: [
               Text(
                 _formatMs(currentMs),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'monospace',
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
                   color: VoxAppColors.muted,
                 ),
               ),
               Text(
                 _formatMs(totalMs),
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: 'monospace',
-                  fontSize: 12,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
                   color: VoxAppColors.muted,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16.h),
           const _DashedDivider(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16.h),
 
           // Square media controls
           Row(
@@ -673,50 +743,56 @@ class _PlaybackCardState extends State<_PlaybackCard> {
               GestureDetector(
                 onTap: () {
                   final newPos = _position - const Duration(seconds: 10);
-                  widget.audio.seek(newPos < Duration.zero ? Duration.zero : newPos);
+                  widget.audio.seek(
+                    newPos < Duration.zero ? Duration.zero : newPos,
+                  );
                 },
                 child: Container(
-                  width: 40,
-                  height: 40,
+                  width: 40.w,
+                  height: 40.h,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: VoxAppColors.outline, width: 1.2),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(
+                      color: VoxAppColors.outline,
+                      width: 1.2.w,
+                    ),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.replay_10_rounded,
                     color: VoxAppColors.ink,
-                    size: 20,
+                    size: 20.r,
                   ),
                 ),
               ),
-              const SizedBox(width: 24),
+              SizedBox(width: 24.w),
 
               // Square Play/Pause Charcoal Center Button
               GestureDetector(
-                onTap: () => _playing ? widget.audio.pause() : widget.audio.play(),
+                onTap: () =>
+                    _playing ? widget.audio.pause() : widget.audio.play(),
                 child: Container(
-                  width: 52,
-                  height: 52,
+                  width: 52.w,
+                  height: 52.h,
                   decoration: BoxDecoration(
                     color: VoxAppColors.primary,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(10.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.15),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
+                        blurRadius: 5.r,
+                        offset: Offset(0.w, 2.h),
                       ),
                     ],
                   ),
                   child: Icon(
                     _playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                     color: Colors.white,
-                    size: 26,
+                    size: 26.r,
                   ),
                 ),
               ),
-              const SizedBox(width: 24),
+              SizedBox(width: 24.w),
 
               // 10s Forward Skip Square Button
               GestureDetector(
@@ -726,35 +802,46 @@ class _PlaybackCardState extends State<_PlaybackCard> {
                   widget.audio.seek(newPos > total ? total : newPos);
                 },
                 child: Container(
-                  width: 40,
-                  height: 40,
+                  width: 40.w,
+                  height: 40.h,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: VoxAppColors.outline, width: 1.2),
+                    borderRadius: BorderRadius.circular(8.r),
+                    border: Border.all(
+                      color: VoxAppColors.outline,
+                      width: 1.2.w,
+                    ),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.forward_10_rounded,
                     color: VoxAppColors.ink,
-                    size: 20,
+                    size: 20.r,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16.h),
 
           // Custom Volume Slider Row
           Row(
             children: [
-              const Icon(Icons.volume_up_outlined, size: 18, color: VoxAppColors.muted),
-              const SizedBox(width: 6),
+              Icon(
+                Icons.volume_up_outlined,
+                size: 18.r,
+                color: VoxAppColors.muted,
+              ),
+              SizedBox(width: 6.w),
               Expanded(
                 child: SliderTheme(
                   data: SliderTheme.of(context).copyWith(
                     trackHeight: 2.0,
-                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5.0),
-                    overlayShape: const RoundSliderOverlayShape(overlayRadius: 10.0),
+                    thumbShape: const RoundSliderThumbShape(
+                      enabledThumbRadius: 5.0,
+                    ),
+                    overlayShape: const RoundSliderOverlayShape(
+                      overlayRadius: 10.0,
+                    ),
                     activeTrackColor: VoxAppColors.primary,
                     inactiveTrackColor: VoxAppColors.outline,
                     thumbColor: VoxAppColors.primary,
@@ -812,27 +899,31 @@ class _EditTitleDialogState extends State<_EditTitleDialog> {
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         side: const BorderSide(color: VoxAppColors.outline),
       ),
-      title: const Text(
+      title: Text(
         'RENAME VOICE LOG',
-        style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 16),
+        style: TextStyle(
+          fontFamily: 'monospace',
+          fontWeight: FontWeight.bold,
+          fontSize: 16.sp,
+        ),
       ),
       content: TextField(
         controller: _controller,
         autofocus: true,
         textInputAction: TextInputAction.done,
         onSubmitted: (_) => _submit(),
-        style: const TextStyle(fontSize: 14),
-        decoration: const InputDecoration(
+        style: TextStyle(fontSize: 14.sp),
+        decoration: InputDecoration(
           hintText: 'Enter title...',
-          hintStyle: TextStyle(color: VoxAppColors.muted, fontSize: 13),
+          hintStyle: TextStyle(color: VoxAppColors.muted, fontSize: 13.sp),
           enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: VoxAppColors.outline, width: 1.5),
+            borderSide: BorderSide(color: VoxAppColors.outline, width: 1.5.w),
           ),
           focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: VoxAppColors.primary, width: 1.5),
+            borderSide: BorderSide(color: VoxAppColors.primary, width: 1.5.w),
           ),
         ),
         maxLength: 120,
@@ -840,11 +931,24 @@ class _EditTitleDialogState extends State<_EditTitleDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('CANCEL', style: TextStyle(color: VoxAppColors.muted, fontFamily: 'monospace')),
+          child: const Text(
+            'CANCEL',
+            style: TextStyle(
+              color: VoxAppColors.muted,
+              fontFamily: 'monospace',
+            ),
+          ),
         ),
         TextButton(
           onPressed: _submit,
-          child: const Text('SAVE', style: TextStyle(color: VoxAppColors.primary, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+          child: const Text(
+            'SAVE',
+            style: TextStyle(
+              color: VoxAppColors.primary,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'monospace',
+            ),
+          ),
         ),
       ],
     );
@@ -857,24 +961,24 @@ class _SilverStud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 10,
-      height: 10,
+      width: 10.w,
+      height: 10.h,
       decoration: BoxDecoration(
         color: const Color(0xFFE0E0E0),
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFB0B0B0), width: 0.8),
-        boxShadow: const [
+        border: Border.all(color: const Color(0xFFB0B0B0), width: 0.8.w),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 0.8,
-            offset: Offset(0, 0.8),
+            color: const Color(0x0A000000),
+            blurRadius: 0.8.r,
+            offset: Offset(0.w, 0.8.h),
           ),
         ],
       ),
       child: Center(
         child: Container(
-          width: 2.5,
-          height: 2.5,
+          width: 2.5.w,
+          height: 2.5.h,
           decoration: const BoxDecoration(
             color: Color(0xFF888888),
             shape: BoxShape.circle,
@@ -901,8 +1005,8 @@ class _DashedDivider extends StatelessWidget {
           children: List.generate(dashCount, (_) {
             return SizedBox(
               width: dashWidth,
-              height: 1,
-              child: DecoratedBox(
+              height: 1.h,
+              child: const DecoratedBox(
                 decoration: BoxDecoration(color: VoxAppColors.outline),
               ),
             );

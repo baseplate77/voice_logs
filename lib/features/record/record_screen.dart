@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../app_theme.dart';
 import 'recording_providers.dart';
@@ -7,7 +8,7 @@ import 'transcribing_indicator.dart';
 
 /// Fullscreen active recording page matching the retro-minimalist premium light-theme design.
 ///
-/// Features hardware-like corner studs, a digital LCD LED running timer readout, a symmetrical 
+/// Features hardware-like corner studs, a digital LCD LED running timer readout, a symmetrical
 /// vertical bar dancing visualizer, and custom control buttons.
 class RecordScreen extends ConsumerStatefulWidget {
   const RecordScreen({super.key});
@@ -38,55 +39,60 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         child: Stack(
           children: [
             // Four Corner Screws/Studs for hardware look
-            const Positioned(left: 10, top: 10, child: _SilverStud()),
-            const Positioned(right: 10, top: 10, child: _SilverStud()),
-            const Positioned(left: 10, bottom: 10, child: _SilverStud()),
-            const Positioned(right: 10, bottom: 10, child: _SilverStud()),
+            Positioned(left: 10.w, top: 10.h, child: const _SilverStud()),
+            Positioned(right: 10.w, top: 10.h, child: const _SilverStud()),
+            Positioned(left: 10.w, bottom: 10.h, child: const _SilverStud()),
+            Positioned(right: 10.w, bottom: 10.h, child: const _SilverStud()),
 
             // Main UI Layout
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: EdgeInsets.symmetric(
+                horizontal: 24.0.w,
+                vertical: 16.0.h,
+              ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Top Custom Header (Back button + Title + Decorative line)
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12.h),
                   _buildHeader(context),
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8.h),
                   const _DashedDivider(),
-                  
+
                   // Body Switch
                   Expanded(
                     child: switch (state) {
-                      RecordingIdle() => _IdleStandbyView(onStart: controller.start),
+                      RecordingIdle() => _IdleStandbyView(
+                        onStart: controller.start,
+                      ),
                       RecordingActive(:final elapsedMs) => _ActiveRecordingView(
-                          elapsedMs: elapsedMs,
-                          isPaused: _isPaused,
-                          pausedElapsedMs: _pausedElapsedMs,
-                          waveformLevels: controller.waveformLevels,
-                          onTogglePause: (paused) {
-                            setState(() {
-                              _isPaused = paused;
-                              if (paused) {
-                                _pausedElapsedMs = elapsedMs;
-                              } else {
-                                _pausedElapsedMs = null;
-                              }
-                            });
-                          },
-                          onCancel: () async {
-                            final confirm = await _showCancelDialog(context);
-                            if (confirm == true) {
-                              await controller.cancel();
+                        elapsedMs: elapsedMs,
+                        isPaused: _isPaused,
+                        pausedElapsedMs: _pausedElapsedMs,
+                        waveformLevels: controller.waveformLevels,
+                        onTogglePause: (paused) {
+                          setState(() {
+                            _isPaused = paused;
+                            if (paused) {
+                              _pausedElapsedMs = elapsedMs;
+                            } else {
+                              _pausedElapsedMs = null;
                             }
-                          },
-                          onDone: controller.stop,
-                        ),
+                          });
+                        },
+                        onCancel: () async {
+                          final confirm = await _showCancelDialog(context);
+                          if (confirm == true) {
+                            await controller.cancel();
+                          }
+                        },
+                        onDone: controller.stop,
+                      ),
                       RecordingTranscribing() => const _RetroTranscribingView(),
                       RecordingFailed(:final message) => _FailedRetryView(
-                          message: message,
-                          onRetry: controller.start,
-                        ),
+                        message: message,
+                        onRetry: controller.start,
+                      ),
                     },
                   ),
                 ],
@@ -106,42 +112,42 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         GestureDetector(
           onTap: () => Navigator.of(context).pop(),
           child: Container(
-            width: 38,
-            height: 38,
+            width: 38.w,
+            height: 38.h,
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: VoxAppColors.outline, width: 1),
+              borderRadius: BorderRadius.circular(8.r),
+              border: Border.all(color: VoxAppColors.outline, width: 1.w),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 3,
-                  offset: const Offset(0, 1.5),
+                  blurRadius: 3.r,
+                  offset: Offset(0.w, 1.5.h),
                 ),
               ],
             ),
-            child: const Icon(
+            child: Icon(
               Icons.chevron_left_rounded,
               color: VoxAppColors.ink,
-              size: 22,
+              size: 22.r,
             ),
           ),
         ),
-        
+
         // Monospaced Title
         Text(
           'VOICE RECORDING',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 13.sp,
             fontWeight: FontWeight.w900,
             fontFamily: 'monospace',
             letterSpacing: 1.8,
             color: VoxAppColors.ink.withValues(alpha: 0.8),
           ),
         ),
-        
+
         // Symmetrical empty block to center the title
-        const SizedBox(width: 38),
+        SizedBox(width: 38.w),
       ],
     );
   }
@@ -153,25 +159,42 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(16.r),
           side: const BorderSide(color: VoxAppColors.outline),
         ),
-        title: const Text(
+        title: Text(
           'DISCARD RECORDING?',
-          style: TextStyle(fontFamily: 'monospace', fontWeight: FontWeight.bold, fontSize: 16),
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontWeight: FontWeight.bold,
+            fontSize: 16.sp,
+          ),
         ),
-        content: const Text(
+        content: Text(
           'This will permanently delete the current voice recording. Are you sure?',
-          style: TextStyle(fontSize: 14),
+          style: TextStyle(fontSize: 14.sp),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('KEEP', style: TextStyle(color: VoxAppColors.muted, fontFamily: 'monospace')),
+            child: const Text(
+              'KEEP',
+              style: TextStyle(
+                color: VoxAppColors.muted,
+                fontFamily: 'monospace',
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('DISCARD', style: TextStyle(color: VoxAppColors.accent, fontWeight: FontWeight.bold, fontFamily: 'monospace')),
+            child: const Text(
+              'DISCARD',
+              style: TextStyle(
+                color: VoxAppColors.accent,
+                fontWeight: FontWeight.bold,
+                fontFamily: 'monospace',
+              ),
+            ),
           ),
         ],
       ),
@@ -190,11 +213,11 @@ class _IdleStandbyView extends StatelessWidget {
       children: [
         // Standby LED display panel
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: EdgeInsets.symmetric(horizontal: 24.w, vertical: 16.h),
           decoration: BoxDecoration(
             color: VoxAppColors.primary,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF333333), width: 1.5),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: const Color(0xFF333333), width: 1.5.w),
           ),
           child: Stack(
             alignment: Alignment.center,
@@ -204,7 +227,7 @@ class _IdleStandbyView extends StatelessWidget {
                 child: Text(
                   '88:88:88',
                   style: TextStyle(
-                    fontSize: 44,
+                    fontSize: 44.sp,
                     fontFamily: 'monospace',
                     fontWeight: FontWeight.w900,
                     color: VoxAppColors.accent,
@@ -212,10 +235,10 @@ class _IdleStandbyView extends StatelessWidget {
                   ),
                 ),
               ),
-              const Text(
+              Text(
                 '00:00:00',
                 style: TextStyle(
-                  fontSize: 44,
+                  fontSize: 44.sp,
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.w900,
                   color: Colors.white24,
@@ -225,24 +248,24 @@ class _IdleStandbyView extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: 24.h),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 8,
-              height: 8,
+              width: 8.w,
+              height: 8.h,
               decoration: const BoxDecoration(
                 color: VoxAppColors.muted,
                 shape: BoxShape.circle,
               ),
             ),
-            const SizedBox(width: 8),
-            const Text(
+            SizedBox(width: 8.w),
+            Text(
               'STANDBY',
               style: TextStyle(
                 fontFamily: 'monospace',
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
                 color: VoxAppColors.muted,
                 letterSpacing: 1.2,
@@ -250,56 +273,52 @@ class _IdleStandbyView extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 64),
-        
+        SizedBox(height: 64.h),
+
         // Large retro Record button
         GestureDetector(
           onTap: () async => onStart(),
           child: Container(
-            width: 100,
-            height: 100,
+            width: 100.w,
+            height: 100.h,
             decoration: BoxDecoration(
               color: Colors.white,
               shape: BoxShape.circle,
-              border: Border.all(color: VoxAppColors.outline, width: 2),
+              border: Border.all(color: VoxAppColors.outline, width: 2.w),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 8,
-                  offset: const Offset(0, 4),
+                  blurRadius: 8.r,
+                  offset: Offset(0.w, 4.h),
                 ),
               ],
             ),
             child: Center(
               child: Container(
-                width: 76,
-                height: 76,
+                width: 76.w,
+                height: 76.h,
                 decoration: BoxDecoration(
                   color: VoxAppColors.accent,
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 3),
+                  border: Border.all(color: Colors.white, width: 3.w),
                   boxShadow: [
                     BoxShadow(
                       color: VoxAppColors.accent.withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 3),
+                      blurRadius: 8.r,
+                      offset: Offset(0.w, 3.h),
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.mic_rounded,
-                  color: Colors.white,
-                  size: 32,
-                ),
+                child: Icon(Icons.mic_rounded, color: Colors.white, size: 32.r),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
-        const Text(
+        SizedBox(height: 16.h),
+        Text(
           'TAP TO START RECORDING',
           style: TextStyle(
-            fontSize: 11,
+            fontSize: 11.sp,
             fontWeight: FontWeight.bold,
             color: VoxAppColors.muted,
             letterSpacing: 1.0,
@@ -339,19 +358,19 @@ class _ActiveRecordingView extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Spacer(),
-        
+
         // LED Display Box
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 18),
+          padding: EdgeInsets.symmetric(horizontal: 28.w, vertical: 18.h),
           decoration: BoxDecoration(
             color: VoxAppColors.primary,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF2E2E30), width: 2),
+            borderRadius: BorderRadius.circular(12.r),
+            border: Border.all(color: const Color(0xFF2E2E30), width: 2.w),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.15),
-                blurRadius: 10,
-                offset: const Offset(0, 5),
+                blurRadius: 10.r,
+                offset: Offset(0.w, 5.h),
               ),
             ],
           ),
@@ -363,7 +382,7 @@ class _ActiveRecordingView extends StatelessWidget {
                 child: Text(
                   '88:88:88',
                   style: TextStyle(
-                    fontSize: 46,
+                    fontSize: 46.sp,
                     fontFamily: 'monospace',
                     fontWeight: FontWeight.w900,
                     color: VoxAppColors.accent,
@@ -374,34 +393,36 @@ class _ActiveRecordingView extends StatelessWidget {
               Text(
                 timeStr,
                 style: TextStyle(
-                  fontSize: 46,
+                  fontSize: 46.sp,
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.w900,
                   color: isPaused ? VoxAppColors.muted : VoxAppColors.accent,
                   letterSpacing: 2.2,
-                  shadows: isPaused ? [] : [
-                    Shadow(
-                      color: VoxAppColors.accent.withValues(alpha: 0.5),
-                      blurRadius: 12,
-                    ),
-                  ],
+                  shadows: isPaused
+                      ? []
+                      : [
+                          Shadow(
+                            color: VoxAppColors.accent.withValues(alpha: 0.5),
+                            blurRadius: 12.r,
+                          ),
+                        ],
                 ),
               ),
             ],
           ),
         ),
-        
-        const SizedBox(height: 18),
+
+        SizedBox(height: 18.h),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _BlinkingDot(isPaused: isPaused),
-            const SizedBox(width: 8),
+            SizedBox(width: 8.w),
             Text(
               isPaused ? 'PAUSED' : 'RECORDING',
               style: TextStyle(
                 fontFamily: 'monospace',
-                fontSize: 12,
+                fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
                 color: isPaused ? VoxAppColors.muted : VoxAppColors.accent,
                 letterSpacing: 1.2,
@@ -409,12 +430,12 @@ class _ActiveRecordingView extends StatelessWidget {
             ),
           ],
         ),
-        
+
         const Spacer(),
-        
+
         // Symmetrical Symmetrical dancing visualizer
         SizedBox(
-          height: 120,
+          height: 120.h,
           child: Center(
             child: _DancingVisualizer(
               levels: waveformLevels,
@@ -422,12 +443,12 @@ class _ActiveRecordingView extends StatelessWidget {
             ),
           ),
         ),
-        
+
         const Spacer(),
-        
+
         // Symmetrical Controls (Cancel - Pause - Done)
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding: EdgeInsets.symmetric(horizontal: 16.0.w),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -435,42 +456,45 @@ class _ActiveRecordingView extends StatelessWidget {
               GestureDetector(
                 onTap: onCancel,
                 child: Container(
-                  width: 52,
-                  height: 52,
+                  width: 52.w,
+                  height: 52.h,
                   decoration: BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    border: Border.all(color: VoxAppColors.outline, width: 1.2),
+                    border: Border.all(
+                      color: VoxAppColors.outline,
+                      width: 1.2.w,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                        blurRadius: 4.r,
+                        offset: Offset(0.w, 2.h),
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.close_rounded,
                     color: VoxAppColors.ink,
-                    size: 22,
+                    size: 22.r,
                   ),
                 ),
               ),
-              
+
               // Wide Stadium Pause Button
               GestureDetector(
                 onTap: () => onTogglePause(!isPaused),
                 child: Container(
-                  width: 140,
-                  height: 52,
+                  width: 140.w,
+                  height: 52.h,
                   decoration: BoxDecoration(
                     color: VoxAppColors.primary,
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(26.r),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.12),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2.5),
+                        blurRadius: 5.r,
+                        offset: Offset(0.w, 2.5.h),
                       ),
                     ],
                   ),
@@ -478,55 +502,60 @@ class _ActiveRecordingView extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                        isPaused
+                            ? Icons.play_arrow_rounded
+                            : Icons.pause_rounded,
                         color: Colors.white,
-                        size: 20,
+                        size: 20.r,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: 8.w),
                       Text(
                         isPaused ? 'RESUME' : 'PAUSE',
-                        style: const TextStyle(
+                        style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
                           fontFamily: 'monospace',
                           letterSpacing: 1.2,
-                          fontSize: 13,
+                          fontSize: 13.sp,
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              
+
               // Done Checkmark Circle Button
               GestureDetector(
                 onTap: onDone,
                 child: Container(
-                  width: 52,
-                  height: 52,
+                  width: 52.w,
+                  height: 52.h,
                   decoration: BoxDecoration(
                     color: VoxAppColors.accent,
                     shape: BoxShape.circle,
-                    border: Border.all(color: VoxAppColors.accent, width: 1.2),
+                    border: Border.all(
+                      color: VoxAppColors.accent,
+                      width: 1.2.w,
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: VoxAppColors.accent.withValues(alpha: 0.2),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2.5),
+                        blurRadius: 5.r,
+                        offset: Offset(0.w, 2.5.h),
                       ),
                     ],
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.check_rounded,
                     color: Colors.white,
-                    size: 22,
+                    size: 22.r,
                   ),
                 ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: 24.h),
       ],
     );
   }
@@ -551,7 +580,8 @@ class _BlinkingDot extends StatefulWidget {
   State<_BlinkingDot> createState() => _BlinkingDotState();
 }
 
-class _BlinkingDotState extends State<_BlinkingDot> with SingleTickerProviderStateMixin {
+class _BlinkingDotState extends State<_BlinkingDot>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
@@ -590,8 +620,8 @@ class _BlinkingDotState extends State<_BlinkingDot> with SingleTickerProviderSta
       builder: (context, _) => Opacity(
         opacity: _controller.value,
         child: Container(
-          width: 8,
-          height: 8,
+          width: 8.w,
+          height: 8.h,
           decoration: BoxDecoration(
             color: widget.isPaused ? VoxAppColors.muted : VoxAppColors.accent,
             shape: BoxShape.circle,
@@ -609,36 +639,96 @@ class _DancingVisualizer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We construct a symmetrical layout of 24 bars from the 12 input levels
+    // We construct a symmetrical layout of 24 columns from the 12 input levels
     final mirroredLevels = [...levels.reversed, ...levels];
-    final barCount = mirroredLevels.length;
 
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: List.generate(barCount, (index) {
-        final level = mirroredLevels[index];
-        final rawHeight = isPaused ? 6.0 : (level * 105.0);
-        final height = rawHeight.clamp(6.0, 110.0);
-
-        // Highlight central bars in retro red
-        final isCentral = index >= 8 && index < 16;
-        final color = isCentral
-            ? VoxAppColors.accent.withValues(alpha: isPaused ? 0.35 : 0.95)
-            : VoxAppColors.primary.withValues(alpha: isPaused ? 0.2 : 0.7);
-
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 100),
-          width: 4.5,
-          height: height,
-          margin: const EdgeInsets.symmetric(horizontal: 2.0),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(2.2),
+    return RepaintBoundary(
+      child: SizedBox.expand(
+        child: CustomPaint(
+          painter: _DancingVisualizerPainter(
+            levels: mirroredLevels,
+            isPaused: isPaused,
           ),
-        );
-      }),
+        ),
+      ),
     );
+  }
+}
+
+class _DancingVisualizerPainter extends CustomPainter {
+  _DancingVisualizerPainter({required this.levels, required this.isPaused});
+
+  final List<double> levels;
+  final bool isPaused;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final barCount = levels.length;
+    if (barCount == 0) return;
+
+    final spacing = size.width / barCount;
+    final vSpacing = spacing.clamp(4.5, 12.0);
+    // Dynamic dot radius based on screen density & spacing
+    final dotRadius = (spacing * 0.28).clamp(1.5, 5.0);
+    final mid = size.height / 2;
+    final maxDotsPerSide = (size.height / 2) ~/ vSpacing;
+
+    // 1. Draw a uniform background grid of faint dots
+    final gridPaint = Paint()..color = const Color(0xFFEAEAEA);
+    for (var i = 0; i < barCount; i++) {
+      final x = spacing * i + spacing / 2;
+      for (var j = 1; j <= maxDotsPerSide; j++) {
+        canvas.drawCircle(Offset(x, mid - j * vSpacing), dotRadius, gridPaint);
+        canvas.drawCircle(Offset(x, mid + j * vSpacing), dotRadius, gridPaint);
+      }
+    }
+
+    // 2. Draw centerline and active amplitude dots
+    for (var i = 0; i < barCount; i++) {
+      final x = spacing * i + spacing / 2;
+      final isCentral = i >= 8 && i < 16;
+      final baseColor = isCentral ? VoxAppColors.accent : VoxAppColors.primary;
+
+      // Centerline dot is always retro red (VoxAppColors.accent)
+      final centerlinePaint = Paint()..color = VoxAppColors.accent;
+      canvas.drawCircle(Offset(x, mid), dotRadius * 1.1, centerlinePaint);
+
+      // Active amplitude dots
+      final level = levels[i];
+      final rawActiveDots = isPaused ? 0 : (level * maxDotsPerSide).round();
+      final activeDots = rawActiveDots.clamp(0, maxDotsPerSide);
+
+      for (var j = 1; j <= activeDots; j++) {
+        double opacity = 1.0 - (j / (maxDotsPerSide + 1)) * 0.7;
+        if (isPaused) {
+          opacity *= 0.3;
+        }
+        final activePaint = Paint()
+          ..color = baseColor.withValues(alpha: opacity.clamp(0.0, 1.0));
+
+        canvas.drawCircle(
+          Offset(x, mid - j * vSpacing),
+          dotRadius,
+          activePaint,
+        );
+        canvas.drawCircle(
+          Offset(x, mid + j * vSpacing),
+          dotRadius,
+          activePaint,
+        );
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_DancingVisualizerPainter old) {
+    if (old.isPaused != isPaused || old.levels.length != levels.length) {
+      return true;
+    }
+    for (var i = 0; i < levels.length; i++) {
+      if (old.levels[i] != levels[i]) return true;
+    }
+    return false;
   }
 }
 
@@ -649,42 +739,42 @@ class _RetroTranscribingView extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16),
-        padding: const EdgeInsets.all(28),
+        margin: EdgeInsets.symmetric(horizontal: 16.w),
+        padding: EdgeInsets.all(28.r),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: VoxAppColors.outline, width: 1),
+          borderRadius: BorderRadius.circular(16.r),
+          border: Border.all(color: VoxAppColors.outline, width: 1.w),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
+              blurRadius: 10.r,
+              offset: Offset(0.w, 4.h),
             ),
           ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const TranscribingIndicator(size: 48),
-            const SizedBox(height: 24),
-            const Text(
+            TranscribingIndicator(size: 48.r),
+            SizedBox(height: 24.h),
+            Text(
               'PROCESSING AUDIO',
               style: TextStyle(
                 fontFamily: 'monospace',
-                fontSize: 14,
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.5,
                 color: VoxAppColors.ink,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12.h),
             const _DashedDivider(),
-            const SizedBox(height: 12),
+            SizedBox(height: 12.h),
             _consoleLine('DECODING 16KHZ MONO PCM ISOLATE...'),
-            const SizedBox(height: 6),
+            SizedBox(height: 6.h),
             _consoleLine('RUNNING PARAKEET ASR ENGINE...'),
-            const SizedBox(height: 6),
+            SizedBox(height: 6.h),
             _consoleLine('PRESERVING ENCRYPTED JOURNAL LOG...'),
           ],
         ),
@@ -695,11 +785,11 @@ class _RetroTranscribingView extends StatelessWidget {
   Widget _consoleLine(String text) {
     return Row(
       children: [
-        const Text(
+        Text(
           '> ',
           style: TextStyle(
             color: VoxAppColors.accent,
-            fontSize: 10,
+            fontSize: 10.sp,
             fontFamily: 'monospace',
             fontWeight: FontWeight.bold,
           ),
@@ -707,9 +797,9 @@ class _RetroTranscribingView extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               color: VoxAppColors.muted,
-              fontSize: 10,
+              fontSize: 10.sp,
               fontFamily: 'monospace',
             ),
           ),
@@ -727,49 +817,49 @@ class _FailedRetryView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: 24.w),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Icon(
             Icons.error_outline_rounded,
-            size: 52,
+            size: 52.r,
             color: VoxAppColors.accent,
           ),
-          const SizedBox(height: 16),
-          const Text(
+          SizedBox(height: 16.h),
+          Text(
             'CAPTURE ERROR',
             style: TextStyle(
               fontFamily: 'monospace',
-              fontSize: 16,
+              fontSize: 16.sp,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
               color: VoxAppColors.ink,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8.h),
           Text(
             message,
             textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: VoxAppColors.muted),
+            style: TextStyle(fontSize: 13.sp, color: VoxAppColors.muted),
           ),
-          const SizedBox(height: 32),
+          SizedBox(height: 32.h),
           GestureDetector(
             onTap: () async => onRetry(),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+              padding: EdgeInsets.symmetric(horizontal: 32.w, vertical: 14.h),
               decoration: BoxDecoration(
                 color: VoxAppColors.primary,
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(8.r),
               ),
-              child: const Text(
+              child: Text(
                 'TRY AGAIN',
                 style: TextStyle(
                   color: Colors.white,
                   fontFamily: 'monospace',
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.0,
-                  fontSize: 13,
+                  fontSize: 13.sp,
                 ),
               ),
             ),
@@ -786,24 +876,24 @@ class _SilverStud extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 10,
-      height: 10,
+      width: 10.w,
+      height: 10.h,
       decoration: BoxDecoration(
         color: const Color(0xFFE0E0E0),
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFB0B0B0), width: 0.8),
-        boxShadow: const [
+        border: Border.all(color: const Color(0xFFB0B0B0), width: 0.8.w),
+        boxShadow: [
           BoxShadow(
-            color: Color(0x0A000000),
-            blurRadius: 0.8,
-            offset: Offset(0, 0.8),
+            color: const Color(0x0A000000),
+            blurRadius: 0.8.r,
+            offset: Offset(0.w, 0.8.h),
           ),
         ],
       ),
       child: Center(
         child: Container(
-          width: 2.5,
-          height: 2.5,
+          width: 2.5.w,
+          height: 2.5.h,
           decoration: const BoxDecoration(
             color: Color(0xFF888888),
             shape: BoxShape.circle,
@@ -830,8 +920,8 @@ class _DashedDivider extends StatelessWidget {
           children: List.generate(dashCount, (_) {
             return SizedBox(
               width: dashWidth,
-              height: 1,
-              child: DecoratedBox(
+              height: 1.h,
+              child: const DecoratedBox(
                 decoration: BoxDecoration(color: VoxAppColors.outline),
               ),
             );

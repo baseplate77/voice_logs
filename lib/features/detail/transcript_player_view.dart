@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/repositories/transcript_segment_repository.dart';
 import 'audio_player_controller.dart';
@@ -148,13 +149,13 @@ class _TranscriptPlayerViewState extends State<TranscriptPlayerView> {
   Widget build(BuildContext context) {
     if (_words.isEmpty) {
       return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.r),
         child: SelectableText(widget.fallbackText),
       );
     }
     final base = DefaultTextStyle.of(context).style;
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(16.r),
       child: Wrap(
         spacing: 4,
         runSpacing: 4,
@@ -203,14 +204,14 @@ class _WordChip extends StatelessWidget {
     }
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(4),
+      borderRadius: BorderRadius.circular(4.r),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 1),
+        padding: EdgeInsets.symmetric(horizontal: 2.w, vertical: 1.h),
         decoration: background == null
             ? null
             : BoxDecoration(
                 color: background,
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: BorderRadius.circular(4.r),
               ),
         child: Text(word, style: baseStyle.copyWith(fontWeight: weight)),
       ),
@@ -219,11 +220,7 @@ class _WordChip extends StatelessWidget {
 }
 
 class _FlatWord {
-  const _FlatWord({
-    required this.word,
-    required this.startMs,
-    required this.endMs,
-  });
+  _FlatWord({required this.word, required this.startMs, required this.endMs});
   final String word;
   final int startMs;
   final int endMs;

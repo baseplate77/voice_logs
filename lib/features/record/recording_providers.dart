@@ -152,7 +152,6 @@ class RecordingController extends StateNotifier<RecordingState>
   /// Live PCM waveform levels from the stream, normalized between 0.12 and 1.0.
   List<double> get waveformLevels => List.unmodifiable(_waveformLevels);
 
-
   /// Begin a new recording session. No-op if already recording or starting.
   Future<void> start() async {
     _log.i(
@@ -479,10 +478,10 @@ class RecordingController extends StateNotifier<RecordingState>
     _elapsedTimer?.cancel();
     _elapsedTimer = null;
     await _stopWaveformMonitor();
-    
+
     // Stop the platform recorder and release resources.
     await _recorder.stop();
-    
+
     // Delete the temporary file if active.
     final logId = _activeLogId;
     if (logId != null) {
@@ -497,7 +496,7 @@ class RecordingController extends StateNotifier<RecordingState>
         _log.w('Failed to delete cancelled wav file: $e');
       }
     }
-    
+
     state = const RecordingIdle();
     _startedAt = null;
     _activeLogId = null;
@@ -508,7 +507,6 @@ class RecordingController extends StateNotifier<RecordingState>
     unawaited(LiveActivityBridge.endActivity());
     unawaited(IntentBridge.reportRecordingState(isRecording: false));
   }
-
 
   Future<void> _allowTranscribingIndicatorToPaint() async {
     // Give Flutter one small frame window after the recorder has stopped and

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'app_theme.dart';
 import 'core/background_task_bridge.dart';
@@ -193,11 +194,20 @@ class _VoxSynthAppState extends ConsumerState<VoxSynthApp>
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      navigatorKey: _navigatorKey,
-      title: 'VoxSynth',
-      theme: buildVoxTheme(),
-      home: const VoxHomeScreen(),
+    return ScreenUtilInit(
+      // iPhone 17 Pro Max logical size baseline.
+      designSize: const Size(440, 956),
+      minTextAdapt: true,
+      splitScreenMode: true,
+      builder: (context, child) {
+        return MaterialApp(
+          navigatorKey: _navigatorKey,
+          title: 'VoxSynth',
+          theme: buildVoxTheme(),
+          home: child,
+        );
+      },
+      child: const VoxHomeScreen(),
     );
   }
 }

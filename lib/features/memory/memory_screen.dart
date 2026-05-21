@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import 'memory_tile.dart';
@@ -17,10 +18,10 @@ class MemoryScreen extends ConsumerWidget {
       body: memories.when(
         data: (items) {
           if (items.isEmpty) {
-            return const Center(
+            return Center(
               child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Text(
+                padding: EdgeInsets.all(24.r),
+                child: const Text(
                   'No memories yet. Durable memories will appear here after '
                   'voice logs are refined and processed locally.',
                   textAlign: TextAlign.center,
@@ -30,7 +31,7 @@ class MemoryScreen extends ConsumerWidget {
           }
           return ListView.separated(
             itemCount: items.length,
-            separatorBuilder: (_, _) => const Divider(height: 1),
+            separatorBuilder: (_, _) => Divider(height: 1.h),
             itemBuilder: (context, index) => MemoryTile(memory: items[index]),
           );
         },

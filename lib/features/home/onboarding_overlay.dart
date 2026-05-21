@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../../app_theme.dart';
 import '../record/recording_providers.dart';
 import 'auto_record_provider.dart';
 
@@ -15,25 +17,45 @@ class OnboardingOverlay extends ConsumerWidget {
     final theme = Theme.of(context);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 32),
+        padding: EdgeInsets.symmetric(horizontal: 32.w),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               Icons.mic_none_rounded,
-              size: 72,
+              size: 72.r,
               color: theme.colorScheme.primary,
             ),
-            const SizedBox(height: 24),
-            Text('VoxSynth', style: theme.textTheme.headlineMedium),
-            const SizedBox(height: 12),
+            SizedBox(height: 24.h),
+            Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: 'VoxSynth',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontFamily: 'NDot',
+                      color: VoxAppColors.primary,
+                    ),
+                  ),
+                  TextSpan(
+                    text: '.',
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontFamily: 'NDot',
+                      color: VoxAppColors.accent,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 12.h),
             Text(
               'Recording starts automatically when you open the app. '
               'Your voice stays on this device — always.',
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyLarge,
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: 32.h),
             FilledButton.icon(
               onPressed: () => _requestPermission(context, ref),
               icon: const Icon(Icons.mic),

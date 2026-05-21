@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:path/path.dart' as p;
 
 import '../../core/db/providers.dart';
@@ -146,15 +147,15 @@ class _ImportBackupScreenState extends ConsumerState<ImportBackupScreen> {
       appBar: AppBar(title: const Text('Import encrypted backup')),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(20.r),
           children: [
-            const Text(
+            Text(
               'Pick a .voxsynth backup file, then enter the passphrase you '
               'set when you created it. Existing logs on this device are '
               'kept — only new rows are merged in.',
-              style: TextStyle(fontSize: 14),
+              style: TextStyle(fontSize: 14.sp),
             ),
-            const SizedBox(height: 20),
+            SizedBox(height: 20.h),
             OutlinedButton.icon(
               onPressed: _busy ? null : _pickFile,
               icon: const Icon(Icons.folder_open_outlined),
@@ -164,7 +165,7 @@ class _ImportBackupScreenState extends ConsumerState<ImportBackupScreen> {
                     : p.basename(_selectedPath!),
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.h),
             TextField(
               controller: _pass,
               autocorrect: false,
@@ -175,20 +176,20 @@ class _ImportBackupScreenState extends ConsumerState<ImportBackupScreen> {
                 border: OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: 24.h),
             FilledButton(
               onPressed: _busy ? null : _import,
               child: Text(_busy ? 'Working…' : 'Import'),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: 16.h),
             if (_statusMessage != null && _busy)
               Row(
                 children: [
-                  const SizedBox.square(
+                  SizedBox.square(
                     dimension: 14,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(strokeWidth: 2.r),
                   ),
-                  const SizedBox(width: 10),
+                  SizedBox(width: 10.w),
                   Expanded(child: Text(_statusMessage!)),
                 ],
               ),
@@ -196,7 +197,7 @@ class _ImportBackupScreenState extends ConsumerState<ImportBackupScreen> {
               _ReportCard(report: _report!, onDone: _doneAndReturnHome),
             if (_error != null)
               Padding(
-                padding: const EdgeInsets.only(top: 12),
+                padding: EdgeInsets.only(top: 12.h),
                 child: Text(
                   _error!,
                   style: TextStyle(color: Theme.of(context).colorScheme.error),
@@ -221,42 +222,42 @@ class _ReportCard extends StatelessWidget {
       if (count.inserted == 0 && count.skipped == 0) return;
       rows.add(
         Padding(
-          padding: const EdgeInsets.symmetric(vertical: 2),
+          padding: EdgeInsets.symmetric(vertical: 2.h),
           child: Text(
             '$table: +${count.inserted} added, ${count.skipped} skipped',
-            style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+            style: TextStyle(fontFamily: 'monospace', fontSize: 12.sp),
           ),
         ),
       );
     });
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: EdgeInsets.all(16.r),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Import complete',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16.sp),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8.h),
             Text(
               '+${report.totalInserted} rows added • '
               '${report.totalSkipped} skipped',
             ),
             Text('${report.audioFilesRestored} audio files restored'),
-            const SizedBox(height: 4),
+            SizedBox(height: 4.h),
             Text(
               'Voice logs in DB now: ${report.voiceLogsInDbAfter}',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 12.sp,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
                 fontStyle: FontStyle.italic,
               ),
             ),
-            const Divider(height: 24),
+            Divider(height: 24.h),
             ...rows,
-            const SizedBox(height: 16),
+            SizedBox(height: 16.h),
             Align(
               alignment: Alignment.centerRight,
               child: FilledButton(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voxsynth/features/ask/ask_answer_view.dart';
 import 'package:voxsynth/features/ask/ask_citation_parser.dart';
@@ -10,8 +11,10 @@ void main() {
     Citation? tapped;
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      ScreenUtilInit(
+        designSize: const Size(440, 956),
+        builder: (_, child) => MaterialApp(home: child),
+        child: Scaffold(
           body: AskAnswerView(
             text: '''
 ## Answer
@@ -44,8 +47,10 @@ Atlas **launch** moved forward [L1]
     tester,
   ) async {
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      ScreenUtilInit(
+        designSize: const Size(440, 956),
+        builder: (_, child) => MaterialApp(home: child),
+        child: Scaffold(
           body: AskAnswerView(
             text: 'Atlas moved forward [L1].',
             showInlineCitations: false,

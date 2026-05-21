@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:voxsynth/features/ask/ask_chat_bubble.dart';
 import 'package:voxsynth/features/ask/ask_chat_message.dart';
@@ -25,8 +26,10 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
+      ScreenUtilInit(
+        designSize: const Size(440, 956),
+        builder: (_, child) => MaterialApp(home: child),
+        child: Scaffold(
           body: AskChatBubble(
             message: message,
             onOpenLog: (_) => opened = true,

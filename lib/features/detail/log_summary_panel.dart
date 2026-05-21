@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import '../../core/db/providers.dart';
 import '../../core/db/repositories/log_summary_repository.dart';
@@ -61,7 +62,7 @@ class _SummaryCard extends StatelessWidget {
     return Card(
       margin: EdgeInsets.zero,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(12.r),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -71,10 +72,7 @@ class _SummaryCard extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-            for (final section in sections) ...[
-              const SizedBox(height: 8),
-              section,
-            ],
+            for (final section in sections) ...[SizedBox(height: 8.h), section],
           ],
         ),
       ),
@@ -100,10 +98,10 @@ class _SummarySection extends StatelessWidget {
             color: theme.colorScheme.primary,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: 4.h),
         for (final item in items)
           Padding(
-            padding: const EdgeInsets.only(bottom: 2),
+            padding: EdgeInsets.only(bottom: 2.h),
             child: Text('• $item', style: theme.textTheme.bodyMedium),
           ),
       ],

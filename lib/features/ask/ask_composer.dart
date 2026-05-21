@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Bottom input composer for the Ask chat screen.
 class AskComposer extends StatelessWidget {
@@ -31,7 +32,7 @@ class AskComposer extends StatelessWidget {
             child: DecoratedBox(
               decoration: BoxDecoration(
                 color: colorScheme.surfaceContainerHigh,
-                borderRadius: BorderRadius.circular(30),
+                borderRadius: BorderRadius.circular(30.r),
                 border: Border.all(
                   color: colorScheme.outlineVariant.withValues(alpha: 0.5),
                 ),
@@ -61,16 +62,14 @@ class AskComposer extends StatelessWidget {
                           errorBorder: InputBorder.none,
                           focusedErrorBorder: InputBorder.none,
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                          ),
+                          contentPadding: EdgeInsets.symmetric(vertical: 12.h),
                         ),
                         onSubmitted: (_) {
                           if (!loading) onSubmit();
                         },
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8.w),
                     FilledButton(
                       onPressed: loading ? null : onSubmit,
                       style: FilledButton.styleFrom(
@@ -79,11 +78,13 @@ class AskComposer extends StatelessWidget {
                         padding: EdgeInsets.zero,
                       ),
                       child: loading
-                          ? const SizedBox.square(
+                          ? SizedBox.square(
                               dimension: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.r,
+                              ),
                             )
-                          : const Icon(Icons.arrow_upward, size: 21),
+                          : Icon(Icons.arrow_upward, size: 21.r),
                     ),
                   ],
                 ),

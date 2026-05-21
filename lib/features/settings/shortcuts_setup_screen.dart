@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// Guides users through setting up system shortcuts that launch VoxSynth
 /// and start recording. Each entry point links to the relevant iOS Settings
@@ -26,7 +27,7 @@ class ShortcutsSetupScreen extends StatelessWidget {
               'VoxSynth opens and recording begins immediately.',
             ],
           ),
-          const Divider(height: 1),
+          Divider(height: 1.h),
           _SectionHeader(title: 'Hardware buttons', theme: theme),
           const _ShortcutTile(
             icon: Icons.touch_app,
@@ -39,7 +40,7 @@ class ShortcutsSetupScreen extends StatelessWidget {
               'Press the Action Button to open VoxSynth and start recording.',
             ],
           ),
-          const Divider(height: 1),
+          Divider(height: 1.h),
           const _ShortcutTile(
             icon: Icons.back_hand_outlined,
             title: 'Back Tap',
@@ -51,7 +52,7 @@ class ShortcutsSetupScreen extends StatelessWidget {
               'Tap the back of your iPhone to start recording.',
             ],
           ),
-          const Divider(height: 1),
+          Divider(height: 1.h),
           _SectionHeader(title: 'Lock Screen & Control Center', theme: theme),
           if (Platform.isIOS)
             const _ShortcutTile(
@@ -63,7 +64,7 @@ class ShortcutsSetupScreen extends StatelessWidget {
                 'iOS 16-17: Add the Shortcuts widget to your Lock Screen, then place the "Start Voice Log" shortcut in it.',
               ],
             ),
-          const Divider(height: 1),
+          Divider(height: 1.h),
           const _ShortcutTile(
             icon: Icons.control_camera,
             title: 'Control Center',
@@ -74,10 +75,10 @@ class ShortcutsSetupScreen extends StatelessWidget {
               'Swipe down from the top-right to access it anytime.',
             ],
           ),
-          const Divider(height: 1),
+          Divider(height: 1.h),
           _SectionHeader(title: 'How it works', theme: theme),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(16.r),
             child: Text(
               'Every shortcut opens VoxSynth and starts recording immediately. '
               'When you stop, the recording is transcribed on-device, then '
@@ -146,12 +147,12 @@ class _ShortcutTile extends StatelessWidget {
             children: [
               for (var i = 0; i < steps.length; i++)
                 Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
+                  padding: EdgeInsets.only(bottom: 8.h),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SizedBox(
-                        width: 24,
+                        width: 24.w,
                         child: Text(
                           '${i + 1}.',
                           style: theme.textTheme.bodyMedium?.copyWith(

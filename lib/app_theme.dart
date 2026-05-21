@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 /// App-wide visual system: dark canvas, bright orchid primary, and muted
 /// lavender accent. Keep these constants centralized so feature UI stays
@@ -7,8 +8,10 @@ class VoxAppColors {
   const VoxAppColors._();
 
   static const Color primary = Color(0xFF1D1D1F); // Solid charcoal black
-  static const Color accent = Color(0xFFE13C30);  // Classic retro red
-  static const Color canvas = Color(0xFFF4F4F4);  // Warm light-grey/off-white backdrop
+  static const Color accent = Color(0xFFE13C30); // Classic retro red
+  static const Color canvas = Color(
+    0xFFF4F4F4,
+  ); // Warm light-grey/off-white backdrop
   static const Color surface = Color(0xFFFFFFFF); // Pure white cards/containers
   static const Color surfaceHigh = Color(0xFFEBEBEB);
   static const Color ink = Color(0xFF1D1D1F);
@@ -22,7 +25,6 @@ class VoxAppColors {
 ThemeData buildVoxTheme() {
   const scheme = ColorScheme.light(
     primary: VoxAppColors.primary,
-    onPrimary: Colors.white,
     primaryContainer: Color(0xFFF5EBEB),
     onPrimaryContainer: VoxAppColors.primary,
     secondary: VoxAppColors.accent,
@@ -35,7 +37,6 @@ ThemeData buildVoxTheme() {
     onTertiaryContainer: VoxAppColors.ink,
     error: VoxAppColors.error,
     onSurface: VoxAppColors.ink,
-    surface: VoxAppColors.surface,
     surfaceContainerLowest: Color(0xFFFFFFFF),
     surfaceContainerLow: Color(0xFFFAFAFA),
     surfaceContainer: VoxAppColors.surface,
@@ -54,7 +55,7 @@ ThemeData buildVoxTheme() {
     displayColor: VoxAppColors.ink,
   );
 
-  final retroMonospace = const TextStyle(fontFamily: 'monospace');
+  const retroMonospace = TextStyle(fontFamily: 'monospace');
 
   return base.copyWith(
     scaffoldBackgroundColor: VoxAppColors.canvas,
@@ -85,10 +86,10 @@ ThemeData buildVoxTheme() {
       ),
     ),
     iconTheme: const IconThemeData(color: VoxAppColors.ink),
-    dividerTheme: const DividerThemeData(
+    dividerTheme: DividerThemeData(
       color: VoxAppColors.outline,
-      thickness: 1,
-      space: 1,
+      thickness: 1.r,
+      space: 1.r,
     ),
     cardTheme: CardThemeData(
       elevation: 2,
@@ -96,7 +97,7 @@ ThemeData buildVoxTheme() {
       surfaceTintColor: Colors.transparent,
       shadowColor: Colors.black.withValues(alpha: 0.05),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(16.r),
         side: const BorderSide(color: VoxAppColors.outline),
       ),
     ),
@@ -107,23 +108,23 @@ ThemeData buildVoxTheme() {
       labelStyle: textTheme.labelLarge?.copyWith(color: VoxAppColors.ink),
       secondaryLabelStyle: textTheme.labelLarge?.copyWith(color: Colors.white),
       side: const BorderSide(color: VoxAppColors.outline),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
     ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: VoxAppColors.surface,
       hintStyle: TextStyle(color: VoxAppColors.muted.withValues(alpha: 0.82)),
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         borderSide: const BorderSide(color: VoxAppColors.outline),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(12.r),
         borderSide: const BorderSide(color: VoxAppColors.outline),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: VoxAppColors.primary, width: 1.4),
+        borderRadius: BorderRadius.circular(12.r),
+        borderSide: BorderSide(color: VoxAppColors.primary, width: 1.4.r),
       ),
     ),
     filledButtonTheme: FilledButtonThemeData(
@@ -132,14 +133,18 @@ ThemeData buildVoxTheme() {
         foregroundColor: Colors.white,
         disabledBackgroundColor: VoxAppColors.surfaceHigh,
         disabledForegroundColor: VoxAppColors.muted,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
       ),
     ),
     outlinedButtonTheme: OutlinedButtonThemeData(
       style: OutlinedButton.styleFrom(
         foregroundColor: VoxAppColors.primary,
         side: const BorderSide(color: VoxAppColors.outline),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12.r),
+        ),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -176,13 +181,13 @@ ThemeData buildVoxTheme() {
     dialogTheme: DialogThemeData(
       backgroundColor: VoxAppColors.surface,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.r)),
     ),
     snackBarTheme: SnackBarThemeData(
       backgroundColor: VoxAppColors.primary,
       contentTextStyle: textTheme.bodyMedium?.copyWith(color: Colors.white),
       behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10.r)),
     ),
     listTileTheme: ListTileThemeData(
       iconColor: VoxAppColors.accent,
@@ -190,7 +195,7 @@ ThemeData buildVoxTheme() {
       subtitleTextStyle: textTheme.bodySmall?.copyWith(
         color: VoxAppColors.muted,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.r)),
     ),
   );
 }
