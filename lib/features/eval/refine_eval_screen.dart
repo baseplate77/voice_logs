@@ -270,7 +270,7 @@ class _CaseTile extends StatelessWidget {
       leading: _StatusBadge(status: result.parseStatus),
       title: Text(
         result.caseId,
-        style: const TextStyle(fontFamily: 'monospace'),
+        style: const TextStyle(fontFamily: 'JetBrainsMono'),
       ),
       subtitle: Text(
         'ent F1 ${_pct(m.f1)} • type ${_pct(m.typeAccuracy)} • '
@@ -375,7 +375,7 @@ class _StatusBadge extends StatelessWidget {
         label,
         style: TextStyle(
           color: color,
-          fontSize: 11.sp,
+          fontSize: 12.sp,
           fontWeight: FontWeight.w700,
         ),
       ),

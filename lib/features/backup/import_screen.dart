@@ -225,7 +225,7 @@ class _ReportCard extends StatelessWidget {
           padding: EdgeInsets.symmetric(vertical: 2.h),
           child: Text(
             '$table: +${count.inserted} added, ${count.skipped} skipped',
-            style: TextStyle(fontFamily: 'monospace', fontSize: 12.sp),
+            style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12.sp),
           ),
         ),
       );

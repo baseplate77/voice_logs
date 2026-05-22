@@ -38,12 +38,6 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Four Corner Screws/Studs for hardware look
-            Positioned(left: 10.w, top: 10.h, child: const _SilverStud()),
-            Positioned(right: 10.w, top: 10.h, child: const _SilverStud()),
-            Positioned(left: 10.w, bottom: 10.h, child: const _SilverStud()),
-            Positioned(right: 10.w, bottom: 10.h, child: const _SilverStud()),
-
             // Main UI Layout
             Padding(
               padding: EdgeInsets.symmetric(
@@ -138,9 +132,9 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         Text(
           'VOICE RECORDING',
           style: TextStyle(
-            fontSize: 13.sp,
+            fontSize: 14.sp,
             fontWeight: FontWeight.w900,
-            fontFamily: 'monospace',
+            fontFamily: 'JetBrainsMono',
             letterSpacing: 1.8,
             color: VoxAppColors.ink.withValues(alpha: 0.8),
           ),
@@ -165,7 +159,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         title: Text(
           'DISCARD RECORDING?',
           style: TextStyle(
-            fontFamily: 'monospace',
+            fontFamily: 'JetBrainsMono',
             fontWeight: FontWeight.bold,
             fontSize: 16.sp,
           ),
@@ -181,7 +175,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
               'KEEP',
               style: TextStyle(
                 color: VoxAppColors.muted,
-                fontFamily: 'monospace',
+                fontFamily: 'JetBrainsMono',
               ),
             ),
           ),
@@ -192,7 +186,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
               style: TextStyle(
                 color: VoxAppColors.accent,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'monospace',
+                fontFamily: 'JetBrainsMono',
               ),
             ),
           ),
@@ -228,7 +222,7 @@ class _IdleStandbyView extends StatelessWidget {
                   '88:88:88',
                   style: TextStyle(
                     fontSize: 44.sp,
-                    fontFamily: 'monospace',
+                    fontFamily: 'JetBrainsMono',
                     fontWeight: FontWeight.w900,
                     color: VoxAppColors.accent,
                     letterSpacing: 2,
@@ -239,7 +233,7 @@ class _IdleStandbyView extends StatelessWidget {
                 '00:00:00',
                 style: TextStyle(
                   fontSize: 44.sp,
-                  fontFamily: 'monospace',
+                  fontFamily: 'JetBrainsMono',
                   fontWeight: FontWeight.w900,
                   color: Colors.white24,
                   letterSpacing: 2,
@@ -264,7 +258,7 @@ class _IdleStandbyView extends StatelessWidget {
             Text(
               'STANDBY',
               style: TextStyle(
-                fontFamily: 'monospace',
+                fontFamily: 'JetBrainsMono',
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
                 color: VoxAppColors.muted,
@@ -318,11 +312,11 @@ class _IdleStandbyView extends StatelessWidget {
         Text(
           'TAP TO START RECORDING',
           style: TextStyle(
-            fontSize: 11.sp,
+            fontSize: 12.sp,
             fontWeight: FontWeight.bold,
             color: VoxAppColors.muted,
             letterSpacing: 1.0,
-            fontFamily: 'monospace',
+            fontFamily: 'JetBrainsMono',
           ),
         ),
       ],
@@ -383,7 +377,7 @@ class _ActiveRecordingView extends StatelessWidget {
                   '88:88:88',
                   style: TextStyle(
                     fontSize: 46.sp,
-                    fontFamily: 'monospace',
+                    fontFamily: 'JetBrainsMono',
                     fontWeight: FontWeight.w900,
                     color: VoxAppColors.accent,
                     letterSpacing: 2.2,
@@ -394,7 +388,7 @@ class _ActiveRecordingView extends StatelessWidget {
                 timeStr,
                 style: TextStyle(
                   fontSize: 46.sp,
-                  fontFamily: 'monospace',
+                  fontFamily: 'JetBrainsMono',
                   fontWeight: FontWeight.w900,
                   color: isPaused ? VoxAppColors.muted : VoxAppColors.accent,
                   letterSpacing: 2.2,
@@ -421,7 +415,7 @@ class _ActiveRecordingView extends StatelessWidget {
             Text(
               isPaused ? 'PAUSED' : 'RECORDING',
               style: TextStyle(
-                fontFamily: 'monospace',
+                fontFamily: 'JetBrainsMono',
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
                 color: isPaused ? VoxAppColors.muted : VoxAppColors.accent,
@@ -514,9 +508,9 @@ class _ActiveRecordingView extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontFamily: 'monospace',
+                          fontFamily: 'JetBrainsMono',
                           letterSpacing: 1.2,
-                          fontSize: 13.sp,
+                          fontSize: 14.sp,
                         ),
                       ),
                     ],
@@ -761,7 +755,7 @@ class _RetroTranscribingView extends StatelessWidget {
             Text(
               'PROCESSING AUDIO',
               style: TextStyle(
-                fontFamily: 'monospace',
+                fontFamily: 'JetBrainsMono',
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.5,
@@ -789,8 +783,8 @@ class _RetroTranscribingView extends StatelessWidget {
           '> ',
           style: TextStyle(
             color: VoxAppColors.accent,
-            fontSize: 10.sp,
-            fontFamily: 'monospace',
+            fontSize: 12.sp,
+            fontFamily: 'JetBrainsMono',
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -799,8 +793,8 @@ class _RetroTranscribingView extends StatelessWidget {
             text,
             style: TextStyle(
               color: VoxAppColors.muted,
-              fontSize: 10.sp,
-              fontFamily: 'monospace',
+              fontSize: 12.sp,
+              fontFamily: 'JetBrainsMono',
             ),
           ),
         ),
@@ -830,7 +824,7 @@ class _FailedRetryView extends StatelessWidget {
           Text(
             'CAPTURE ERROR',
             style: TextStyle(
-              fontFamily: 'monospace',
+              fontFamily: 'JetBrainsMono',
               fontSize: 16.sp,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.5,
@@ -841,7 +835,7 @@ class _FailedRetryView extends StatelessWidget {
           Text(
             message,
             textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 13.sp, color: VoxAppColors.muted),
+            style: TextStyle(fontSize: 14.sp, color: VoxAppColors.muted),
           ),
           SizedBox(height: 32.h),
           GestureDetector(
@@ -856,49 +850,15 @@ class _FailedRetryView extends StatelessWidget {
                 'TRY AGAIN',
                 style: TextStyle(
                   color: Colors.white,
-                  fontFamily: 'monospace',
+                  fontFamily: 'JetBrainsMono',
                   fontWeight: FontWeight.bold,
                   letterSpacing: 1.0,
-                  fontSize: 13.sp,
+                  fontSize: 14.sp,
                 ),
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _SilverStud extends StatelessWidget {
-  const _SilverStud();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 10.w,
-      height: 10.h,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE0E0E0),
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFB0B0B0), width: 0.8.w),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0x0A000000),
-            blurRadius: 0.8.r,
-            offset: Offset(0.w, 0.8.h),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: 2.5.w,
-          height: 2.5.h,
-          decoration: const BoxDecoration(
-            color: Color(0xFF888888),
-            shape: BoxShape.circle,
-          ),
-        ),
       ),
     );
   }

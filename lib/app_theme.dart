@@ -51,26 +51,15 @@ ThemeData buildVoxTheme() {
 
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
   final textTheme = base.textTheme.apply(
+    fontFamily: 'JetBrainsMono',
     bodyColor: VoxAppColors.ink,
     displayColor: VoxAppColors.ink,
   );
 
-  const retroMonospace = TextStyle(fontFamily: 'monospace');
-
   return base.copyWith(
     scaffoldBackgroundColor: VoxAppColors.canvas,
     canvasColor: VoxAppColors.canvas,
-    textTheme: textTheme.copyWith(
-      displayLarge: textTheme.displayLarge?.merge(retroMonospace),
-      displayMedium: textTheme.displayMedium?.merge(retroMonospace),
-      displaySmall: textTheme.displaySmall?.merge(retroMonospace),
-      headlineLarge: textTheme.headlineLarge?.merge(retroMonospace),
-      headlineMedium: textTheme.headlineMedium?.merge(retroMonospace),
-      headlineSmall: textTheme.headlineSmall?.merge(retroMonospace),
-      titleLarge: textTheme.titleLarge?.merge(retroMonospace),
-      titleMedium: textTheme.titleMedium?.merge(retroMonospace),
-      titleSmall: textTheme.titleSmall?.merge(retroMonospace),
-    ),
+    textTheme: textTheme,
     appBarTheme: AppBarTheme(
       elevation: 0,
       scrolledUnderElevation: 0,
@@ -82,7 +71,6 @@ ThemeData buildVoxTheme() {
         color: VoxAppColors.ink,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
-        fontFamily: 'monospace',
       ),
     ),
     iconTheme: const IconThemeData(color: VoxAppColors.ink),

@@ -79,7 +79,7 @@ class _IndexBadge extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontSize: 11.sp,
+          fontSize: 12.sp,
           fontWeight: FontWeight.w700,
           color: scheme.primary,
         ),

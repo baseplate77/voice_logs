@@ -7,14 +7,11 @@ import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../app_theme.dart';
 import '../../core/db/processing_state.dart';
 import '../../core/db/providers.dart';
-import '../../core/db/repositories/entity_mention_repository.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 
-/// One row in the home list. Shows date, duration, the log title, and a
-/// processing-state badge. When refine completes and the title transitions
-/// from a raw-transcript fallback to the Gemma-generated title, the title
-/// plays a one-shot reveal animation (fade + slight slide-up + shimmer
-/// sweep) so users see the moment a log becomes "named".
+/// One row in the home list. Shows title + relative time + inline entity names.
+/// When refine completes and the title transitions from a raw-transcript
+/// fallback to the generated title, a one-shot reveal animation plays.
 class LogRow extends ConsumerStatefulWidget {
   const LogRow({super.key, required this.log, required this.onTap});
 
@@ -96,84 +93,59 @@ class _LogRowState extends ConsumerState<LogRow>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top Section: Square Mic Block, Title, and Date
+              isTitlePending
+                  ? const _GenerativeTitleLoader()
+                  : hasTitle && _controller.value < 1.0
+                  ? _TitleReveal(animation: _controller, text: titleText)
+                  : Text(
+                      titleText.isEmpty ? 'New Voice Log' : titleText,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'JetBrainsMono',
+                        color: titleText.isEmpty
+                            ? theme.colorScheme.onSurfaceVariant
+                            : theme.colorScheme.onSurface,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+              SizedBox(height: 4.h),
               Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Symmetrical Dark Mic Block
-                  Container(
-                    width: 42.w,
-                    height: 42.h,
-                    decoration: BoxDecoration(
-                      color: VoxAppColors.primary, // dark charcoal
-                      borderRadius: BorderRadius.circular(8.r),
-                    ),
-                    child: Icon(
-                      Icons.mic_rounded,
-                      color: Colors.white,
-                      size: 20.r,
+                  Text(
+                    _relativeTime(log.createdAt),
+                    style: TextStyle(
+                      fontSize: 12.sp,
+                      color: VoxAppColors.muted,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
-                  SizedBox(width: 12.w),
-                  // Expanded block for Title & Date
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        isTitlePending
-                            ? const _GenerativeTitleLoader()
-                            : hasTitle && _controller.value < 1.0
-                            ? _TitleReveal(
-                                animation: _controller,
-                                text: titleText,
-                              )
-                            : Text(
-                                titleText.isEmpty ? 'New Voice Log' : titleText,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w900,
-                                  fontFamily: 'monospace',
-                                  color: titleText.isEmpty
-                                      ? theme.colorScheme.onSurfaceVariant
-                                      : theme.colorScheme.onSurface,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                        Text(
-                          _formatDate(log.createdAt),
-                          style: TextStyle(
-                            fontSize: 12.sp,
-                            color: VoxAppColors.muted,
-                            fontWeight: FontWeight.w500,
-                          ),
+                  if (mentions.isNotEmpty) ...[
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 6.w),
+                      child: Text(
+                        '·',
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: VoxAppColors.muted,
                         ),
-                        if (log.rawTranscript.isNotEmpty) ...[
-                          SizedBox(height: 6.h),
-                          Text(
-                            log.rawTranscript,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13.sp,
-                              color: VoxAppColors.muted,
-                              fontFamily: 'monospace',
-                              height: 1.3.h,
-                            ),
-                          ),
-                        ],
-                      ],
+                      ),
                     ),
-                  ),
+                    Expanded(
+                      child: Text(
+                        mentions.map((m) => m.text).join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12.sp,
+                          color: VoxAppColors.muted,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              if (mentions.isNotEmpty) ...[
-                SizedBox(height: 10.h),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: mentions.map((m) => _TagChip(mention: m)).toList(),
-                ),
-              ],
             ],
           ),
         ),
@@ -181,102 +153,21 @@ class _LogRowState extends ConsumerState<LogRow>
     );
   }
 
-  String _formatDate(DateTime date) {
+  String _relativeTime(DateTime date) {
+    final now = DateTime.now();
+    final diff = now.difference(date);
+
+    if (diff.inMinutes < 1) return 'Just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    if (diff.inDays == 1) return 'Yesterday';
+    if (diff.inDays < 7) return '${diff.inDays}d ago';
+
     final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
     ];
-    final m = months[date.month - 1];
-    final h = date.hour > 12
-        ? date.hour - 12
-        : (date.hour == 0 ? 12 : date.hour);
-    final min = date.minute.toString().padLeft(2, '0');
-    final ampm = date.hour >= 12 ? 'PM' : 'AM';
-    return '$m ${date.day} at $h:$min$ampm';
-  }
-}
-
-class _TagChip extends StatelessWidget {
-  const _TagChip({required this.mention});
-  final EntityMentionView mention;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = _colorForType(mention.type);
-    final icon = _iconForType(mention.type);
-
-    final maxChipWidth = max(80.0, MediaQuery.sizeOf(context).width - 96.w);
-
-    return ConstrainedBox(
-      constraints: BoxConstraints(maxWidth: maxChipWidth),
-      child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 8.w, vertical: 3.h),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(8.r),
-          border: Border.all(
-            color: color.withValues(alpha: 0.15),
-            width: 0.8.w,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 10.r, color: color),
-            SizedBox(width: 4.w),
-            Flexible(
-              child: Text(
-                mention.text,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 10.sp,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  IconData _iconForType(String type) {
-    switch (type.toUpperCase()) {
-      case 'PERSON':
-        return Icons.person_rounded;
-      case 'PLACE':
-        return Icons.place_rounded;
-      case 'PROJECT':
-        return Icons.folder_rounded;
-      default:
-        return Icons.label_rounded;
-    }
-  }
-
-  Color _colorForType(String type) {
-    switch (type.toUpperCase()) {
-      case 'PERSON':
-        return const Color(0xFF2F80ED);
-      case 'PLACE':
-        return const Color(0xFF27AE60);
-      case 'PROJECT':
-        return VoxAppColors.accent; // Retro Red
-      default:
-        return VoxAppColors.muted;
-    }
+    return '${months[date.month - 1]} ${date.day}';
   }
 }
 
@@ -292,7 +183,7 @@ class _TitleReveal extends StatelessWidget {
     final base =
         theme.textTheme.titleMedium?.copyWith(
           fontWeight: FontWeight.bold,
-          fontFamily: 'monospace',
+          fontFamily: 'JetBrainsMono',
         ) ??
         const TextStyle();
     return AnimatedBuilder(
@@ -408,7 +299,7 @@ class _GenerativeTitleLoaderState extends State<_GenerativeTitleLoader>
                   'Crafting title...',
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
+                    fontFamily: 'JetBrainsMono',
                     letterSpacing: 0.1,
                   ),
                   maxLines: 1,

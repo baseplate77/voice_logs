@@ -288,7 +288,7 @@ List<TextSpan> _inlineMarkdownTextSpans(String text, TextStyle base) {
         TextSpan(
           text: code,
           style: base.copyWith(
-            fontFamily: 'monospace',
+            fontFamily: 'JetBrainsMono',
             backgroundColor: Colors.black.withValues(alpha: 0.08),
           ),
         ),
@@ -301,8 +301,8 @@ List<TextSpan> _inlineMarkdownTextSpans(String text, TextStyle base) {
 }
 
 TextStyle _bodyStyle(BuildContext context) {
-  return Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45.h) ??
-      TextStyle(fontSize: 15.sp, height: 1.45.h);
+  return Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45) ??
+      TextStyle(fontSize: 15.sp, height: 1.45);
 }
 
 TextStyle _headingStyle(BuildContext context, int level) {

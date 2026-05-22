@@ -147,30 +147,26 @@ class _TranscriptPlayerViewState extends State<TranscriptPlayerView> {
 
   @override
   Widget build(BuildContext context) {
+    final base = DefaultTextStyle.of(
+      context,
+    ).style.copyWith(fontFamily: 'JetBrainsMono');
     if (_words.isEmpty) {
-      return SingleChildScrollView(
-        padding: EdgeInsets.all(16.r),
-        child: SelectableText(widget.fallbackText),
-      );
+      return SelectableText(widget.fallbackText, style: base);
     }
-    final base = DefaultTextStyle.of(context).style;
-    return SingleChildScrollView(
-      padding: EdgeInsets.all(16.r),
-      child: Wrap(
-        spacing: 4,
-        runSpacing: 4,
-        children: [
-          for (var i = 0; i < _words.length; i++)
-            _WordChip(
-              key: _wordKeys[i],
-              word: _words[i].word,
-              isActive: i == _activeIndex,
-              isFocused: _isFocused(_words[i]),
-              baseStyle: base,
-              onTap: () => _seekTo(i),
-            ),
-        ],
-      ),
+    return Wrap(
+      spacing: 4,
+      runSpacing: 4,
+      children: [
+        for (var i = 0; i < _words.length; i++)
+          _WordChip(
+            key: _wordKeys[i],
+            word: _words[i].word,
+            isActive: i == _activeIndex,
+            isFocused: _isFocused(_words[i]),
+            baseStyle: base,
+            onTap: () => _seekTo(i),
+          ),
+      ],
     );
   }
 }

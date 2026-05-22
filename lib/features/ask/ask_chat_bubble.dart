@@ -275,7 +275,7 @@ class _RoundReferenceChip extends StatelessWidget {
               child: Text(
                 citation.marker.substring(1, citation.marker.length - 1),
                 style: TextStyle(
-                  fontSize: 10.sp,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.w800,
                   color: foreground,
                 ),
@@ -318,7 +318,7 @@ class _MoreReferenceChip extends StatelessWidget {
               child: Text(
                 '+$count',
                 style: TextStyle(
-                  fontSize: 10.sp,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.w800,
                   color: scheme.onSurfaceVariant,
                 ),

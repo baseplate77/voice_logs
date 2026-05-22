@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../app_theme.dart';
 import '../../core/db/providers.dart';
 import '../detail/log_detail_screen.dart';
-import '../garden/vox_garden_screen.dart';
 import '../list/log_row.dart';
 import '../record/recording_providers.dart';
 import '../search/search_screen.dart';
 import 'auto_record_provider.dart';
 import 'onboarding_overlay.dart';
 import 'recording_overlay.dart';
-import 'two_tone_palette.dart';
 
 /// Primary screen: stateful dashboard.
 /// Renders a premium physical layout: a deep dark base board over which a
@@ -65,7 +64,7 @@ class _VoxHomeScreenState extends ConsumerState<VoxHomeScreen> {
     return Scaffold(
       backgroundColor: (isOnboarded || hasImportedLogs)
           ? const Color(0xFF121315)
-          : TwoTonePalette.canvas,
+          : VoxAppColors.canvas,
       body: isOnboarded || hasImportedLogs
           ? const _MainContent()
           : const SafeArea(child: OnboardingOverlay()),
@@ -99,7 +98,7 @@ class _MainContent extends ConsumerWidget {
           child: ClipPath(
             clipper: _WhiteCanvasClipper(bottomNavBarHeight: navBarHeight),
             child: Container(
-              color: TwoTonePalette.canvas, // warm off-white #F4F4F4
+              color: VoxAppColors.canvas, // warm off-white #F4F4F4
               child: SafeArea(
                 bottom: false,
                 child: Padding(
@@ -108,127 +107,69 @@ class _MainContent extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Header Title
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text.rich(
+                      Text.rich(
+                        TextSpan(
+                          children: [
                             TextSpan(
-                              children: [
-                                TextSpan(
-                                  text: 'VoxSynth',
-                                  style: TextStyle(
-                                    fontSize: 28.sp,
-                                    fontFamily: 'NDot',
-                                    color: VoxAppColors.primary,
-                                  ),
-                                ),
-                                TextSpan(
-                                  text: '.',
-                                  style: TextStyle(
-                                    fontSize: 28.sp,
-                                    fontFamily: 'NDot',
-                                    color: VoxAppColors.accent,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          IconButton(
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              side: const BorderSide(color: VoxAppColors.outline),
-                            ),
-                            icon: const Icon(Icons.yard_outlined, color: VoxAppColors.primary),
-                            tooltip: 'Synthia Garden',
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const VoxGardenScreen(),
+                              text: 'VoxSynth',
+                              style: TextStyle(
+                                fontSize: 28.sp,
+                                fontFamily: 'NDOT',
+                                color: VoxAppColors.primary,
                               ),
                             ),
-                          ),
-                        ],
+                            TextSpan(
+                              text: '.',
+                              style: TextStyle(
+                                fontSize: 28.sp,
+                                fontFamily: 'NDOT',
+                                color: VoxAppColors.accent,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       SizedBox(height: 20.h),
-                      // Search Bar + Filter Button
-                      Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () => Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => const SearchScreen(),
-                                ),
-                              ),
-                              borderRadius: BorderRadius.circular(12.r),
-                              child: Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: 14.w,
-                                  vertical: 12.h,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(12.r),
-                                  border: Border.all(
-                                    color: VoxAppColors.outline,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.03,
-                                      ),
-                                      blurRadius: 4.r,
-                                      offset: Offset(0.w, 2.h),
-                                    ),
-                                  ],
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.search_rounded,
-                                      color: VoxAppColors.muted,
-                                      size: 20.r,
-                                    ),
-                                    SizedBox(width: 10.w),
-                                    Flexible(
-                                      child: Text(
-                                        'Search Recordings',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          color: VoxAppColors.muted,
-                                          fontSize: 15.sp,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
+                      // Search Bar
+                      InkWell(
+                        onTap: () => Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => const SearchScreen(),
                           ),
-                          SizedBox(width: 12.w),
-                          InkWell(
-                            onTap: () => Navigator.of(context).push(
-                              MaterialPageRoute<void>(
-                                builder: (_) => const SearchScreen(),
-                              ),
-                            ),
+                        ),
+                        borderRadius: BorderRadius.circular(12.r),
+                        child: Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 14.w,
+                            vertical: 12.h,
+                          ),
+                          decoration: BoxDecoration(
+                            color: VoxAppColors.surfaceHigh,
                             borderRadius: BorderRadius.circular(12.r),
-                            child: Container(
-                              width: 48.w,
-                              height: 48.h,
-                              decoration: BoxDecoration(
-                                color: VoxAppColors.primary,
-                                borderRadius: BorderRadius.circular(12.r),
-                              ),
-                              child: Icon(
-                                Icons.tune_rounded,
-                                color: Colors.white,
-                                size: 20.r,
-                              ),
-                            ),
                           ),
-                        ],
+                          child: Row(
+                            children: [
+                              Icon(
+                                Iconsax.search_normal_1,
+                                color: VoxAppColors.muted,
+                                size: 18.r,
+                              ),
+                              SizedBox(width: 10.w),
+                              Flexible(
+                                child: Text(
+                                  'Search Recordings',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: VoxAppColors.muted,
+                                    fontSize: 14.sp,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                       SizedBox(height: 20.h),
                       const _DashedDivider(),
@@ -290,12 +231,7 @@ class _MainContent extends ConsumerWidget {
         //   ),
         // ),
 
-        // 3. Symmetrical Silver Corner Screws / Studs
-        // Placed relative to the corners of the refined faceplate panel
-        Positioned(left: 12.w, top: 12.h, child: const _SilverStud()),
-        Positioned(right: 12.w, top: 12.h, child: const _SilverStud()),
-
-        // 4. The Bottom Nav Bar controls sitting on the exposed dark deck
+        // 3. The Bottom Nav Bar controls sitting on the exposed dark deck
         Positioned(
           left: 0.w,
           right: 0.w,
@@ -336,40 +272,6 @@ class _DashedDivider extends StatelessWidget {
   }
 }
 
-class _SilverStud extends StatelessWidget {
-  const _SilverStud();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 12.w,
-      height: 12.h,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE0E0E0),
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFB0B0B0), width: 1.w),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0x1A000000),
-            blurRadius: 1.r,
-            offset: Offset(0.w, 1.h),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: 3.w,
-          height: 3.h,
-          decoration: const BoxDecoration(
-            color: Color(0xFF888888),
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
@@ -381,7 +283,7 @@ class _EmptyState extends StatelessWidget {
         child: Text(
           'Your journal gets smarter as you record more.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16.sp, fontFamily: 'monospace'),
+          style: TextStyle(fontSize: 16.sp, fontFamily: 'JetBrainsMono'),
         ),
       ),
     );

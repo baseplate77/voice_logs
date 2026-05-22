@@ -150,11 +150,17 @@ flutter:
     - assets/eval/refine_eval_cases.json
 
   fonts:
-    - family: NDot
+    - family: NDOT
       fonts:
-        - asset: assets/fonts/NDot57.ttf
-        - asset: assets/fonts/NDot55.ttf
+        - asset: assets/fonts/Ndot57-Regular.otf
+        - asset: assets/fonts/Ndot55-Regular.otf
           weight: 500
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/JetBrainsMono-Bold.ttf
+          weight: 700
     - family: SpecialElite
       fonts:
         - asset: assets/fonts/SpecialElite-Regular.ttf

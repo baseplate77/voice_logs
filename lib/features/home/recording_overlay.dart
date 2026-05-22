@@ -6,12 +6,10 @@ import 'package:iconsax/iconsax.dart';
 import '../../app_theme.dart';
 import '../../core/logger.dart';
 import '../ask/ask_screen.dart';
-import '../garden/vox_garden_screen.dart';
 import '../record/record_screen.dart';
 import '../record/recording_providers.dart';
 import '../record/transcribing_indicator.dart';
 import '../settings/settings_screen.dart';
-import 'two_tone_palette.dart';
 
 final _log = Logger('recording_overlay');
 
@@ -133,20 +131,8 @@ class _IdleDeck extends StatelessWidget {
                       ),
                       tooltip: 'Chat',
                       onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(builder: (_) => const AskScreen()),
-                      ),
-                    ),
-                    SizedBox(width: 10.w),
-                    IconButton(
-                      icon: Icon(
-                        Icons.yard_outlined,
-                        color: Colors.white,
-                        size: 26.r,
-                      ),
-                      tooltip: 'Synthia Garden',
-                      onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const VoxGardenScreen(),
+                          builder: (_) => const AskScreen(),
                         ),
                       ),
                     ),
@@ -239,8 +225,9 @@ class _ActiveDeck extends StatelessWidget {
                     SizedBox(width: 8.w),
                     Text(
                       'REC',
-                      style: labelCaps(VoxAppColors.accent).copyWith(
-                        fontSize: 10.sp,
+                      style: TextStyle(
+                        fontSize: 12.sp,
+                        fontWeight: FontWeight.w600,
                         letterSpacing: 1.5,
                         color: VoxAppColors.accent,
                       ),
@@ -253,7 +240,7 @@ class _ActiveDeck extends StatelessWidget {
                     fontSize: 15.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
-                    fontFamily: 'monospace',
+                    fontFamily: 'JetBrainsMono',
                   ),
                 ),
               ],
@@ -333,21 +320,21 @@ class _TranscribingDeck extends StatelessWidget {
                 Text(
                   'VOXSYNTH',
                   style: TextStyle(
-                    fontSize: 9.sp,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white54,
                     letterSpacing: 2.0,
-                    fontFamily: 'monospace',
+                    fontFamily: 'JetBrainsMono',
                   ),
                 ),
                 Text(
                   'PROCESSING...',
                   style: TextStyle(
-                    fontSize: 9.sp,
+                    fontSize: 12.sp,
                     fontWeight: FontWeight.bold,
                     color: Colors.white54,
                     letterSpacing: 1.0,
-                    fontFamily: 'monospace',
+                    fontFamily: 'JetBrainsMono',
                   ),
                 ),
               ],
@@ -408,9 +395,9 @@ class _FailedDeck extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.redAccent,
-                  fontSize: 10.sp,
+                  fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
-                  fontFamily: 'monospace',
+                  fontFamily: 'JetBrainsMono',
                 ),
               ),
             ),

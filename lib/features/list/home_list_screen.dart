@@ -25,7 +25,7 @@ class HomeListScreen extends ConsumerWidget {
               TextSpan(
                 text: 'VoxSynth',
                 style: TextStyle(
-                  fontFamily: 'NDot',
+                  fontFamily: 'NDOT',
                   fontWeight: FontWeight.bold,
                   fontSize: 20.sp,
                   color: VoxAppColors.primary,
@@ -34,7 +34,7 @@ class HomeListScreen extends ConsumerWidget {
               TextSpan(
                 text: '.',
                 style: TextStyle(
-                  fontFamily: 'NDot',
+                  fontFamily: 'NDOT',
                   fontWeight: FontWeight.bold,
                   fontSize: 20.sp,
                   color: VoxAppColors.accent,

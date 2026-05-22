@@ -33,14 +33,14 @@ class OnboardingOverlay extends ConsumerWidget {
                   TextSpan(
                     text: 'VoxSynth',
                     style: theme.textTheme.headlineMedium?.copyWith(
-                      fontFamily: 'NDot',
+                      fontFamily: 'NDOT',
                       color: VoxAppColors.primary,
                     ),
                   ),
                   TextSpan(
                     text: '.',
                     style: theme.textTheme.headlineMedium?.copyWith(
-                      fontFamily: 'NDot',
+                      fontFamily: 'NDOT',
                       color: VoxAppColors.accent,
                       fontWeight: FontWeight.bold,
                     ),

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:iconsax/iconsax.dart';
 import 'package:path/path.dart' as p;
 
 import '../../app_theme.dart';
@@ -106,19 +107,13 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-            // Four Corner Screws/Studs
-            Positioned(left: 10.w, top: 10.h, child: const _SilverStud()),
-            Positioned(right: 10.w, top: 10.h, child: const _SilverStud()),
-            Positioned(left: 10.w, bottom: 10.h, child: const _SilverStud()),
-            Positioned(right: 10.w, bottom: 10.h, child: const _SilverStud()),
-
-            logAsync.when(
+              logAsync.when(
               data: (log) {
                 if (log == null) {
                   return const Center(
                     child: Text(
                       'Voice log not found',
-                      style: TextStyle(fontFamily: 'monospace'),
+                      style: TextStyle(fontFamily: 'JetBrainsMono'),
                     ),
                   );
                 }
@@ -146,146 +141,166 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                       const _DashedDivider(),
                       SizedBox(height: 16.h),
 
-                      // Symmetrical Playback Controller Card
-                      _PlaybackCard(audio: _audio, peaksFuture: _peaksFuture),
-                      SizedBox(height: 16.h),
-
-                      // Optional Processing Info Status
-                      if (log.processingState != ProcessingState.embedded) ...[
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: 14.w,
-                            vertical: 8.h,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(8.r),
-                            border: Border.all(color: VoxAppColors.outline),
-                          ),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 12.w,
-                                height: 12.h,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.r,
-                                  color: VoxAppColors.accent,
-                                ),
-                              ),
-                              SizedBox(width: 10.w),
-                              Expanded(
-                                child: Text(
-                                  _statusText(log.processingState),
-                                  style: TextStyle(
-                                    fontSize: 11.sp,
-                                    fontStyle: FontStyle.italic,
-                                    color: VoxAppColors.muted,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 12.h),
-                      ],
-
-                      // Log summary & tagging chip container
-                      if (mentions.isNotEmpty) ...[
-                        EntityChips(mentions: mentions),
-                        SizedBox(height: 12.h),
-                      ],
-
-                      LogSummaryPanel(logId: widget.logId),
-
-                      // Expanded Transcript Card
+                      // Main scrollable central cards area
                       Expanded(
-                        child: Container(
-                          margin: EdgeInsets.only(top: 8.h, bottom: 16.h),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16.r),
-                            border: Border.all(color: VoxAppColors.outline),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.03),
-                                blurRadius: 6.r,
-                                offset: Offset(0.w, 3.h),
-                              ),
-                            ],
-                          ),
+                        child: SingleChildScrollView(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              // Transcript Header Label
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  12,
-                                  16,
-                                  8,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.description_outlined,
-                                      size: 14.r,
-                                      color: VoxAppColors.accent,
+                              // Symmetrical Playback Controller Card
+                              _PlaybackCard(
+                                audio: _audio,
+                                peaksFuture: _peaksFuture,
+                              ),
+                              SizedBox(height: 16.h),
+
+                              // Optional Processing Info Status
+                              if (log.processingState !=
+                                  ProcessingState.embedded) ...[
+                                Container(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 14.w,
+                                    vertical: 8.h,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8.r),
+                                    border: Border.all(
+                                      color: VoxAppColors.outline,
                                     ),
-                                    SizedBox(width: 6.w),
-                                    Text(
-                                      'JOURNAL TRANSCRIPT',
-                                      style: TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 11.sp,
-                                        fontWeight: FontWeight.w900,
-                                        letterSpacing: 1.5,
-                                        color: VoxAppColors.ink.withValues(
-                                          alpha: 0.8,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      SizedBox(
+                                        width: 12.w,
+                                        height: 12.h,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.r,
+                                          color: VoxAppColors.accent,
                                         ),
                                       ),
+                                      SizedBox(width: 10.w),
+                                      Expanded(
+                                        child: Text(
+                                          _statusText(log.processingState),
+                                          style: TextStyle(
+                                            fontSize: 12.sp,
+                                            fontStyle: FontStyle.italic,
+                                            color: VoxAppColors.muted,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(height: 12.h),
+                              ],
+
+                              // Log summary & tagging chip container
+                              if (mentions.isNotEmpty) ...[
+                                EntityChips(mentions: mentions),
+                                SizedBox(height: 12.h),
+                              ],
+
+                              LogSummaryPanel(logId: widget.logId),
+
+                              // Dynamic height Transcript Card
+                              Container(
+                                margin: EdgeInsets.only(top: 8.h, bottom: 16.h),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16.r),
+                                  border: Border.all(
+                                    color: VoxAppColors.outline,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.03,
+                                      ),
+                                      blurRadius: 6.r,
+                                      offset: Offset(0.w, 3.h),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  children: [
+                                    // Transcript Header Label
+                                    Padding(
+                                      padding: const EdgeInsets.fromLTRB(
+                                        16,
+                                        12,
+                                        16,
+                                        8,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Iconsax.document_text,
+                                            size: 14.r,
+                                            color: VoxAppColors.accent,
+                                          ),
+                                          SizedBox(width: 6.w),
+                                          Text(
+                                            'TRANSCRIPT',
+                                            style: TextStyle(
+                                              fontFamily: 'JetBrainsMono',
+                                              fontSize: 12.sp,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: 1.5,
+                                              color: VoxAppColors.ink
+                                                  .withValues(alpha: 0.8),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const _DashedDivider(),
+
+                                    // Main Transcript zone rendered inline (no internal scrolling zone)
+                                    Padding(
+                                      padding: EdgeInsets.all(16.r),
+                                      child: segments.isEmpty
+                                          ? MarkdownTranscriptView(
+                                              text: fallback,
+                                              mentions: mentions,
+                                            )
+                                          : TranscriptPlayerView(
+                                              segments: segments,
+                                              controller: _audio,
+                                              fallbackText: fallback,
+                                              focusedStartMs:
+                                                  widget.highlightStartMs,
+                                              focusedEndMs:
+                                                  widget.highlightEndMs,
+                                            ),
                                     ),
                                   ],
                                 ),
                               ),
-                              const _DashedDivider(),
 
-                              // Main Transcript scrollable zone
-                              Expanded(
-                                child: segments.isEmpty
-                                    ? SingleChildScrollView(
-                                        padding: EdgeInsets.all(16.r),
-                                        child: MarkdownTranscriptView(
-                                          text: fallback,
-                                          mentions: mentions,
-                                        ),
-                                      )
-                                    : TranscriptPlayerView(
-                                        segments: segments,
-                                        controller: _audio,
-                                        fallbackText: fallback,
-                                        focusedStartMs: widget.highlightStartMs,
-                                        focusedEndMs: widget.highlightEndMs,
-                                      ),
-                              ),
+                              // Failed error view warning
+                              if (log.processingState ==
+                                  ProcessingState.failed) ...[
+                                Padding(
+                                  padding: EdgeInsets.symmetric(vertical: 4.h),
+                                  child: Text(
+                                    'Refinement failed: ${log.errorMessage ?? "unknown"}',
+                                    style: TextStyle(
+                                      color: VoxAppColors.error,
+                                      fontSize: 12.sp,
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(height: 8.h),
+                              ],
                             ],
                           ),
                         ),
                       ),
-
-                      // Failed error view warning
-                      if (log.processingState == ProcessingState.failed) ...[
-                        Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4.h),
-                          child: Text(
-                            'Refinement failed: ${log.errorMessage ?? "unknown"}',
-                            style: TextStyle(
-                              color: VoxAppColors.error,
-                              fontSize: 12.sp,
-                            ),
-                          ),
-                        ),
-                        SizedBox(height: 8.h),
-                      ],
+                      SizedBox(height: 8.h),
 
                       // base Action buttons (Delete, Share, Rename)
                       _buildBottomActions(context, log),
@@ -300,7 +315,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
               error: (e, _) => Center(
                 child: Text(
                   'Error: $e',
-                  style: const TextStyle(fontFamily: 'monospace'),
+                  style: const TextStyle(fontFamily: 'JetBrainsMono'),
                 ),
               ),
             ),
@@ -349,8 +364,8 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 13.sp,
+                fontFamily: 'JetBrainsMono',
+                fontSize: 14.sp,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.2,
                 color: VoxAppColors.ink,
@@ -398,8 +413,8 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                     child: Text(
                       'Retry refinement',
                       style: TextStyle(
-                        fontFamily: 'monospace',
-                        fontSize: 13.sp,
+                        fontFamily: 'JetBrainsMono',
+                        fontSize: 14.sp,
                       ),
                     ),
                   ),
@@ -408,8 +423,8 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   child: Text(
                     'Delete Log',
                     style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontSize: 13.sp,
+                      fontFamily: 'JetBrainsMono',
+                      fontSize: 14.sp,
                       color: VoxAppColors.accent,
                       fontWeight: FontWeight.bold,
                     ),
@@ -454,8 +469,8 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                    fontSize: 13.sp,
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 14.sp,
                     letterSpacing: 1.0,
                   ),
                 ),
@@ -473,7 +488,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                 const SnackBar(
                   content: Text(
                     'Raw transcript copied to clipboard!',
-                    style: TextStyle(fontFamily: 'monospace'),
+                    style: TextStyle(fontFamily: 'JetBrainsMono'),
                   ),
                   duration: Duration(seconds: 2),
                 ),
@@ -492,8 +507,8 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   style: TextStyle(
                     color: VoxAppColors.ink,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                    fontSize: 13.sp,
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 14.sp,
                     letterSpacing: 1.0,
                   ),
                 ),
@@ -520,8 +535,8 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   style: TextStyle(
                     color: VoxAppColors.ink,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'monospace',
-                    fontSize: 13.sp,
+                    fontFamily: 'JetBrainsMono',
+                    fontSize: 14.sp,
                     letterSpacing: 1.0,
                   ),
                 ),
@@ -546,7 +561,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
         title: Text(
           'DELETE VOICE LOG?',
           style: TextStyle(
-            fontFamily: 'monospace',
+            fontFamily: 'JetBrainsMono',
             fontWeight: FontWeight.bold,
             fontSize: 16.sp,
           ),
@@ -562,7 +577,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
               'CANCEL',
               style: TextStyle(
                 color: VoxAppColors.muted,
-                fontFamily: 'monospace',
+                fontFamily: 'JetBrainsMono',
               ),
             ),
           ),
@@ -573,7 +588,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
               style: TextStyle(
                 color: VoxAppColors.accent,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'monospace',
+                fontFamily: 'JetBrainsMono',
               ),
             ),
           ),
@@ -714,7 +729,7 @@ class _PlaybackCardState extends State<_PlaybackCard> {
               Text(
                 _formatMs(currentMs),
                 style: TextStyle(
-                  fontFamily: 'monospace',
+                  fontFamily: 'JetBrainsMono',
                   fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
                   color: VoxAppColors.muted,
@@ -723,7 +738,7 @@ class _PlaybackCardState extends State<_PlaybackCard> {
               Text(
                 _formatMs(totalMs),
                 style: TextStyle(
-                  fontFamily: 'monospace',
+                  fontFamily: 'JetBrainsMono',
                   fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
                   color: VoxAppColors.muted,
@@ -905,7 +920,7 @@ class _EditTitleDialogState extends State<_EditTitleDialog> {
       title: Text(
         'RENAME VOICE LOG',
         style: TextStyle(
-          fontFamily: 'monospace',
+          fontFamily: 'JetBrainsMono',
           fontWeight: FontWeight.bold,
           fontSize: 16.sp,
         ),
@@ -918,7 +933,7 @@ class _EditTitleDialogState extends State<_EditTitleDialog> {
         style: TextStyle(fontSize: 14.sp),
         decoration: InputDecoration(
           hintText: 'Enter title...',
-          hintStyle: TextStyle(color: VoxAppColors.muted, fontSize: 13.sp),
+          hintStyle: TextStyle(color: VoxAppColors.muted, fontSize: 14.sp),
           enabledBorder: UnderlineInputBorder(
             borderSide: BorderSide(color: VoxAppColors.outline, width: 1.5.w),
           ),
@@ -935,7 +950,7 @@ class _EditTitleDialogState extends State<_EditTitleDialog> {
             'CANCEL',
             style: TextStyle(
               color: VoxAppColors.muted,
-              fontFamily: 'monospace',
+              fontFamily: 'JetBrainsMono',
             ),
           ),
         ),
@@ -946,45 +961,11 @@ class _EditTitleDialogState extends State<_EditTitleDialog> {
             style: TextStyle(
               color: VoxAppColors.primary,
               fontWeight: FontWeight.bold,
-              fontFamily: 'monospace',
+              fontFamily: 'JetBrainsMono',
             ),
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SilverStud extends StatelessWidget {
-  const _SilverStud();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 10.w,
-      height: 10.h,
-      decoration: BoxDecoration(
-        color: const Color(0xFFE0E0E0),
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFB0B0B0), width: 0.8.w),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0x0A000000),
-            blurRadius: 0.8.r,
-            offset: Offset(0.w, 0.8.h),
-          ),
-        ],
-      ),
-      child: Center(
-        child: Container(
-          width: 2.5.w,
-          height: 2.5.h,
-          decoration: const BoxDecoration(
-            color: Color(0xFF888888),
-            shape: BoxShape.circle,
-          ),
-        ),
-      ),
     );
   }
 }
