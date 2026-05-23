@@ -147,9 +147,7 @@ class _TranscriptPlayerViewState extends State<TranscriptPlayerView> {
 
   @override
   Widget build(BuildContext context) {
-    final base = DefaultTextStyle.of(
-      context,
-    ).style.copyWith(fontFamily: 'JetBrainsMono');
+    final base = DefaultTextStyle.of(context).style;
     if (_words.isEmpty) {
       return SelectableText(widget.fallbackText, style: base);
     }

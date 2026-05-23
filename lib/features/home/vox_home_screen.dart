@@ -5,7 +5,9 @@ import 'package:iconsax/iconsax.dart';
 
 import '../../app_theme.dart';
 import '../../core/db/providers.dart';
+import '../../core/db/repositories/voice_log_repository.dart';
 import '../detail/log_detail_screen.dart';
+import '../list/date_buckets.dart';
 import '../list/log_row.dart';
 import '../onboarding/onboarding_flow_screen.dart';
 import '../onboarding/onboarding_visuals.dart';
@@ -184,27 +186,9 @@ class _MainContent extends ConsumerWidget {
                           child: logs.when(
                             data: (rows) {
                               if (rows.isEmpty) return const _EmptyState();
-                              return ListView.separated(
-                                padding: EdgeInsets.only(
-                                  bottom: navBarHeight + 36.h,
-                                  top: 4.h,
-                                ),
-                                itemCount: rows.length,
-                                separatorBuilder: (_, _) =>
-                                    SizedBox(height: 10.h),
-                                itemBuilder: (_, i) {
-                                  final row = rows[i];
-                                  return LogRow(
-                                    key: ValueKey(row.id),
-                                    log: row,
-                                    onTap: () => Navigator.of(context).push(
-                                      MaterialPageRoute<void>(
-                                        builder: (_) =>
-                                            LogDetailScreen(logId: row.id),
-                                      ),
-                                    ),
-                                  );
-                                },
+                              return _GroupedLogList(
+                                rows: rows,
+                                bottomPadding: navBarHeight + 36.h,
                               );
                             },
                             loading: () => const Center(
@@ -275,6 +259,89 @@ class _DashedDivider extends StatelessWidget {
   }
 }
 
+/// Renders the home log list grouped into sticky date sections (TODAY,
+/// YESTERDAY, THIS WEEK, then monthly). Each group uses a pinned
+/// [SliverPersistentHeader] so the section label sticks to the top while
+/// its rows scroll under it.
+class _GroupedLogList extends StatelessWidget {
+  const _GroupedLogList({required this.rows, required this.bottomPadding});
+
+  final List<VoiceLogView> rows;
+  final double bottomPadding;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = groupLogsByDate(rows);
+    return CustomScrollView(
+      slivers: [
+        for (final group in groups)
+          SliverMainAxisGroup(
+            slivers: [
+              SliverPersistentHeader(
+                pinned: true,
+                delegate: _DateHeaderDelegate(label: group.label),
+              ),
+              SliverList.separated(
+                itemCount: group.logs.length,
+                separatorBuilder: (_, _) => SizedBox(height: 10.h),
+                itemBuilder: (_, i) {
+                  final row = group.logs[i];
+                  return LogRow(
+                    key: ValueKey(row.id),
+                    log: row,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => LogDetailScreen(logId: row.id),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              SliverToBoxAdapter(child: SizedBox(height: 16.h)),
+            ],
+          ),
+        SliverToBoxAdapter(child: SizedBox(height: bottomPadding)),
+      ],
+    );
+  }
+}
+
+class _DateHeaderDelegate extends SliverPersistentHeaderDelegate {
+  _DateHeaderDelegate({required this.label});
+  final String label;
+
+  @override
+  double get minExtent => 36.0;
+  @override
+  double get maxExtent => 36.0;
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    return Container(
+      color: VoxAppColors.canvas,
+      alignment: Alignment.centerLeft,
+      padding: EdgeInsets.only(left: 2.w, bottom: 8.h, top: 4.h),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 11.sp,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.4,
+          color: VoxAppColors.muted,
+        ),
+      ),
+    );
+  }
+
+  @override
+  bool shouldRebuild(_DateHeaderDelegate oldDelegate) =>
+      oldDelegate.label != label;
+}
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState();
 
@@ -286,7 +353,7 @@ class _EmptyState extends StatelessWidget {
         child: Text(
           'Your journal gets smarter as you record more.',
           textAlign: TextAlign.center,
-          style: TextStyle(fontSize: 16.sp, fontFamily: 'JetBrainsMono'),
+          style: TextStyle(fontSize: 16.sp, color: VoxAppColors.muted),
         ),
       ),
     );

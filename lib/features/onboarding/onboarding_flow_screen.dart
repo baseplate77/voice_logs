@@ -79,7 +79,6 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                         child: Text(
                           'Skip',
                           style: TextStyle(
-                            fontFamily: 'JetBrainsMono',
                             fontSize: 13.sp,
                             fontWeight: FontWeight.w600,
                             color: textSecondary,
@@ -145,7 +144,6 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
                                 style: TextStyle(
                                   fontSize: 13.sp,
                                   fontWeight: FontWeight.bold,
-                                  fontFamily: 'JetBrainsMono',
                                   color: textSecondary,
                                 ),
                               ),
@@ -219,15 +217,11 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
       builder: (_) => AlertDialog(
         title: const Text(
           'Microphone required',
-          style: TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold),
         ),
         content: const Text(
           'VoxSynth needs microphone access to record your thoughts. '
           'Please enable it in Settings.',
-          style: TextStyle(fontFamily: 'JetBrainsMono'),
         ),
         actions: [
           TextButton(
@@ -235,7 +229,6 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
             child: Text(
               'Cancel',
               style: TextStyle(
-                fontFamily: 'JetBrainsMono',
                 fontWeight: FontWeight.bold,
                 color: OnboardingColors.textSecondary(context),
               ),
@@ -248,10 +241,7 @@ class _OnboardingFlowScreenState extends ConsumerState<OnboardingFlowScreen> {
             },
             child: const Text(
               'Open Settings',
-              style: TextStyle(
-                fontFamily: 'JetBrainsMono',
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
         ],

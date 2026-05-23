@@ -3,15 +3,19 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:iconsax/iconsax.dart';
 
 import '../../app_theme.dart';
 import '../../core/db/processing_state.dart';
 import '../../core/db/providers.dart';
+import '../../core/db/repositories/entity_mention_repository.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 
-/// One row in the home list. Shows title + relative time + inline entity names.
-/// When refine completes and the title transitions from a raw-transcript
-/// fallback to the generated title, a one-shot reveal animation plays.
+/// One row in the home list. The card surfaces, in order of glanceability:
+///   • the generated title (or a "Crafting title…" loader while refine runs)
+///   • a one-line content preview drawn from `cleanedText`
+///   • a footer with relative time · audio duration · pending-action badge
+///     · typed entity chips (Person / Place / Project), capped at three
 class LogRow extends ConsumerStatefulWidget {
   const LogRow({super.key, required this.log, required this.onTap});
 
@@ -77,7 +81,8 @@ class _LogRowState extends ConsumerState<LogRow>
     final theme = Theme.of(context);
     final log = widget.log;
     final mentions =
-        ref.watch(voiceLogMentionsProvider(log.id)).valueOrNull ?? [];
+        ref.watch(voiceLogMentionsProvider(log.id)).valueOrNull ?? const [];
+    final pendingActions = ref.watch(pendingActionCountsByLogProvider)[log.id];
 
     final hasTitle = _hasRealTitle(log);
     final titleText = hasTitle ? log.title!.trim() : log.displayTitle.trim();
@@ -92,6 +97,8 @@ class _LogRowState extends ConsumerState<LogRow>
       });
     }
 
+    final preview = _previewLine(log);
+
     return Card(
       margin: EdgeInsets.zero,
       clipBehavior: Clip.antiAlias,
@@ -105,7 +112,7 @@ class _LogRowState extends ConsumerState<LogRow>
       child: InkWell(
         onTap: widget.onTap,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16.0.w, vertical: 14.0.h),
+          padding: EdgeInsets.fromLTRB(14.w, 12.h, 14.w, 12.h),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -114,53 +121,36 @@ class _LogRowState extends ConsumerState<LogRow>
                   : hasTitle && _controller.value < 1.0
                   ? _TitleReveal(animation: _controller, text: titleText)
                   : Text(
-                      titleText.isEmpty ? 'New Voice Log' : titleText,
+                      titleText.isEmpty ? 'New voice log' : titleText,
                       style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        fontFamily: 'JetBrainsMono',
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.1,
                         color: titleText.isEmpty
                             ? theme.colorScheme.onSurfaceVariant
                             : theme.colorScheme.onSurface,
                       ),
-                      maxLines: 2,
+                      maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-              SizedBox(height: 4.h),
-              Row(
-                children: [
-                  Text(
-                    _relativeTime(log.createdAt),
-                    style: TextStyle(
-                      fontSize: 12.sp,
-                      color: VoxAppColors.muted,
-                      fontWeight: FontWeight.w500,
-                    ),
+              if (preview != null) ...[
+                SizedBox(height: 3.h),
+                Text(
+                  preview,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontSize: 13.sp,
+                    color: VoxAppColors.muted,
+                    height: 1.25,
                   ),
-                  if (mentions.isNotEmpty) ...[
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 6.w),
-                      child: Text(
-                        '·',
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: VoxAppColors.muted,
-                        ),
-                      ),
-                    ),
-                    Expanded(
-                      child: Text(
-                        mentions.map((m) => m.text).join(' · '),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 12.sp,
-                          color: VoxAppColors.muted,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
+                ),
+              ],
+              SizedBox(height: 8.h),
+              _RowFooter(
+                createdAt: log.createdAt,
+                durationMs: log.durationMs,
+                pendingActions: pendingActions ?? 0,
+                mentions: mentions,
               ),
             ],
           ),
@@ -169,32 +159,236 @@ class _LogRowState extends ConsumerState<LogRow>
     );
   }
 
-  String _relativeTime(DateTime date) {
-    final now = DateTime.now();
-    final diff = now.difference(date);
-
-    if (diff.inMinutes < 1) return 'Just now';
-    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
-    if (diff.inHours < 24) return '${diff.inHours}h ago';
-    if (diff.inDays == 1) return 'Yesterday';
-    if (diff.inDays < 7) return '${diff.inDays}d ago';
-
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    return '${months[date.month - 1]} ${date.day}';
+  String? _previewLine(VoiceLogView log) {
+    final source = (log.cleanedText ?? '').trim();
+    if (source.isEmpty) return null;
+    final firstNewline = source.indexOf('\n');
+    final candidate = firstNewline >= 0
+        ? source.substring(0, firstNewline).trim()
+        : source;
+    // Skip the first line if it's identical to the generated title — no
+    // point repeating the same words on two adjacent rows.
+    final titleTrimmed = log.title?.trim();
+    if (titleTrimmed != null &&
+        candidate.toLowerCase() == titleTrimmed.toLowerCase()) {
+      if (firstNewline < 0) return null;
+      final rest = source.substring(firstNewline + 1).trim();
+      return rest.isEmpty ? null : rest.split('\n').first.trim();
+    }
+    return candidate.isEmpty ? null : candidate;
   }
+}
+
+class _RowFooter extends StatelessWidget {
+  const _RowFooter({
+    required this.createdAt,
+    required this.durationMs,
+    required this.pendingActions,
+    required this.mentions,
+  });
+
+  final DateTime createdAt;
+  final int durationMs;
+  final int pendingActions;
+  final List<EntityMentionView> mentions;
+
+  @override
+  Widget build(BuildContext context) {
+    final (chips, overflow) = _typedMentionChips(mentions);
+    final timeAndDuration = _formatTimeAndDuration();
+
+    return Row(
+      children: [
+        Text(
+          timeAndDuration,
+          style: TextStyle(
+            fontSize: 11.sp,
+            color: VoxAppColors.muted,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        if (pendingActions > 0) ...[
+          SizedBox(width: 8.w),
+          _ActionBadge(count: pendingActions),
+        ],
+        if (chips.isNotEmpty) ...[
+          SizedBox(width: 8.w),
+          Expanded(
+            child: Wrap(
+              spacing: 4.w,
+              runSpacing: 4.h,
+              children: [
+                ...chips,
+                if (overflow > 0) _OverflowChip(remaining: overflow),
+              ],
+            ),
+          ),
+        ] else
+          const Spacer(),
+      ],
+    );
+  }
+
+  String _formatTimeAndDuration() {
+    final time = _relativeTime(createdAt);
+    if (durationMs <= 0) return time;
+    return '$time · ${_formatDuration(durationMs)}';
+  }
+
+  /// Returns up to 3 typed mention chips plus the count of additional
+  /// unique mentions that didn't fit.
+  (List<Widget>, int) _typedMentionChips(List<EntityMentionView> mentions) {
+    if (mentions.isEmpty) return (const [], 0);
+    const allowedTypes = {'PERSON', 'PLACE', 'PROJECT'};
+    final seenKeys = <String>{};
+    final chips = <Widget>[];
+    var overflow = 0;
+    for (final mention in mentions) {
+      final type = mention.type.toUpperCase();
+      if (!allowedTypes.contains(type)) continue;
+      final key = '$type:${mention.text.toLowerCase()}';
+      if (!seenKeys.add(key)) continue;
+      if (chips.length < 3) {
+        chips.add(_MentionChip(type: type, text: mention.text));
+      } else {
+        overflow++;
+      }
+    }
+    return (chips, overflow);
+  }
+}
+
+class _MentionChip extends StatelessWidget {
+  const _MentionChip({required this.type, required this.text});
+  final String type;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final (icon, color) = switch (type) {
+      'PERSON' => (Iconsax.user, const Color(0xFF7A6FCE)),
+      'PLACE' => (Iconsax.location, const Color(0xFFCE7A4F)),
+      'PROJECT' => (Iconsax.flash_1, const Color(0xFF4F8FCE)),
+      _ => (Iconsax.tag, VoxAppColors.muted),
+    };
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(6.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 10.r, color: color),
+          SizedBox(width: 3.w),
+          ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: 110.w),
+            child: Text(
+              text,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 10.5.sp,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OverflowChip extends StatelessWidget {
+  const _OverflowChip({required this.remaining});
+  final int remaining;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: VoxAppColors.surfaceHigh,
+        borderRadius: BorderRadius.circular(6.r),
+      ),
+      child: Text(
+        '+$remaining',
+        style: TextStyle(
+          fontSize: 10.5.sp,
+          fontWeight: FontWeight.w600,
+          color: VoxAppColors.muted,
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionBadge extends StatelessWidget {
+  const _ActionBadge({required this.count});
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+      decoration: BoxDecoration(
+        color: VoxAppColors.accent.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(6.r),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Iconsax.tick_square, size: 11.r, color: VoxAppColors.accent),
+          SizedBox(width: 3.w),
+          Text(
+            '$count',
+            style: TextStyle(
+              fontSize: 10.5.sp,
+              fontWeight: FontWeight.w700,
+              color: VoxAppColors.accent,
+              fontFamily: AppFonts.mono,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _relativeTime(DateTime date) {
+  final now = DateTime.now();
+  final diff = now.difference(date);
+
+  if (diff.inMinutes < 1) return 'Just now';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+  if (diff.inHours < 24) return '${diff.inHours}h ago';
+  if (diff.inDays == 1) return 'Yesterday';
+  if (diff.inDays < 7) return '${diff.inDays}d ago';
+
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
+  return '${months[date.month - 1]} ${date.day}';
+}
+
+String _formatDuration(int ms) {
+  final totalSec = ms ~/ 1000;
+  final min = totalSec ~/ 60;
+  final sec = totalSec % 60;
+  return '$min:${sec.toString().padLeft(2, '0')}';
 }
 
 class _TitleReveal extends StatelessWidget {
@@ -208,8 +402,8 @@ class _TitleReveal extends StatelessWidget {
     final theme = Theme.of(context);
     final base =
         theme.textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          fontFamily: 'JetBrainsMono',
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.1,
         ) ??
         const TextStyle();
     return AnimatedBuilder(
@@ -324,8 +518,7 @@ class _GenerativeTitleLoaderState extends State<_GenerativeTitleLoader>
                 child: Text(
                   'Crafting title...',
                   style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'JetBrainsMono',
+                    fontWeight: FontWeight.w700,
                     letterSpacing: 0.1,
                   ),
                   maxLines: 1,

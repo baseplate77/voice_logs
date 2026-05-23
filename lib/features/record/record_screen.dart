@@ -128,13 +128,11 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
           ),
         ),
 
-        // Monospaced Title
         Text(
           'VOICE RECORDING',
           style: TextStyle(
             fontSize: 14.sp,
             fontWeight: FontWeight.w900,
-            fontFamily: 'JetBrainsMono',
             letterSpacing: 1.8,
             color: VoxAppColors.ink.withValues(alpha: 0.8),
           ),
@@ -158,11 +156,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
         ),
         title: Text(
           'DISCARD RECORDING?',
-          style: TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontWeight: FontWeight.bold,
-            fontSize: 16.sp,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
         ),
         content: Text(
           'This will permanently delete the current voice recording. Are you sure?',
@@ -173,10 +167,7 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text(
               'KEEP',
-              style: TextStyle(
-                color: VoxAppColors.muted,
-                fontFamily: 'JetBrainsMono',
-              ),
+              style: TextStyle(color: VoxAppColors.muted),
             ),
           ),
           TextButton(
@@ -186,7 +177,6 @@ class _RecordScreenState extends ConsumerState<RecordScreen> {
               style: TextStyle(
                 color: VoxAppColors.accent,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'JetBrainsMono',
               ),
             ),
           ),
@@ -222,7 +212,7 @@ class _IdleStandbyView extends StatelessWidget {
                   '88:88:88',
                   style: TextStyle(
                     fontSize: 44.sp,
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: 'IBMPlexMono',
                     fontWeight: FontWeight.w900,
                     color: VoxAppColors.accent,
                     letterSpacing: 2,
@@ -233,7 +223,7 @@ class _IdleStandbyView extends StatelessWidget {
                 '00:00:00',
                 style: TextStyle(
                   fontSize: 44.sp,
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: 'IBMPlexMono',
                   fontWeight: FontWeight.w900,
                   color: Colors.white24,
                   letterSpacing: 2,
@@ -258,7 +248,7 @@ class _IdleStandbyView extends StatelessWidget {
             Text(
               'STANDBY',
               style: TextStyle(
-                fontFamily: 'JetBrainsMono',
+                fontFamily: 'IBMPlexMono',
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
                 color: VoxAppColors.muted,
@@ -310,13 +300,12 @@ class _IdleStandbyView extends StatelessWidget {
         ),
         SizedBox(height: 16.h),
         Text(
-          'TAP TO START RECORDING',
+          'Tap to start recording',
           style: TextStyle(
-            fontSize: 12.sp,
-            fontWeight: FontWeight.bold,
+            fontSize: 13.sp,
+            fontWeight: FontWeight.w500,
             color: VoxAppColors.muted,
-            letterSpacing: 1.0,
-            fontFamily: 'JetBrainsMono',
+            letterSpacing: 0.2,
           ),
         ),
       ],
@@ -377,7 +366,7 @@ class _ActiveRecordingView extends StatelessWidget {
                   '88:88:88',
                   style: TextStyle(
                     fontSize: 46.sp,
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: 'IBMPlexMono',
                     fontWeight: FontWeight.w900,
                     color: VoxAppColors.accent,
                     letterSpacing: 2.2,
@@ -388,7 +377,7 @@ class _ActiveRecordingView extends StatelessWidget {
                 timeStr,
                 style: TextStyle(
                   fontSize: 46.sp,
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: 'IBMPlexMono',
                   fontWeight: FontWeight.w900,
                   color: isPaused ? VoxAppColors.muted : VoxAppColors.accent,
                   letterSpacing: 2.2,
@@ -415,7 +404,7 @@ class _ActiveRecordingView extends StatelessWidget {
             Text(
               isPaused ? 'PAUSED' : 'RECORDING',
               style: TextStyle(
-                fontFamily: 'JetBrainsMono',
+                fontFamily: 'IBMPlexMono',
                 fontSize: 12.sp,
                 fontWeight: FontWeight.bold,
                 color: isPaused ? VoxAppColors.muted : VoxAppColors.accent,
@@ -508,7 +497,6 @@ class _ActiveRecordingView extends StatelessWidget {
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontFamily: 'JetBrainsMono',
                           letterSpacing: 1.2,
                           fontSize: 14.sp,
                         ),
@@ -755,7 +743,7 @@ class _RetroTranscribingView extends StatelessWidget {
             Text(
               'PROCESSING AUDIO',
               style: TextStyle(
-                fontFamily: 'JetBrainsMono',
+                fontFamily: 'IBMPlexMono',
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.5,
@@ -784,7 +772,7 @@ class _RetroTranscribingView extends StatelessWidget {
           style: TextStyle(
             color: VoxAppColors.accent,
             fontSize: 12.sp,
-            fontFamily: 'JetBrainsMono',
+            fontFamily: 'IBMPlexMono',
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -794,7 +782,7 @@ class _RetroTranscribingView extends StatelessWidget {
             style: TextStyle(
               color: VoxAppColors.muted,
               fontSize: 12.sp,
-              fontFamily: 'JetBrainsMono',
+              fontFamily: 'IBMPlexMono',
             ),
           ),
         ),
@@ -822,12 +810,10 @@ class _FailedRetryView extends StatelessWidget {
           ),
           SizedBox(height: 16.h),
           Text(
-            'CAPTURE ERROR',
+            'Capture error',
             style: TextStyle(
-              fontFamily: 'JetBrainsMono',
-              fontSize: 16.sp,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 1.5,
+              fontSize: 17.sp,
+              fontWeight: FontWeight.w700,
               color: VoxAppColors.ink,
             ),
           ),
@@ -847,12 +833,10 @@ class _FailedRetryView extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8.r),
               ),
               child: Text(
-                'TRY AGAIN',
+                'Try again',
                 style: TextStyle(
                   color: Colors.white,
-                  fontFamily: 'JetBrainsMono',
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: 1.0,
+                  fontWeight: FontWeight.w600,
                   fontSize: 14.sp,
                 ),
               ),

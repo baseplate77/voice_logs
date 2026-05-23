@@ -55,9 +55,7 @@ class MarkdownTranscriptView extends StatelessWidget {
                   width: 24.w,
                   child: Text(
                     bullet.marker,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                      fontFamily: 'JetBrainsMono',
-                    ),
+                    style: Theme.of(context).textTheme.bodyLarge,
                   ),
                 ),
                 Expanded(
@@ -141,16 +139,12 @@ class MarkdownTranscriptView extends StatelessWidget {
     int globalStart,
   ) {
     final base =
-        Theme.of(context).textTheme.bodyLarge?.copyWith(
-          height: 1.5,
-          fontFamily: 'JetBrainsMono',
-        ) ??
-        TextStyle(fontSize: 16.sp, height: 1.5, fontFamily: 'JetBrainsMono');
+        Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.5) ??
+        TextStyle(fontSize: 16.sp, height: 1.5);
     final highlightStyle = base.copyWith(
       backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
       color: Theme.of(context).colorScheme.onTertiaryContainer,
       fontWeight: FontWeight.w600,
-      fontFamily: 'JetBrainsMono',
     );
 
     final globalEnd = globalStart + segment.length;
@@ -221,11 +215,9 @@ class _MarkdownTable extends StatelessWidget {
                     padding: EdgeInsets.all(8.r),
                     child: SelectableText(
                       cell,
-                      style:
-                          (rowIndex == 0
-                                  ? const TextStyle(fontWeight: FontWeight.w600)
-                                  : const TextStyle())
-                              .copyWith(fontFamily: 'JetBrainsMono'),
+                      style: rowIndex == 0
+                          ? const TextStyle(fontWeight: FontWeight.w600)
+                          : const TextStyle(),
                     ),
                   ),
               ],

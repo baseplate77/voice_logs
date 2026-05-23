@@ -189,7 +189,6 @@ class SettingsScreen extends ConsumerWidget {
         Text(
           'SETTINGS',
           style: TextStyle(
-            fontFamily: 'JetBrainsMono',
             fontSize: 16.sp,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.2,
@@ -212,7 +211,6 @@ class _SectionLabel extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-          fontFamily: 'JetBrainsMono',
           fontSize: 12.sp,
           fontWeight: FontWeight.w700,
           letterSpacing: 1.6,
@@ -292,7 +290,6 @@ class _SettingsTile extends StatelessWidget {
                   Text(
                     title,
                     style: TextStyle(
-                      fontFamily: 'JetBrainsMono',
                       fontSize: 14.sp,
                       fontWeight: FontWeight.w600,
                       color: VoxAppColors.ink,
@@ -341,7 +338,6 @@ class _AutoRecordTile extends ConsumerWidget {
                 Text(
                   'Record on launch',
                   style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w600,
                     color: VoxAppColors.ink,
@@ -390,7 +386,6 @@ class _DeleteAllTile extends StatelessWidget {
           child: Text(
             'DELETE ALL LOGS',
             style: TextStyle(
-              fontFamily: 'JetBrainsMono',
               fontSize: 14.sp,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.0,
@@ -414,11 +409,7 @@ class _DeleteAllTile extends StatelessWidget {
         ),
         title: Text(
           'DELETE EVERYTHING?',
-          style: TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontWeight: FontWeight.bold,
-            fontSize: 16.sp,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
         ),
         content: const Text(
           'This erases every voice log, transcript, and entity. '
@@ -430,10 +421,7 @@ class _DeleteAllTile extends StatelessWidget {
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text(
               'CANCEL',
-              style: TextStyle(
-                color: VoxAppColors.muted,
-                fontFamily: 'JetBrainsMono',
-              ),
+              style: TextStyle(color: VoxAppColors.muted),
             ),
           ),
           TextButton(
@@ -443,7 +431,6 @@ class _DeleteAllTile extends StatelessWidget {
               style: TextStyle(
                 color: VoxAppColors.accent,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'JetBrainsMono',
               ),
             ),
           ),

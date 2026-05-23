@@ -110,12 +110,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             logAsync.when(
               data: (log) {
                 if (log == null) {
-                  return const Center(
-                    child: Text(
-                      'Voice log not found',
-                      style: TextStyle(fontFamily: 'JetBrainsMono'),
-                    ),
-                  );
+                  return const Center(child: Text('Voice log not found'));
                 }
                 final absoluteAudio = _resolveAudio(log);
                 if (File(absoluteAudio).existsSync()) {
@@ -246,7 +241,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                                           Text(
                                             'TRANSCRIPT',
                                             style: TextStyle(
-                                              fontFamily: 'JetBrainsMono',
                                               fontSize: 12.sp,
                                               fontWeight: FontWeight.w900,
                                               letterSpacing: 1.5,
@@ -312,12 +306,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
               loading: () => const Center(
                 child: CircularProgressIndicator(color: VoxAppColors.accent),
               ),
-              error: (e, _) => Center(
-                child: Text(
-                  'Error: $e',
-                  style: const TextStyle(fontFamily: 'JetBrainsMono'),
-                ),
-              ),
+              error: (e, _) => Center(child: Text('Error: $e')),
             ),
           ],
         ),
@@ -364,7 +353,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontFamily: 'JetBrainsMono',
                 fontSize: 14.sp,
                 fontWeight: FontWeight.w900,
                 letterSpacing: 1.2,
@@ -412,10 +400,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                     value: 'retry',
                     child: Text(
                       'Retry refinement',
-                      style: TextStyle(
-                        fontFamily: 'JetBrainsMono',
-                        fontSize: 14.sp,
-                      ),
+                      style: TextStyle(fontSize: 14.sp),
                     ),
                   ),
                 PopupMenuItem(
@@ -423,7 +408,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   child: Text(
                     'Delete Log',
                     style: TextStyle(
-                      fontFamily: 'JetBrainsMono',
                       fontSize: 14.sp,
                       color: VoxAppColors.accent,
                       fontWeight: FontWeight.bold,
@@ -469,7 +453,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'JetBrainsMono',
                     fontSize: 14.sp,
                     letterSpacing: 1.0,
                   ),
@@ -486,10 +469,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text(
-                    'Raw transcript copied to clipboard!',
-                    style: TextStyle(fontFamily: 'JetBrainsMono'),
-                  ),
+                  content: Text('Raw transcript copied to clipboard!'),
                   duration: Duration(seconds: 2),
                 ),
               );
@@ -507,7 +487,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   style: TextStyle(
                     color: VoxAppColors.ink,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'JetBrainsMono',
                     fontSize: 14.sp,
                     letterSpacing: 1.0,
                   ),
@@ -535,7 +514,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
                   style: TextStyle(
                     color: VoxAppColors.ink,
                     fontWeight: FontWeight.bold,
-                    fontFamily: 'JetBrainsMono',
                     fontSize: 14.sp,
                     letterSpacing: 1.0,
                   ),
@@ -560,11 +538,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
         ),
         title: Text(
           'DELETE VOICE LOG?',
-          style: TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontWeight: FontWeight.bold,
-            fontSize: 16.sp,
-          ),
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
         ),
         content: Text(
           'Are you sure you want to permanently delete this voice log? This cannot be undone.',
@@ -575,10 +549,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
             onPressed: () => Navigator.of(context).pop(false),
             child: const Text(
               'CANCEL',
-              style: TextStyle(
-                color: VoxAppColors.muted,
-                fontFamily: 'JetBrainsMono',
-              ),
+              style: TextStyle(color: VoxAppColors.muted),
             ),
           ),
           TextButton(
@@ -588,7 +559,6 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
               style: TextStyle(
                 color: VoxAppColors.accent,
                 fontWeight: FontWeight.bold,
-                fontFamily: 'JetBrainsMono',
               ),
             ),
           ),
@@ -729,7 +699,7 @@ class _PlaybackCardState extends State<_PlaybackCard> {
               Text(
                 _formatMs(currentMs),
                 style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: AppFonts.mono,
                   fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
                   color: VoxAppColors.muted,
@@ -738,7 +708,7 @@ class _PlaybackCardState extends State<_PlaybackCard> {
               Text(
                 _formatMs(totalMs),
                 style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: AppFonts.mono,
                   fontSize: 12.sp,
                   fontWeight: FontWeight.bold,
                   color: VoxAppColors.muted,
@@ -919,11 +889,7 @@ class _EditTitleDialogState extends State<_EditTitleDialog> {
       ),
       title: Text(
         'RENAME VOICE LOG',
-        style: TextStyle(
-          fontFamily: 'JetBrainsMono',
-          fontWeight: FontWeight.bold,
-          fontSize: 16.sp,
-        ),
+        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16.sp),
       ),
       content: TextField(
         controller: _controller,
@@ -948,10 +914,7 @@ class _EditTitleDialogState extends State<_EditTitleDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: const Text(
             'CANCEL',
-            style: TextStyle(
-              color: VoxAppColors.muted,
-              fontFamily: 'JetBrainsMono',
-            ),
+            style: TextStyle(color: VoxAppColors.muted),
           ),
         ),
         TextButton(
@@ -961,7 +924,6 @@ class _EditTitleDialogState extends State<_EditTitleDialog> {
             style: TextStyle(
               color: VoxAppColors.primary,
               fontWeight: FontWeight.bold,
-              fontFamily: 'JetBrainsMono',
             ),
           ),
         ),

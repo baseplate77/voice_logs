@@ -1,6 +1,47 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
+/// Typeface families bundled with the app. The default `MaterialApp`
+/// `textTheme` uses [AppFonts.sans]; reach for [AppFonts.mono] only on
+/// surfaces where the technical/numeric signal matters (recording timer,
+/// benchmark output, model IDs, timestamps).
+class AppFonts {
+  const AppFonts._();
+
+  static const String sans = 'IBMPlexSans';
+  static const String mono = 'IBMPlexMono';
+  static const String display = 'NDOT';
+}
+
+/// Typed entry points for text styles that intentionally deviate from the
+/// default theme — primarily the mono accent. Call sites should prefer
+/// `Theme.of(context).textTheme.*` for body/UI text and only use these
+/// helpers when the mono treatment is deliberate.
+class AppTextStyles {
+  const AppTextStyles._();
+
+  /// Mono accent, copied from the supplied base style so it inherits size,
+  /// color, weight, and letter-spacing from the surrounding theme.
+  static TextStyle mono(TextStyle? base) =>
+      (base ?? const TextStyle()).copyWith(fontFamily: AppFonts.mono);
+
+  /// Convenience mono style for ad-hoc usage where there is no base style.
+  static TextStyle monoOf({
+    double? fontSize,
+    FontWeight? fontWeight,
+    Color? color,
+    double? letterSpacing,
+    double? height,
+  }) => TextStyle(
+    fontFamily: AppFonts.mono,
+    fontSize: fontSize,
+    fontWeight: fontWeight,
+    color: color,
+    letterSpacing: letterSpacing,
+    height: height,
+  );
+}
+
 /// App-wide visual system: dark canvas, bright orchid primary, and muted
 /// lavender accent. Keep these constants centralized so feature UI stays
 /// visually consistent instead of drifting into one-off colors.
@@ -51,7 +92,7 @@ ThemeData buildVoxTheme() {
 
   final base = ThemeData(useMaterial3: true, colorScheme: scheme);
   final textTheme = base.textTheme.apply(
-    fontFamily: 'JetBrainsMono',
+    fontFamily: AppFonts.sans,
     bodyColor: VoxAppColors.ink,
     displayColor: VoxAppColors.ink,
   );

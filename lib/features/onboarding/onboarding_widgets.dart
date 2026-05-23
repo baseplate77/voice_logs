@@ -117,9 +117,9 @@ class _PrimaryButtonState extends State<PrimaryButton>
           child: Text(
             widget.label,
             style: TextStyle(
-              fontSize: 14.sp,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'JetBrainsMono',
+              fontSize: 15.sp,
+              fontWeight: FontWeight.w600,
+              letterSpacing: -0.1,
               color: textBrightness == Brightness.dark
                   ? const Color(0xFF101413)
                   : Colors.white,
@@ -191,9 +191,8 @@ class OnboardingScreen extends StatelessWidget {
                       data.subtitle,
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        fontSize: 13.sp,
+                        fontSize: 14.sp,
                         height: 1.5,
-                        fontFamily: 'JetBrainsMono',
                         color: textSecondary,
                       ),
                     ),

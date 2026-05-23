@@ -403,12 +403,11 @@ class _DeviceBenchmarkScreenState extends ConsumerState<DeviceBenchmarkScreen>
       backgroundColor: VoxAppColors.canvas,
       appBar: AppBar(
         title: Text(
-          'DEVICE BENCHMARK',
+          'Device benchmark',
           style: TextStyle(
-            fontFamily: 'JetBrainsMono',
-            fontSize: 14.sp,
-            fontWeight: FontWeight.w900,
-            letterSpacing: 1.2,
+            fontSize: 16.sp,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.2,
           ),
         ),
         centerTitle: true,
@@ -442,8 +441,8 @@ class _DeviceBenchmarkScreenState extends ConsumerState<DeviceBenchmarkScreen>
                   'Test how fast AI runs\non this device',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
                     fontSize: 15.sp,
+                    fontWeight: FontWeight.w500,
                     color: VoxAppColors.muted,
                     height: 1.4,
                   ),
@@ -477,11 +476,10 @@ class _DeviceBenchmarkScreenState extends ConsumerState<DeviceBenchmarkScreen>
                 Icon(Iconsax.warning_2, size: 44.r, color: VoxAppColors.error),
                 SizedBox(height: 10.h),
                 Text(
-                  'Benchmark Failed',
+                  'Benchmark failed',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
-                    fontSize: 15.sp,
+                    fontSize: 16.sp,
                     fontWeight: FontWeight.w700,
                     color: VoxAppColors.error,
                   ),
@@ -644,7 +642,7 @@ class _SectionHeader extends StatelessWidget {
         Text(
           title,
           style: TextStyle(
-            fontFamily: 'JetBrainsMono',
+            fontFamily: 'IBMPlexMono',
             fontSize: 12.sp,
             fontWeight: FontWeight.w900,
             letterSpacing: 1.2,
@@ -699,7 +697,7 @@ class _ModelInfoCard extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: 'IBMPlexMono',
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w700,
                   ),
@@ -756,7 +754,6 @@ class _RunButton extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
                     fontSize: 14.sp,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
@@ -813,10 +810,8 @@ class _PhaseCard extends StatelessWidget {
                 Text(
                   title,
                   style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
-                    fontSize: 12.sp,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.0,
+                    fontSize: 13.sp,
+                    fontWeight: FontWeight.w700,
                     color: VoxAppColors.ink,
                   ),
                 ),
@@ -906,7 +901,7 @@ class _TierBadge extends StatelessWidget {
           Text(
             'TIER ${tier.label} — ${tier.name_.toUpperCase()}',
             style: TextStyle(
-              fontFamily: 'JetBrainsMono',
+              fontFamily: 'IBMPlexMono',
               fontSize: 14.sp,
               fontWeight: FontWeight.w900,
               letterSpacing: 1.0,
@@ -961,7 +956,7 @@ class _MetricTile extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontFamily: 'JetBrainsMono',
+              fontFamily: 'IBMPlexMono',
               fontSize: 12.sp,
               fontWeight: FontWeight.w700,
               letterSpacing: 0.8,
@@ -972,7 +967,7 @@ class _MetricTile extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              fontFamily: 'JetBrainsMono',
+              fontFamily: 'IBMPlexMono',
               fontSize: 18.sp,
               fontWeight: FontWeight.w900,
               color: VoxAppColors.ink,
@@ -1054,7 +1049,7 @@ class _TierScaleCard extends StatelessWidget {
           Text(
             title,
             style: TextStyle(
-              fontFamily: 'JetBrainsMono',
+              fontFamily: 'IBMPlexMono',
               fontSize: 12.sp,
               fontWeight: FontWeight.w700,
               letterSpacing: 1.0,
@@ -1113,7 +1108,7 @@ class _TierRow extends StatelessWidget {
               child: Text(
                 tier.label,
                 style: TextStyle(
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: 'IBMPlexMono',
                   fontSize: 12.sp,
                   fontWeight: FontWeight.w900,
                   color: isActive ? Colors.white : tier.color,
@@ -1126,7 +1121,7 @@ class _TierRow extends StatelessWidget {
             child: Text(
               tier.name_,
               style: TextStyle(
-                fontFamily: 'JetBrainsMono',
+                fontFamily: 'IBMPlexMono',
                 fontSize: 12.sp,
                 fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                 color: isActive ? VoxAppColors.ink : VoxAppColors.muted,
@@ -1136,7 +1131,7 @@ class _TierRow extends StatelessWidget {
           Text(
             range,
             style: TextStyle(
-              fontFamily: 'JetBrainsMono',
+              fontFamily: 'IBMPlexMono',
               fontSize: 12.sp,
               color: isActive ? tier.color : VoxAppColors.muted,
               fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
@@ -1183,7 +1178,7 @@ class _OutputCard extends StatelessWidget {
                 child: Text(
                   title,
                   style: TextStyle(
-                    fontFamily: 'JetBrainsMono',
+                    fontFamily: 'IBMPlexMono',
                     fontSize: 12.sp,
                     fontWeight: FontWeight.w700,
                     letterSpacing: 1.0,
@@ -1197,7 +1192,7 @@ class _OutputCard extends StatelessWidget {
           SelectableText(
             text,
             style: TextStyle(
-              fontFamily: 'JetBrainsMono',
+              fontFamily: 'IBMPlexMono',
               fontSize: 12.sp,
               height: 1.5,
               color: VoxAppColors.ink.withValues(alpha: 0.85),

@@ -288,7 +288,7 @@ List<TextSpan> _inlineMarkdownTextSpans(String text, TextStyle base) {
         TextSpan(
           text: code,
           style: base.copyWith(
-            fontFamily: 'JetBrainsMono',
+            fontFamily: 'IBMPlexMono',
             backgroundColor: Colors.black.withValues(alpha: 0.08),
           ),
         ),

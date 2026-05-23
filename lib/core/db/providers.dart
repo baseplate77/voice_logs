@@ -208,6 +208,26 @@ final actionItemsStreamProvider = StreamProvider<List<VoiceActionItemView>>((
   return repo.watchInbox();
 });
 
+/// Per-log count of *pending* action items, derived from
+/// [actionItemsStreamProvider]. Used by the home list to badge cards whose
+/// extracted tasks still need attention; once everything is done or
+/// archived for a log the entry disappears so the row de-clutters itself.
+final pendingActionCountsByLogProvider = Provider<Map<String, int>>((ref) {
+  final actionsAsync = ref.watch(actionItemsStreamProvider);
+  final actions = actionsAsync.valueOrNull;
+  if (actions == null || actions.isEmpty) return const {};
+  final counts = <String, int>{};
+  for (final action in actions) {
+    if (action.status != VoiceActionStatus.pending) continue;
+    counts.update(
+      action.voiceLogId,
+      (current) => current + 1,
+      ifAbsent: () => 1,
+    );
+  }
+  return counts;
+});
+
 /// Stream of entity mentions for a specific log. Detail screen binds to
 /// a family provider over the log id.
 final voiceLogMentionsProvider =

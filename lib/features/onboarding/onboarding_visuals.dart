@@ -390,7 +390,7 @@ class _PrivacyDeviceVisualState extends State<PrivacyDeviceVisual>
                 style: TextStyle(
                   fontSize: 12.sp,
                   fontWeight: FontWeight.w600,
-                  fontFamily: 'JetBrainsMono',
+                  fontFamily: 'IBMPlexMono',
                   color: primaryColor,
                 ),
               ),
@@ -584,16 +584,14 @@ class _AIPipelineVisualState extends State<AIPipelineVisual>
                       style: TextStyle(
                         fontSize: 12.sp,
                         fontWeight: FontWeight.w700,
-                        fontFamily: 'JetBrainsMono',
                         color: textPrimary,
                       ),
                     ),
                     Text(
                       desc,
                       style: TextStyle(
-                        fontSize: 9.sp,
+                        fontSize: 10.sp,
                         color: OnboardingColors.textSecondary(context),
-                        fontFamily: 'JetBrainsMono',
                       ),
                     ),
                   ],
@@ -755,8 +753,7 @@ class _NaturalSearchVisualState extends State<NaturalSearchVisual>
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 12.sp,
-                            fontFamily: 'JetBrainsMono',
+                            fontSize: 13.sp,
                             fontWeight: _typedText.isEmpty
                                 ? FontWeight.normal
                                 : FontWeight.w500,
@@ -845,9 +842,8 @@ class _NaturalSearchVisualState extends State<NaturalSearchVisual>
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 11.sp,
+                        fontSize: 12.sp,
                         fontWeight: FontWeight.w700,
-                        fontFamily: 'JetBrainsMono',
                         color: textPrimary,
                       ),
                     ),
@@ -855,8 +851,8 @@ class _NaturalSearchVisualState extends State<NaturalSearchVisual>
                   Text(
                     time,
                     style: TextStyle(
-                      fontSize: 8.sp,
-                      fontFamily: 'JetBrainsMono',
+                      fontSize: 9.sp,
+                      fontFamily: 'IBMPlexMono',
                       color: textSecondary.withValues(alpha: 0.7),
                     ),
                   ),
@@ -870,7 +866,6 @@ class _NaturalSearchVisualState extends State<NaturalSearchVisual>
                 style: TextStyle(
                   fontSize: 10.sp,
                   fontStyle: FontStyle.italic,
-                  fontFamily: 'JetBrainsMono',
                   color: textSecondary,
                 ),
               ),
@@ -990,12 +985,11 @@ class _LocalChatVisualState extends State<LocalChatVisual>
                     child: Text(
                       'What tasks did I mention this week?',
                       style: TextStyle(
-                        fontSize: 11.5.sp,
+                        fontSize: 12.sp,
                         color: Theme.of(context).brightness == Brightness.dark
                             ? const Color(0xFF101413)
                             : Colors.white,
-                        fontFamily: 'JetBrainsMono',
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -1039,7 +1033,7 @@ class _LocalChatVisualState extends State<LocalChatVisual>
                               style: TextStyle(
                                 fontSize: 10.sp,
                                 fontWeight: FontWeight.bold,
-                                fontFamily: 'JetBrainsMono',
+                                fontFamily: 'IBMPlexMono',
                                 color: primaryColor,
                               ),
                             ),
@@ -1050,8 +1044,7 @@ class _LocalChatVisualState extends State<LocalChatVisual>
                           'You noted 2 tasks:\n1. Send client agenda before lunch on Monday.\n2. Add VAD thresholds to testing pipeline.',
                           style: TextStyle(
                             fontSize: 11.sp,
-                            height: 1.35,
-                            fontFamily: 'JetBrainsMono',
+                            height: 1.45,
                             color: textPrimary,
                           ),
                         ),
@@ -1096,7 +1089,7 @@ class _LocalChatVisualState extends State<LocalChatVisual>
                           style: TextStyle(
                             fontSize: 9.5.sp,
                             fontWeight: FontWeight.bold,
-                            fontFamily: 'JetBrainsMono',
+                            fontFamily: 'IBMPlexMono',
                             color: OnboardingColors.privacyGreen,
                           ),
                         ),
@@ -1232,7 +1225,7 @@ class _RecordButtonVisualState extends State<RecordButtonVisual>
                     style: TextStyle(
                       fontSize: 10.sp,
                       fontWeight: FontWeight.bold,
-                      fontFamily: 'JetBrainsMono',
+                      fontFamily: 'IBMPlexMono',
                       color: OnboardingColors.privacyGreen,
                     ),
                   ),
