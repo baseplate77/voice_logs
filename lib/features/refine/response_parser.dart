@@ -191,14 +191,51 @@ const Set<String> _validFlowerTypes = {
 String? _sanitizeFlowerType(String? raw) {
   if (raw == null) return null;
   final normalized = raw.trim().toLowerCase();
-  if (_validFlowerTypes.contains(normalized)) return normalized;
-  if (normalized.contains('cherry') || normalized.contains('sakura') || normalized.contains('bloom') || normalized.contains('blossom') || normalized.contains('joy')) return 'sakura';
-  if (normalized.contains('laven') || normalized.contains('peace') || normalized.contains('calm')) return 'lavender';
-  if (normalized.contains('cact') || normalized.contains('stress') || normalized.contains('vent') || normalized.contains('sad')) return 'cactus';
-  if (normalized.contains('sun') || normalized.contains('work') || normalized.contains('prod')) return 'sunflower';
-  if (normalized.contains('fern') || normalized.contains('learn') || normalized.contains('grow')) return 'fern';
-  if (normalized.contains('shroom') || normalized.contains('mush') || normalized.contains('dream') || normalized.contains('thought') || normalized.contains('mus')) return 'mushroom';
-  if (normalized.contains('rose') || normalized.contains('friend') || normalized.contains('family') || normalized.contains('connect') || normalized.contains('love')) return 'rose';
+  if (_validFlowerTypes.contains(normalized)) {
+    return normalized;
+  }
+  if (normalized.contains('cherry') ||
+      normalized.contains('sakura') ||
+      normalized.contains('bloom') ||
+      normalized.contains('blossom') ||
+      normalized.contains('joy')) {
+    return 'sakura';
+  }
+  if (normalized.contains('laven') ||
+      normalized.contains('peace') ||
+      normalized.contains('calm')) {
+    return 'lavender';
+  }
+  if (normalized.contains('cact') ||
+      normalized.contains('stress') ||
+      normalized.contains('vent') ||
+      normalized.contains('sad')) {
+    return 'cactus';
+  }
+  if (normalized.contains('sun') ||
+      normalized.contains('work') ||
+      normalized.contains('prod')) {
+    return 'sunflower';
+  }
+  if (normalized.contains('fern') ||
+      normalized.contains('learn') ||
+      normalized.contains('grow')) {
+    return 'fern';
+  }
+  if (normalized.contains('shroom') ||
+      normalized.contains('mush') ||
+      normalized.contains('dream') ||
+      normalized.contains('thought') ||
+      normalized.contains('mus')) {
+    return 'mushroom';
+  }
+  if (normalized.contains('rose') ||
+      normalized.contains('friend') ||
+      normalized.contains('family') ||
+      normalized.contains('connect') ||
+      normalized.contains('love')) {
+    return 'rose';
+  }
   return 'sakura';
 }
 
@@ -215,16 +252,40 @@ TitleAndFlowerType parseTitleResponse(String response) {
       final record = _recordMap(decoded);
       if (record != null) {
         title = _sanitizeTitle(_firstString(record, _titleKeys));
-        flowerType = _sanitizeFlowerType(_firstString(record, const ['flower_type', 'flowerType', 'flower', 'vibe', 'type']));
+        flowerType = _sanitizeFlowerType(
+          _firstString(record, const [
+            'flower_type',
+            'flowerType',
+            'flower',
+            'vibe',
+            'type',
+          ]),
+        );
       }
     } on Object {
       title = _sanitizeTitle(_looseStringField(json, _titleKeys));
-      flowerType = _sanitizeFlowerType(_looseStringField(json, const ['flower_type', 'flowerType', 'flower', 'vibe', 'type']));
+      flowerType = _sanitizeFlowerType(
+        _looseStringField(json, const [
+          'flower_type',
+          'flowerType',
+          'flower',
+          'vibe',
+          'type',
+        ]),
+      );
     }
   }
 
   title ??= _sanitizeTitle(_looseStringField(response, _titleKeys));
-  flowerType ??= _sanitizeFlowerType(_looseStringField(response, const ['flower_type', 'flowerType', 'flower', 'vibe', 'type']));
+  flowerType ??= _sanitizeFlowerType(
+    _looseStringField(response, const [
+      'flower_type',
+      'flowerType',
+      'flower',
+      'vibe',
+      'type',
+    ]),
+  );
 
   return TitleAndFlowerType(title: title, flowerType: flowerType);
 }

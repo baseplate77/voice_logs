@@ -25,14 +25,18 @@ void main() {
   group('parseTitleResponse', () {
     test('extracts the title key from a well-formed JSON object', () {
       expect(
-        parseTitleResponse('{"title":"Shivani meeting on Project Atlas"}').title,
+        parseTitleResponse(
+          '{"title":"Shivani meeting on Project Atlas"}',
+        ).title,
         'Shivani meeting on Project Atlas',
       );
     });
 
     test('strips trailing punctuation and wrapping quotes', () {
       expect(
-        parseTitleResponse('{"title":" "Send revised deck to Shivani." "}').title,
+        parseTitleResponse(
+          '{"title":" "Send revised deck to Shivani." "}',
+        ).title,
         'Send revised deck to Shivani',
       );
     });
@@ -134,33 +138,44 @@ void main() {
       expect(wordCount, lessThanOrEqualTo(12));
     });
 
-    test('extracts and normalizes flower type from well-formed JSON and synonym/vibe fallback', () {
-      // 1. Exact match
-      expect(
-        parseTitleResponse('{"title":"Sunny day", "flower_type":"sunflower"}').flowerType,
-        'sunflower',
-      );
-      // 2. Vibe fallback - 'calm' maps to lavender
-      expect(
-        parseTitleResponse('{"title":"Reflections", "vibe":"calm"}').flowerType,
-        'lavender',
-      );
-      // 3. Synonym fallback - 'love' maps to rose
-      expect(
-        parseTitleResponse('{"title":"Family time", "flower":"love"}').flowerType,
-        'rose',
-      );
-      // 4. Default to sakura if unknown vibe
-      expect(
-        parseTitleResponse('{"title":"Random log", "type":"unknown_vibe"}').flowerType,
-        'sakura',
-      );
-      // 5. Default/Null if absent
-      expect(
-        parseTitleResponse('{"title":"No flower type info"}').flowerType,
-        isNull,
-      );
-    });
+    test(
+      'extracts and normalizes flower type from well-formed JSON and synonym/vibe fallback',
+      () {
+        // 1. Exact match
+        expect(
+          parseTitleResponse(
+            '{"title":"Sunny day", "flower_type":"sunflower"}',
+          ).flowerType,
+          'sunflower',
+        );
+        // 2. Vibe fallback - 'calm' maps to lavender
+        expect(
+          parseTitleResponse(
+            '{"title":"Reflections", "vibe":"calm"}',
+          ).flowerType,
+          'lavender',
+        );
+        // 3. Synonym fallback - 'love' maps to rose
+        expect(
+          parseTitleResponse(
+            '{"title":"Family time", "flower":"love"}',
+          ).flowerType,
+          'rose',
+        );
+        // 4. Default to sakura if unknown vibe
+        expect(
+          parseTitleResponse(
+            '{"title":"Random log", "type":"unknown_vibe"}',
+          ).flowerType,
+          'sakura',
+        );
+        // 5. Default/Null if absent
+        expect(
+          parseTitleResponse('{"title":"No flower type info"}').flowerType,
+          isNull,
+        );
+      },
+    );
   });
 
   test('parses cleanup response with unescaped markdown line breaks', () {

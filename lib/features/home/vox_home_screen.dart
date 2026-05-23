@@ -7,10 +7,11 @@ import '../../app_theme.dart';
 import '../../core/db/providers.dart';
 import '../detail/log_detail_screen.dart';
 import '../list/log_row.dart';
+import '../onboarding/onboarding_flow_screen.dart';
+import '../onboarding/onboarding_visuals.dart';
 import '../record/recording_providers.dart';
 import '../search/search_screen.dart';
 import 'auto_record_provider.dart';
-import 'onboarding_overlay.dart';
 import 'recording_overlay.dart';
 
 /// Primary screen: stateful dashboard.
@@ -64,10 +65,10 @@ class _VoxHomeScreenState extends ConsumerState<VoxHomeScreen> {
     return Scaffold(
       backgroundColor: (isOnboarded || hasImportedLogs)
           ? const Color(0xFF121315)
-          : VoxAppColors.canvas,
+          : OnboardingColors.background(context),
       body: isOnboarded || hasImportedLogs
           ? const _MainContent()
-          : const SafeArea(child: OnboardingOverlay()),
+          : const OnboardingFlowScreen(),
     );
   }
 }

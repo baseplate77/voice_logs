@@ -245,8 +245,9 @@ class _DeviceBenchmarkScreenState extends ConsumerState<DeviceBenchmarkScreen>
       return false;
     }
 
-    final tokensPerSec =
-        totalGenTimeMs > 0 ? (tokenCount / totalGenTimeMs) * 1000 : 0.0;
+    final tokensPerSec = totalGenTimeMs > 0
+        ? (tokenCount / totalGenTimeMs) * 1000
+        : 0.0;
 
     setState(() {
       _llmResult = LlmBenchmarkResult(
@@ -343,8 +344,10 @@ class _DeviceBenchmarkScreenState extends ConsumerState<DeviceBenchmarkScreen>
         return false;
       case Ok(:final value):
         final fullText = value.segments.map((s) => s.text).join(' ');
-        final wordCount =
-            fullText.split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+        final wordCount = fullText
+            .split(RegExp(r'\s+'))
+            .where((w) => w.isNotEmpty)
+            .length;
         final speedMultiplier = transcribeMs > 0
             ? (_testWavDurationSec / (transcribeMs / 1000))
             : 0.0;
@@ -391,7 +394,8 @@ class _DeviceBenchmarkScreenState extends ConsumerState<DeviceBenchmarkScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isRunning = _phase != _Phase.idle &&
+    final isRunning =
+        _phase != _Phase.idle &&
         _phase != _Phase.done &&
         _phase != _Phase.error;
 
@@ -497,7 +501,8 @@ class _DeviceBenchmarkScreenState extends ConsumerState<DeviceBenchmarkScreen>
                 SizedBox(height: 10.h),
                 _TierBadge(
                   tier: _llmResult!.tier,
-                  metric: '${_llmResult!.tokensPerSec.toStringAsFixed(1)} tok/s',
+                  metric:
+                      '${_llmResult!.tokensPerSec.toStringAsFixed(1)} tok/s',
                   subtitle: 'Text generation speed',
                 ),
                 SizedBox(height: 10.h),
@@ -567,7 +572,8 @@ class _DeviceBenchmarkScreenState extends ConsumerState<DeviceBenchmarkScreen>
                 _SttTierScale(activeTier: _sttResult!.tier),
                 SizedBox(height: 10.h),
                 _OutputCard(
-                  title: 'TRANSCRIPT (${_sttResult!.audioDurationSec.toStringAsFixed(0)}s audio)',
+                  title:
+                      'TRANSCRIPT (${_sttResult!.audioDurationSec.toStringAsFixed(0)}s audio)',
                   icon: Iconsax.microphone,
                   text: _sttResult!.transcript,
                 ),
@@ -646,7 +652,9 @@ class _SectionHeader extends StatelessWidget {
           ),
         ),
         SizedBox(width: 8.w),
-        Expanded(child: Divider(color: VoxAppColors.outline, height: 1.h)),
+        Expanded(
+          child: Divider(color: VoxAppColors.outline, height: 1.h),
+        ),
       ],
     );
   }
@@ -699,10 +707,7 @@ class _ModelInfoCard extends StatelessWidget {
                 SizedBox(height: 2.h),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: VoxAppColors.muted,
-                  ),
+                  style: TextStyle(fontSize: 12.sp, color: VoxAppColors.muted),
                 ),
               ],
             ),
@@ -818,10 +823,7 @@ class _PhaseCard extends StatelessWidget {
                 SizedBox(height: 3.h),
                 Text(
                   subtitle,
-                  style: TextStyle(
-                    fontSize: 12.sp,
-                    color: VoxAppColors.muted,
-                  ),
+                  style: TextStyle(fontSize: 12.sp, color: VoxAppColors.muted),
                 ),
               ],
             ),
@@ -871,8 +873,10 @@ class _TierBadge extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16.r),
-        border:
-            Border.all(color: tier.color.withValues(alpha: 0.3), width: 1.5.w),
+        border: Border.all(
+          color: tier.color.withValues(alpha: 0.3),
+          width: 1.5.w,
+        ),
       ),
       child: Column(
         children: [
@@ -912,10 +916,7 @@ class _TierBadge extends StatelessWidget {
           SizedBox(height: 4.h),
           Text(
             subtitle,
-            style: TextStyle(
-              fontSize: 12.sp,
-              color: VoxAppColors.muted,
-            ),
+            style: TextStyle(fontSize: 12.sp, color: VoxAppColors.muted),
           ),
           SizedBox(height: 10.h),
           Text(

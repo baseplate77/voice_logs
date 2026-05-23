@@ -107,7 +107,7 @@ class _LogDetailScreenState extends ConsumerState<LogDetailScreen> {
       body: SafeArea(
         child: Stack(
           children: [
-              logAsync.when(
+            logAsync.when(
               data: (log) {
                 if (log == null) {
                   return const Center(

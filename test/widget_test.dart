@@ -49,11 +49,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('VoxSynth.'), findsWidgets);
-    expect(
-      find.textContaining('Recording starts automatically'),
-      findsOneWidget,
-    );
+    expect(find.text('Think out loud. Privately.'), findsOneWidget);
+    expect(find.textContaining('Record your thoughts'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(milliseconds: 100));
   });
@@ -108,8 +105,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('restored journal entry'), findsNWidgets(2));
-    expect(find.textContaining('Recording starts automatically'), findsNothing);
+    expect(find.text('restored journal entry'), findsOneWidget);
+    expect(find.textContaining('Think out loud. Privately.'), findsNothing);
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(milliseconds: 100));
   });
