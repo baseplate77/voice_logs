@@ -126,4 +126,40 @@ void main() {
     );
     expect(hits.first.matchedVia, contains(MemoryMatchSource.entity));
   });
+
+  test('natural-language memory query uses type and yesterday date', () async {
+    final memoryRes = await memories.createOrUpdate(
+      candidate: const MemoryCandidate(
+        type: MemoryType.idea,
+        text: 'Build offline summarization for meeting notes.',
+        evidence: 'Build offline summarization',
+        confidence: 0.95,
+        sensitivity: MemorySensitivity.normal,
+        startChar: 0,
+        endChar: 27,
+      ),
+      sourceLogId: 'log_1',
+      embedding: Float32List.fromList([0, 1]),
+    );
+    final memory =
+        (memoryRes as Ok<MemoryItemView, MemoryRepositoryError>).value;
+    final yesterday = DateTime(2026, 5, 22, 9).millisecondsSinceEpoch;
+    await db.customStatement(
+      'UPDATE memory_items SET last_seen_at = ?, updated_at = ? WHERE id = ?',
+      [yesterday, yesterday, memory.id],
+    );
+
+    final retriever = MemoryRetriever(
+      db: db,
+      repository: memories,
+      embedder: _FakeEmbedder(Float32List.fromList([-1, 0])),
+      now: () => DateTime(2026, 5, 23, 12),
+    );
+
+    final res = await retriever.search('what idea did I get yesterday');
+    final hits = (res as Ok<List<MemoryHit>, MemoryRetrieverError>).value;
+    expect(hits.map((h) => h.memory.id), contains(memory.id));
+    expect(hits.first.matchedVia, contains(MemoryMatchSource.type));
+    expect(hits.first.matchedVia, contains(MemoryMatchSource.date));
+  });
 }

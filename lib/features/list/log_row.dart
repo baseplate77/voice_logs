@@ -41,14 +41,23 @@ class _LogRowState extends ConsumerState<LogRow>
   @override
   void didUpdateWidget(covariant LogRow oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final hadBefore = _hasRealTitle(oldWidget.log);
-    final hasNow = _hasRealTitle(widget.log);
-    if (!hadBefore && hasNow && !_hadTitleAtMount) {
+    _maybeRevealTitle(oldWidget.log, widget.log);
+  }
+
+  void _maybeRevealTitle(VoiceLogView before, VoiceLogView after) {
+    final hadBefore = _hasRealTitle(before);
+    final hasNow = _hasRealTitle(after);
+    if (!hadBefore && hasNow) {
+      if (_controller.value >= 1.0) {
+        _controller.value = 0;
+      }
       _controller
         ..reset()
         ..forward();
     } else if (hadBefore && !hasNow) {
       _controller.value = 0;
+    } else if (hasNow && _controller.value < 1.0) {
+      _controller.forward();
     }
   }
 
@@ -71,10 +80,17 @@ class _LogRowState extends ConsumerState<LogRow>
         ref.watch(voiceLogMentionsProvider(log.id)).valueOrNull ?? [];
 
     final hasTitle = _hasRealTitle(log);
-    final titleText = hasTitle ? log.title! : '';
+    final titleText = hasTitle ? log.title!.trim() : log.displayTitle.trim();
 
     final isTitlePending =
         !hasTitle && log.processingState == ProcessingState.recorded;
+
+    if (hasTitle && _controller.value < 1.0 && !_controller.isAnimating) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !_hasRealTitle(widget.log)) return;
+        if (_controller.value < 1.0) _controller.forward();
+      });
+    }
 
     return Card(
       margin: EdgeInsets.zero,
@@ -106,7 +122,7 @@ class _LogRowState extends ConsumerState<LogRow>
                             ? theme.colorScheme.onSurfaceVariant
                             : theme.colorScheme.onSurface,
                       ),
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
               SizedBox(height: 4.h),

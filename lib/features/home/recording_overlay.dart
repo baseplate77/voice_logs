@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
@@ -45,15 +47,13 @@ class RecordingOverlay extends ConsumerWidget {
               curve: Curves.easeOut,
               child: switch (state) {
                 RecordingIdle() => _IdleDeck(
-                  onStart: () async {
-                    await controller.start();
-                    if (context.mounted) {
-                      await Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const RecordScreen(),
-                        ),
-                      );
-                    }
+                  onStart: () {
+                    unawaited(controller.start());
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const RecordScreen(),
+                      ),
+                    );
                   },
                 ),
                 RecordingActive(:final elapsedMs) => _ActiveDeck(

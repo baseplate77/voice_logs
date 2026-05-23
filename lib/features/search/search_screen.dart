@@ -55,7 +55,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           autofocus: true,
           textInputAction: TextInputAction.search,
           decoration: const InputDecoration(
-            hintText: 'Search your journal…',
+            hintText: 'Ask about your logs…',
             border: InputBorder.none,
           ),
           onChanged: _onChanged,
@@ -76,9 +76,8 @@ class _EmptyPrompt extends StatelessWidget {
   const _EmptyPrompt();
 
   @override
-  Widget build(BuildContext context) => const Center(
-    child: Text('Type to search raw transcripts, cleaned text, entities.'),
-  );
+  Widget build(BuildContext context) =>
+      const Center(child: Text('Try "what did Rahul say yesterday?"'));
 }
 
 class _SearchResults extends ConsumerWidget {
@@ -99,7 +98,7 @@ class _SearchResults extends ConsumerWidget {
         return ListView.separated(
           itemCount: rows.length,
           separatorBuilder: (_, _) => Divider(height: 1.h),
-          itemBuilder: (_, i) => _ResultTile(hit: rows[i], query: query),
+          itemBuilder: (_, i) => _ResultTile(hit: rows[i]),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator.adaptive()),
@@ -109,17 +108,16 @@ class _SearchResults extends ConsumerWidget {
 }
 
 class _ResultTile extends StatelessWidget {
-  const _ResultTile({required this.hit, required this.query});
+  const _ResultTile({required this.hit});
 
   final SearchHit hit;
-  final String query;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return ListTile(
       title: Text.rich(
-        _highlightedSnippetSpan(context, hit.snippet, query),
+        _highlightedSnippetSpan(context, hit.snippet, hit.highlightTerms),
         maxLines: 2,
         overflow: TextOverflow.ellipsis,
       ),
@@ -374,7 +372,7 @@ class _DateRangeChip extends StatelessWidget {
 TextSpan _highlightedSnippetSpan(
   BuildContext context,
   String snippet,
-  String query,
+  List<String> highlightTerms,
 ) {
   final base = Theme.of(context).textTheme.bodyMedium;
   final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -383,7 +381,7 @@ TextSpan _highlightedSnippetSpan(
     color: isDark ? Colors.white : Colors.black,
     fontWeight: FontWeight.w700,
   );
-  final terms = _highlightTerms(query);
+  final terms = _highlightTerms(highlightTerms);
   if (snippet.isEmpty || terms.isEmpty) {
     return TextSpan(text: snippet, style: base);
   }
@@ -411,11 +409,10 @@ TextSpan _highlightedSnippetSpan(
   return TextSpan(style: base, children: children);
 }
 
-List<String> _highlightTerms(String query) {
+List<String> _highlightTerms(List<String> rawTerms) {
   final seen = <String>{};
-  final terms = query
-      .toLowerCase()
-      .split(RegExp(r'\W+'))
+  final terms = rawTerms
+      .expand((term) => term.toLowerCase().split(RegExp(r'\W+')))
       .where((w) => w.length > 1)
       .where(seen.add)
       .toList();
@@ -431,6 +428,7 @@ String _sourceLabel(Set<MatchSource> sources) {
           MatchSource.fts => 'keyword',
           MatchSource.vector => 'semantic',
           MatchSource.entity => 'entity',
+          MatchSource.date => 'date',
         };
       })
       .join(' + ');

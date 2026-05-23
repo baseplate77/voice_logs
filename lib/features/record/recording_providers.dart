@@ -172,7 +172,6 @@ class RecordingController extends StateNotifier<RecordingState>
     _pendingRefineLogId = null;
     _pendingRefineStartedAt = null;
     _pendingRefineElapsedSec = 0;
-    await AudioSessionBridge.ensureConfigured();
 
     final audioDir = Directory(p.join(_docsPath, 'audio'));
     if (!audioDir.existsSync()) audioDir.createSync(recursive: true);
@@ -181,16 +180,34 @@ class RecordingController extends StateNotifier<RecordingState>
     _activeLogId = id;
     _liveActivityStarted = false;
     _liveActivityStartInFlight = false;
+    _startedAt = null;
+    _lastActivityUpdateSec = 0;
+    _lastActivityUpdateMs = -1;
+
+    // Transition immediately so the record affordance feels instant; the
+    // platform recorder and audio session finish on the next frames.
+    _startWaveformMonitor();
+    _armElapsedTimer();
+    state = const RecordingActive(0);
+    _log.i('state transitioned to RecordingActive(0) (optimistic)');
+    unawaited(IntentBridge.reportRecordingState(isRecording: true));
+
+    await AudioSessionBridge.ensureConfigured();
 
     final started = await _recorder.start(destinationPath: path);
     switch (started) {
       case Ok():
         break;
       case Err(:final error):
+        _elapsedTimer?.cancel();
+        _elapsedTimer = null;
+        await _stopWaveformMonitor();
         state = RecordingFailed(error.message);
         _activeLogId = null;
+        _startedAt = null;
         _liveActivityStarted = false;
         _liveActivityStartInFlight = false;
+        unawaited(IntentBridge.reportRecordingState(isRecording: false));
         return;
     }
 
@@ -201,16 +218,17 @@ class RecordingController extends StateNotifier<RecordingState>
       message: 'Recording started',
     );
     _startedAt = DateTime.now();
-    _lastActivityUpdateSec = 0;
-    _lastActivityUpdateMs = -1;
-    _startWaveformMonitor();
-    state = const RecordingActive(0);
-    _log.i('state transitioned to RecordingActive(0)');
     unawaited(_tryStartLiveActivity());
-    unawaited(IntentBridge.reportRecordingState(isRecording: true));
+  }
+
+  void _armElapsedTimer() {
+    _elapsedTimer?.cancel();
     _elapsedTimer = Timer.periodic(const Duration(milliseconds: 100), (_) {
       final startedAt = _startedAt;
-      if (startedAt == null) return;
+      if (startedAt == null) {
+        if (state is RecordingActive) state = const RecordingActive(0);
+        return;
+      }
       final elapsed = DateTime.now().difference(startedAt).inMilliseconds;
       state = RecordingActive(elapsed);
 

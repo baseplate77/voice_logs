@@ -190,6 +190,10 @@ final voiceLogsStreamProvider = StreamProvider<List<VoiceLogView>>((ref) {
   return repo.watchAll();
 });
 
+/// Bumped when a refine job lands so the home list rebinds even if the
+/// drift watch notification is delayed across isolates.
+final voiceLogListRevisionProvider = StateProvider<int>((ref) => 0);
+
 /// Stream of local memory cards for the Memory screen.
 final memoryItemsStreamProvider = StreamProvider<List<MemoryItemView>>((ref) {
   final repo = ref.watch(memoryRepositoryProvider);

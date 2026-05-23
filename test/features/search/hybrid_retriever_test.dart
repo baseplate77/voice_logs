@@ -151,6 +151,142 @@ void main() {
     expect(hits.single.snippet.length, lessThan(130));
   });
 
+  test('natural-language question drops filler words for FTS', () async {
+    final db = VoxSynthDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final repo = VoiceLogRepository(db);
+    await repo.insertRecorded(
+      id: 'log_rahul',
+      createdAt: DateTime(2026, 5, 7),
+      durationMs: 1000,
+      audioPath: 'audio/log_rahul.wav',
+      rawTranscript: 'Rahul shared the launch plan for Atlas.',
+    );
+
+    final retriever = HybridRetriever(
+      db: db,
+      embedder: _FailingEmbedder(),
+      vecStore: VecStore(SegmentRepository(db)),
+    );
+
+    final res = await retriever.search('what did Rahul say');
+    final hits = (res as Ok<List<SearchHit>, RetrieverError>).value;
+    expect(hits.map((h) => h.logId), ['log_rahul']);
+    expect(hits.single.highlightTerms, contains('rahul'));
+    expect(hits.single.highlightTerms, isNot(contains('say')));
+    expect(hits.single.snippet, contains('Rahul'));
+  });
+
+  test('query entity path handles a misspelled person name', () async {
+    final db = VoxSynthDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final repo = VoiceLogRepository(db);
+    await repo.insertRecorded(
+      id: 'log_john',
+      createdAt: DateTime(2026, 5, 7),
+      durationMs: 1000,
+      audioPath: 'audio/log_john.wav',
+      rawTranscript: 'Met with John about the prototype.',
+    );
+    await _insertEntity(
+      db,
+      id: 'ent_john',
+      displayName: 'John',
+      type: 'person',
+    );
+    await _insertMention(
+      db,
+      id: 'm_john',
+      logId: 'log_john',
+      text: 'John',
+      canonicalEntityId: 'ent_john',
+    );
+
+    final retriever = HybridRetriever(
+      db: db,
+      embedder: _FailingEmbedder(),
+      vecStore: VecStore(SegmentRepository(db)),
+    );
+
+    final res = await retriever.search('what did Jhon say');
+    final hits = (res as Ok<List<SearchHit>, RetrieverError>).value;
+    expect(hits.map((h) => h.logId), ['log_john']);
+    expect(hits.single.matchedVia, contains(MatchSource.entity));
+    expect(hits.single.matchedEntityNames, contains('John'));
+    expect(hits.single.highlightTerms, contains('john'));
+  });
+
+  test(
+    'date-only natural-language question returns logs from yesterday',
+    () async {
+      final db = VoxSynthDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      final repo = VoiceLogRepository(db);
+      await repo.insertRecorded(
+        id: 'log_yesterday',
+        createdAt: DateTime(2026, 5, 22, 10),
+        durationMs: 1000,
+        audioPath: 'audio/yesterday.wav',
+        rawTranscript: 'Spoke through a product idea.',
+      );
+      await repo.insertRecorded(
+        id: 'log_today',
+        createdAt: DateTime(2026, 5, 23, 10),
+        durationMs: 1000,
+        audioPath: 'audio/today.wav',
+        rawTranscript: 'Today notes.',
+      );
+
+      final retriever = HybridRetriever(
+        db: db,
+        embedder: _FailingEmbedder(),
+        vecStore: VecStore(SegmentRepository(db)),
+        now: () => DateTime(2026, 5, 23, 12),
+      );
+
+      final res = await retriever.search('what did I say yesterday');
+      final hits = (res as Ok<List<SearchHit>, RetrieverError>).value;
+      expect(hits.map((h) => h.logId), ['log_yesterday']);
+      expect(hits.single.matchedVia, contains(MatchSource.date));
+      expect(hits.single.localReason, contains('yesterday'));
+    },
+  );
+
+  test('natural-language idea query combines keyword and yesterday', () async {
+    final db = VoxSynthDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final repo = VoiceLogRepository(db);
+    await repo.insertRecorded(
+      id: 'log_idea_yesterday',
+      createdAt: DateTime(2026, 5, 22, 10),
+      durationMs: 1000,
+      audioPath: 'audio/idea_yesterday.wav',
+      rawTranscript: 'I got an idea for the offline memory search.',
+    );
+    await repo.insertRecorded(
+      id: 'log_idea_today',
+      createdAt: DateTime(2026, 5, 23, 10),
+      durationMs: 1000,
+      audioPath: 'audio/idea_today.wav',
+      rawTranscript: 'Another idea from today.',
+    );
+
+    final retriever = HybridRetriever(
+      db: db,
+      embedder: _FailingEmbedder(),
+      vecStore: VecStore(SegmentRepository(db)),
+      now: () => DateTime(2026, 5, 23, 12),
+    );
+
+    final res = await retriever.search('what idea did I get yesterday');
+    final hits = (res as Ok<List<SearchHit>, RetrieverError>).value;
+    expect(hits.map((h) => h.logId), ['log_idea_yesterday']);
+    expect(hits.single.matchedVia, contains(MatchSource.fts));
+    expect(hits.single.matchedVia, contains(MatchSource.date));
+    expect(hits.single.highlightTerms, contains('idea'));
+    expect(hits.single.snippet.toLowerCase(), contains('idea'));
+  });
+
   test('FTS hit pinpoints the transcript segment containing the keyword', () async {
     final db = VoxSynthDatabase(NativeDatabase.memory());
     addTearDown(db.close);

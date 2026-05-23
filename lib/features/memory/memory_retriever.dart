@@ -8,6 +8,7 @@ import '../../core/db/repositories/memory_repository.dart';
 import '../../core/result.dart';
 import '../search/embedder.dart';
 import '../search/embedding_math.dart';
+import '../search/natural_language_query.dart';
 import '../search/rrf.dart';
 import 'memory_types.dart';
 
@@ -48,13 +49,15 @@ class MemoryRetriever {
     int vectorLimit = 20,
     int entityLimit = 20,
     int rrfK = 60,
+    DateTime Function()? now,
   }) : _db = db,
        _repository = repository,
        _embedder = embedder,
        _ftsLimit = ftsLimit,
        _vectorLimit = vectorLimit,
        _entityLimit = entityLimit,
-       _rrfK = rrfK;
+       _rrfK = rrfK,
+       _now = now ?? DateTime.now;
 
   final VoxSynthDatabase _db;
   final MemoryRepository _repository;
@@ -63,6 +66,7 @@ class MemoryRetriever {
   final int _vectorLimit;
   final int _entityLimit;
   final int _rrfK;
+  final DateTime Function() _now;
 
   /// Retrieve active, non-sensitive-unconfirmed memory cards for [query].
   Future<Result<List<MemoryHit>, MemoryRetrieverError>> search(
@@ -70,12 +74,17 @@ class MemoryRetriever {
     int limit = 10,
   }) async {
     if (query.trim().isEmpty) return const Ok([]);
+    final parsed = NaturalLanguageSearchQuery.parse(query, now: _now());
 
     List<String> ftsIds;
     List<String> entityIds;
+    List<String> typeIds;
+    List<String> dateIds;
     try {
-      ftsIds = await _ftsSearch(query);
-      entityIds = await _entitySearch(query);
+      ftsIds = await _ftsSearch(parsed.lexicalTerms);
+      entityIds = await _entitySearch(parsed);
+      typeIds = await _typeSearch(parsed);
+      dateIds = await _dateSearch(parsed);
     } on Object catch (e, s) {
       return Err(
         MemoryRetrieverDbError(
@@ -87,7 +96,7 @@ class MemoryRetriever {
     }
 
     var vectorIds = const <String>[];
-    final embedded = await _embedder.embedQuery(query);
+    final embedded = await _embedder.embedQuery(parsed.semanticQuery);
     switch (embedded) {
       case Ok(:final value):
         vectorIds = await _vectorSearch(value.vector);
@@ -96,7 +105,7 @@ class MemoryRetriever {
     }
 
     final fused = reciprocalRankFusion(
-      rankedLists: [ftsIds, vectorIds, entityIds],
+      rankedLists: [ftsIds, vectorIds, entityIds, typeIds, dateIds],
       k: _rrfK,
     );
     final ordered = sortByScoreDescending(fused).take(limit).toList();
@@ -108,6 +117,8 @@ class MemoryRetriever {
       if (ftsIds.contains(id)) matched.add(MemoryMatchSource.fts);
       if (vectorIds.contains(id)) matched.add(MemoryMatchSource.vector);
       if (entityIds.contains(id)) matched.add(MemoryMatchSource.entity);
+      if (typeIds.contains(id)) matched.add(MemoryMatchSource.type);
+      if (dateIds.contains(id)) matched.add(MemoryMatchSource.date);
       hits.add(
         MemoryHit(
           memory: memory,
@@ -120,8 +131,8 @@ class MemoryRetriever {
     return Ok(hits);
   }
 
-  Future<List<String>> _ftsSearch(String query) async {
-    final ftsQuery = _buildFtsQuery(query);
+  Future<List<String>> _ftsSearch(List<String> terms) async {
+    final ftsQuery = _buildFtsQuery(terms);
     if (ftsQuery.isEmpty) return const [];
     final rows = await _db
         .customSelect(
@@ -141,77 +152,9 @@ class MemoryRetriever {
     return rows.map((r) => r.read<String>('id')).toList();
   }
 
-  static final _stopWords = {
-    'i',
-    'me',
-    'my',
-    'we',
-    'our',
-    'you',
-    'your',
-    'he',
-    'she',
-    'it',
-    'they',
-    'them',
-    'a',
-    'an',
-    'the',
-    'is',
-    'am',
-    'are',
-    'was',
-    'were',
-    'be',
-    'been',
-    'being',
-    'have',
-    'has',
-    'had',
-    'do',
-    'does',
-    'did',
-    'will',
-    'would',
-    'could',
-    'should',
-    'can',
-    'may',
-    'might',
-    'at',
-    'in',
-    'on',
-    'to',
-    'for',
-    'of',
-    'with',
-    'by',
-    'from',
-    'about',
-    'that',
-    'this',
-    'what',
-    'which',
-    'who',
-    'whom',
-    'and',
-    'or',
-    'but',
-    'not',
-    'no',
-    'if',
-    'so',
-    'than',
-  };
-
-  static String _buildFtsQuery(String query) {
-    final terms = query
-        .toLowerCase()
-        .split(RegExp(r'\W+'))
-        .where((w) => w.length > 1 && !_stopWords.contains(w))
-        .toList();
+  static String _buildFtsQuery(List<String> terms) {
     if (terms.isEmpty) return '';
-    return terms.map((t) => '"${t.replaceAll('"', '""')}"').join(' ');
+    return terms.map((t) => '${t.replaceAll('"', '""')}*').join(' ');
   }
 
   Future<List<String>> _vectorSearch(Float32List queryVector) async {
@@ -229,22 +172,16 @@ class MemoryRetriever {
     return scored.take(_vectorLimit).map((s) => s.id).toList();
   }
 
-  Future<List<String>> _entitySearch(String query) async {
-    final trimmed = query.trim().toLowerCase();
-    if (trimmed.isEmpty) return const [];
-    final like = '%$trimmed%';
+  Future<List<String>> _entitySearch(NaturalLanguageSearchQuery query) async {
     final rows = await _db
         .customSelect(
-          'SELECT DISTINCT mel.memory_id FROM canonical_entities ce '
+          'SELECT DISTINCT mel.memory_id, ce.display_name FROM canonical_entities ce '
           'JOIN memory_entity_links mel ON mel.canonical_entity_id = ce.id '
           'JOIN memory_items mi ON mi.id = mel.memory_id '
-          'WHERE mi.status = ? AND '
-          '(LOWER(ce.display_name) = ? OR LOWER(ce.display_name) LIKE ?) '
+          'WHERE mi.status = ? '
           'ORDER BY mi.updated_at DESC LIMIT ?',
           variables: [
             Variable<String>(MemoryStatus.active.wire),
-            Variable<String>(trimmed),
-            Variable<String>(like),
             Variable<int>(_entityLimit),
           ],
           readsFrom: {
@@ -254,12 +191,72 @@ class MemoryRetriever {
           },
         )
         .get();
-    return rows.map((r) => r.read<String>('memory_id')).toList();
+    final matched = <String>[];
+    for (final row in rows) {
+      final memoryId = row.read<String>('memory_id');
+      final entityName = row.read<String>('display_name');
+      if (query.containsEntityName(entityName) && !matched.contains(memoryId)) {
+        matched.add(memoryId);
+      }
+    }
+    return matched;
+  }
+
+  Future<List<String>> _typeSearch(NaturalLanguageSearchQuery query) async {
+    final matchedTypes = <String>{};
+    for (final term in query.lexicalTerms) {
+      for (final type in MemoryType.values) {
+        if (term == type.wire || term == '${type.wire}s') {
+          matchedTypes.add(type.wire);
+        }
+      }
+    }
+    if (matchedTypes.isEmpty) return const [];
+    final rows =
+        await (_db.select(_db.memoryItems)
+              ..where(
+                (t) =>
+                    t.status.equals(MemoryStatus.active.wire) &
+                    t.type.isIn(matchedTypes),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.updatedAt)]))
+            .get();
+    return rows.map((r) => r.id).take(_entityLimit).toList(growable: false);
+  }
+
+  Future<List<String>> _dateSearch(NaturalLanguageSearchQuery query) async {
+    final range = query.dateRange;
+    if (range == null) return const [];
+    final rows =
+        await (_db.select(_db.memoryItems)
+              ..where((t) {
+                var expression = t.status.equals(MemoryStatus.active.wire);
+                final start = range.start;
+                if (start != null) {
+                  expression =
+                      expression &
+                      t.lastSeenAt.isBiggerOrEqualValue(
+                        start.millisecondsSinceEpoch,
+                      );
+                }
+                final end = range.end;
+                if (end != null) {
+                  expression =
+                      expression &
+                      t.lastSeenAt.isSmallerOrEqualValue(
+                        end.millisecondsSinceEpoch,
+                      );
+                }
+                return expression;
+              })
+              ..orderBy([(t) => OrderingTerm.desc(t.lastSeenAt)]))
+            .get();
+    return rows.map((r) => r.id).take(_entityLimit).toList(growable: false);
   }
 
   double _boostedScore(double base, MemoryItemView memory) {
     final confidenceBoost = memory.confidence * 0.001;
-    final recencyDays = DateTime.now().difference(memory.lastSeenAt).inDays;
+    final recencyDays = _now().difference(memory.lastSeenAt).inDays;
     final recencyBoost = recencyDays <= 7 ? 0.001 : 0.0;
     return base + confidenceBoost + recencyBoost;
   }

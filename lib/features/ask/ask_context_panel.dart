@@ -205,6 +205,8 @@ String _memorySources(Set<MemoryMatchSource> sources) {
           MemoryMatchSource.fts => 'keyword',
           MemoryMatchSource.vector => 'semantic',
           MemoryMatchSource.entity => 'entity',
+          MemoryMatchSource.type => 'type',
+          MemoryMatchSource.date => 'date',
         };
       })
       .join(' + ');
@@ -218,6 +220,7 @@ String _logSources(Set<MatchSource> sources) {
           MatchSource.fts => 'keyword',
           MatchSource.vector => 'semantic',
           MatchSource.entity => 'entity',
+          MatchSource.date => 'date',
         };
       })
       .join(' + ');

@@ -133,4 +133,4 @@ class MemoryHit {
 }
 
 /// Retrieval paths contributing to a memory hit.
-enum MemoryMatchSource { fts, vector, entity }
+enum MemoryMatchSource { fts, vector, entity, type, date }

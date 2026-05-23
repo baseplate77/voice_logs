@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 
 import 'app_theme.dart';
+import 'core/audio_session_bridge.dart';
 import 'core/background_task_bridge.dart';
 import 'core/intent_bridge.dart';
 import 'core/logger.dart';
@@ -44,6 +45,7 @@ class _VoxSynthAppState extends ConsumerState<VoxSynthApp>
       _listenForIntents();
       _listenForBackgroundProcessingTasks();
       unawaited(_syncScheduledProcessingTask());
+      unawaited(AudioSessionBridge.ensureConfigured());
     });
   }
 

@@ -78,6 +78,7 @@ class _MainContent extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(voiceLogListRevisionProvider);
     final logs = ref.watch(voiceLogsStreamProvider);
     final recordingState = ref.watch(recordingControllerProvider);
     final isRecording =
@@ -194,6 +195,7 @@ class _MainContent extends ConsumerWidget {
                                 itemBuilder: (_, i) {
                                   final row = rows[i];
                                   return LogRow(
+                                    key: ValueKey(row.id),
                                     log: row,
                                     onTap: () => Navigator.of(context).push(
                                       MaterialPageRoute<void>(

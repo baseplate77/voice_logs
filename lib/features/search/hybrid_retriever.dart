@@ -4,6 +4,7 @@ import '../../core/app_error.dart';
 import '../../core/db/database.dart';
 import '../../core/result.dart';
 import 'embedder.dart';
+import 'natural_language_query.dart';
 import 'rrf.dart';
 import 'search_filters.dart';
 import 'vec_store.dart';
@@ -24,6 +25,7 @@ class SearchHit {
     this.bestSegmentEndMs,
     this.localReason = '',
     this.matchedEntityNames = const [],
+    this.highlightTerms = const [],
   });
 
   final String logId;
@@ -66,9 +68,14 @@ class SearchHit {
   /// active facet filters. Used by the UI to render entity chips on the
   /// result tile.
   final List<String> matchedEntityNames;
+
+  /// Exact terms worth highlighting in [snippet]. These are the meaningful
+  /// query terms after natural-language scaffolding and temporal phrases have
+  /// been removed, plus matched entity names.
+  final List<String> highlightTerms;
 }
 
-enum MatchSource { fts, vector, entity }
+enum MatchSource { fts, vector, entity, date }
 
 class _LogMeta {
   const _LogMeta({
@@ -133,12 +140,14 @@ class HybridRetriever {
     int ftsLimit = 20,
     int vectorLimit = 20,
     int rrfK = 60,
+    DateTime Function()? now,
   }) : _db = db,
        _embedder = embedder,
        _vecStore = vecStore,
        _ftsLimit = ftsLimit,
        _vectorLimit = vectorLimit,
-       _rrfK = rrfK;
+       _rrfK = rrfK,
+       _now = now ?? DateTime.now;
 
   final VoxSynthDatabase _db;
   final Embedder _embedder;
@@ -146,6 +155,7 @@ class HybridRetriever {
   final int _ftsLimit;
   final int _vectorLimit;
   final int _rrfK;
+  final DateTime Function() _now;
 
   Future<Result<List<SearchHit>, RetrieverError>> search(
     String query, {
@@ -153,13 +163,15 @@ class HybridRetriever {
     SearchFilters filters = const SearchFilters(),
   }) async {
     if (query.trim().isEmpty) return const Ok([]);
+    var parsed = NaturalLanguageSearchQuery.parse(query, now: _now());
+    final effectiveFilters = _filtersWithInferredDate(filters, parsed);
 
     // Resolve hard-filter constraints (entity facets, date, action items)
     // into the set of log IDs that survive. Null means "no constraint".
     Set<String>? eligible;
     Map<String, List<String>> matchedEntityNamesByLog = const {};
     try {
-      final filterResult = await _resolveFilters(filters);
+      final filterResult = await _resolveFilters(effectiveFilters);
       eligible = filterResult.eligibleLogIds;
       matchedEntityNamesByLog = filterResult.matchedEntityNamesByLog;
     } on Object catch (e, s) {
@@ -177,7 +189,7 @@ class HybridRetriever {
     // pre-req for finding something you just said.
     List<String> ftsLogIds;
     try {
-      ftsLogIds = await _ftsSearch(query);
+      ftsLogIds = await _ftsSearch(parsed.lexicalTerms);
     } on Object catch (e, s) {
       return Err(
         RetrieverDbError(message: 'FTS search failed: $e', cause: e, stack: s),
@@ -187,10 +199,26 @@ class HybridRetriever {
       ftsLogIds = ftsLogIds.where(eligible.contains).toList();
     }
 
+    _QueryEntityResolution queryEntities;
+    try {
+      queryEntities = await _resolveQueryEntities(parsed, eligible);
+      parsed = parsed.withExtraHighlightTerms(
+        queryEntities.matchedEntityNamesByLog.values.expand((names) => names),
+      );
+    } on Object catch (e, s) {
+      return Err(
+        RetrieverDbError(
+          message: 'Query entity search failed: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+
     // Vector path — embed the query with `"query: "` prefix.
     List<String> vectorLogIds = const [];
     final vectorSegments = <String, List<String>>{};
-    final embedded = await _embedder.embedQuery(query);
+    final embedded = await _embedder.embedQuery(parsed.semanticQuery);
     switch (embedded) {
       case Ok(:final value):
         final hits = _vecStore.search(value.vector, k: _vectorLimit);
@@ -222,9 +250,19 @@ class HybridRetriever {
         );
         return cmp != 0 ? cmp : a.compareTo(b);
       });
+    final queryEntityLogIds = queryEntities.rankedLogIds;
+    final dateLogIds = parsed.hasDateConstraint && eligible != null
+        ? await _logsByCreatedAt(eligible)
+        : const <String>[];
 
     final fused = reciprocalRankFusion(
-      rankedLists: [ftsLogIds, vectorLogIds, entityLogIds],
+      rankedLists: [
+        ftsLogIds,
+        vectorLogIds,
+        queryEntityLogIds,
+        entityLogIds,
+        dateLogIds,
+      ],
       k: _rrfK,
     );
     final ordered = sortByScoreDescending(fused).take(limit).toList();
@@ -232,7 +270,6 @@ class HybridRetriever {
 
     final logMeta = await _logMetaFor(ordered);
     final transcriptSegments = await _transcriptSegmentsFor(ordered);
-    final queryTerms = _queryTerms(query);
 
     return Ok(
       ordered.map((id) {
@@ -240,13 +277,15 @@ class HybridRetriever {
         final matchedFts = ftsLogIds.contains(id);
         if (matchedFts) matched.add(MatchSource.fts);
         if (vectorLogIds.contains(id)) matched.add(MatchSource.vector);
-        if (matchedEntityNamesByLog.containsKey(id)) {
+        if (matchedEntityNamesByLog.containsKey(id) ||
+            queryEntities.matchedEntityNamesByLog.containsKey(id)) {
           matched.add(MatchSource.entity);
         }
+        if (dateLogIds.contains(id)) matched.add(MatchSource.date);
         final meta = logMeta[id];
         final segs = vectorSegments[id] ?? const [];
-        final keywordExcerpt = matchedFts && meta != null
-            ? _excerptForTerms(meta.excerptCandidates, queryTerms)
+        final keywordExcerpt = meta != null
+            ? _excerptForTerms(meta.excerptCandidates, parsed.highlightTerms)
             : null;
         final snippet =
             keywordExcerpt ??
@@ -255,17 +294,21 @@ class HybridRetriever {
         final segments = transcriptSegments[id] ?? const [];
         final pinpoint = _pinpointSegment(
           segments: segments,
-          queryTerms: queryTerms,
+          queryTerms: parsed.highlightTerms,
           vectorChunks: segs,
           matchedFts: matchedFts,
         );
 
-        final entityNames = matchedEntityNamesByLog[id] ?? const [];
+        final entityNames = _mergeNames(
+          matchedEntityNamesByLog[id],
+          queryEntities.matchedEntityNamesByLog[id],
+        );
         final reason = _localReason(
           matched: matched,
           entityNames: entityNames,
           pinpoint: pinpoint,
-          queryTerms: queryTerms,
+          queryTerms: parsed.highlightTerms,
+          dateLabel: parsed.dateLabel,
         );
 
         return SearchHit(
@@ -282,13 +325,14 @@ class HybridRetriever {
           bestSegmentEndMs: pinpoint?.endMs,
           localReason: reason,
           matchedEntityNames: entityNames,
+          highlightTerms: parsed.highlightTerms,
         );
       }).toList(),
     );
   }
 
-  Future<List<String>> _ftsSearch(String query) async {
-    final ftsQuery = _buildFtsQuery(query);
+  Future<List<String>> _ftsSearch(List<String> terms) async {
+    final ftsQuery = _buildFtsQuery(terms);
     if (ftsQuery.isEmpty) return const [];
     final rows = await _db
         .customSelect(
@@ -398,8 +442,12 @@ class HybridRetriever {
     required List<String> entityNames,
     required _SegMeta? pinpoint,
     required List<String> queryTerms,
+    required String? dateLabel,
   }) {
     final parts = <String>[];
+    if (dateLabel != null && matched.contains(MatchSource.date)) {
+      parts.add('Recorded $dateLabel');
+    }
     if (entityNames.isNotEmpty) {
       final shown = entityNames.take(2).join(', ');
       final extra = entityNames.length > 2 ? ' +${entityNames.length - 2}' : '';
@@ -413,6 +461,53 @@ class HybridRetriever {
       parts.add('Semantically similar$at');
     }
     return parts.join(' · ');
+  }
+
+  Future<_QueryEntityResolution> _resolveQueryEntities(
+    NaturalLanguageSearchQuery query,
+    Set<String>? eligible,
+  ) async {
+    if (query.queryTokens.isEmpty) return const _QueryEntityResolution.empty();
+    final entities = await _db.select(_db.canonicalEntities).get();
+    final matchedIds = <String, String>{};
+    for (final entity in entities) {
+      if (!query.containsEntityName(entity.displayName)) continue;
+      matchedIds[entity.id] = entity.displayName;
+    }
+    if (matchedIds.isEmpty) return const _QueryEntityResolution.empty();
+
+    final mentions = await (_db.select(
+      _db.entityMentions,
+    )..where((t) => t.canonicalEntityId.isIn(matchedIds.keys))).get();
+    final namesByLog = <String, List<String>>{};
+    for (final mention in mentions) {
+      if (eligible != null && !eligible.contains(mention.logId)) continue;
+      final entityId = mention.canonicalEntityId;
+      if (entityId == null) continue;
+      final name = matchedIds[entityId];
+      if (name == null) continue;
+      final names = namesByLog.putIfAbsent(mention.logId, () => <String>[]);
+      if (!names.contains(name)) names.add(name);
+    }
+    final ranked = namesByLog.keys.toList()
+      ..sort((a, b) {
+        final cmp = namesByLog[b]!.length.compareTo(namesByLog[a]!.length);
+        return cmp != 0 ? cmp : a.compareTo(b);
+      });
+    return _QueryEntityResolution(
+      rankedLogIds: ranked,
+      matchedEntityNamesByLog: namesByLog,
+    );
+  }
+
+  Future<List<String>> _logsByCreatedAt(Set<String> logIds) async {
+    if (logIds.isEmpty) return const [];
+    final rows =
+        await (_db.select(_db.voiceLogs)
+              ..where((t) => t.id.isIn(logIds))
+              ..orderBy([(t) => OrderingTerm.desc(t.createdAt)]))
+            .get();
+    return rows.map((r) => r.id).toList(growable: false);
   }
 
   static String _formatMs(int ms) {
@@ -526,83 +621,9 @@ class HybridRetriever {
     );
   }
 
-  static final _stopWords = {
-    'i',
-    'me',
-    'my',
-    'we',
-    'our',
-    'you',
-    'your',
-    'he',
-    'she',
-    'it',
-    'they',
-    'them',
-    'a',
-    'an',
-    'the',
-    'is',
-    'am',
-    'are',
-    'was',
-    'were',
-    'be',
-    'been',
-    'being',
-    'have',
-    'has',
-    'had',
-    'do',
-    'does',
-    'did',
-    'will',
-    'would',
-    'could',
-    'should',
-    'can',
-    'may',
-    'might',
-    'at',
-    'in',
-    'on',
-    'to',
-    'for',
-    'of',
-    'with',
-    'by',
-    'from',
-    'about',
-    'that',
-    'this',
-    'what',
-    'which',
-    'who',
-    'whom',
-    'and',
-    'or',
-    'but',
-    'not',
-    'no',
-    'if',
-    'so',
-    'than',
-  };
-
-  static List<String> _queryTerms(String query) {
-    final seen = <String>{};
-    return query
-        .toLowerCase()
-        .split(RegExp(r'\W+'))
-        .where((w) => w.length > 1 && !_stopWords.contains(w))
-        .where(seen.add)
-        .toList();
-  }
-
-  static String _buildFtsQuery(String query) {
-    final terms = _queryTerms(query);
+  static String _buildFtsQuery(List<String> terms) {
     if (terms.isEmpty) return '';
-    return terms.map((t) => '"${t.replaceAll('"', '""')}"').join(' ');
+    return terms.map((t) => '${t.replaceAll('"', '""')}*').join(' ');
   }
 
   static String? _excerptForTerms(
@@ -663,4 +684,58 @@ class _FilterResolution {
   /// log id -> display names of selected entities mentioned in that log.
   /// Drives the entity-boost ranking signal and the result-tile chips.
   final Map<String, List<String>> matchedEntityNamesByLog;
+}
+
+class _QueryEntityResolution {
+  const _QueryEntityResolution({
+    required this.rankedLogIds,
+    required this.matchedEntityNamesByLog,
+  });
+
+  const _QueryEntityResolution.empty()
+    : rankedLogIds = const [],
+      matchedEntityNamesByLog = const {};
+
+  final List<String> rankedLogIds;
+  final Map<String, List<String>> matchedEntityNamesByLog;
+}
+
+SearchFilters _filtersWithInferredDate(
+  SearchFilters filters,
+  NaturalLanguageSearchQuery query,
+) {
+  final inferred = query.dateRange;
+  if (inferred == null) return filters;
+  final existing = filters.dateRange;
+  if (existing.isUnbounded) {
+    return filters.copyWith(dateRange: inferred);
+  }
+  return filters.copyWith(dateRange: _intersectRanges(existing, inferred));
+}
+
+DateRange _intersectRanges(DateRange a, DateRange b) {
+  DateTime? maxStart(DateTime? left, DateTime? right) {
+    if (left == null) return right;
+    if (right == null) return left;
+    return left.isAfter(right) ? left : right;
+  }
+
+  DateTime? minEnd(DateTime? left, DateTime? right) {
+    if (left == null) return right;
+    if (right == null) return left;
+    return left.isBefore(right) ? left : right;
+  }
+
+  return DateRange(
+    start: maxStart(a.start, b.start),
+    end: minEnd(a.end, b.end),
+  );
+}
+
+List<String> _mergeNames(List<String>? first, List<String>? second) {
+  final out = <String>[];
+  for (final name in [...?first, ...?second]) {
+    if (!out.contains(name)) out.add(name);
+  }
+  return out;
 }

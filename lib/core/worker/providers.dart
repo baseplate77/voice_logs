@@ -200,6 +200,8 @@ final workerProvider = Provider<Worker>((ref) {
     handlers: handlers,
     onJobSucceeded: (job) async {
       if (job.jobType != JobType.refine) return;
+      ref.invalidate(voiceLogsStreamProvider);
+      ref.read(voiceLogListRevisionProvider.notifier).state++;
       ref
           .read(recordingControllerProvider.notifier)
           .onRefineSucceeded(job.logId);
