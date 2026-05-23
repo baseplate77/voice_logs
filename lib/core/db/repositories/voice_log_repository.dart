@@ -120,6 +120,70 @@ class VoiceLogRepository {
     }
   }
 
+  /// Insert a voice log whose audio is captured but whose raw transcript
+  /// has not yet been produced. The row appears in the home list with an
+  /// empty body and state [ProcessingState.transcribing]; the worker's
+  /// transcribe job will later fill `raw_transcript` and transition the
+  /// row to [ProcessingState.recorded].
+  Future<Result<VoiceLogView, VoiceLogStorageError>>
+  insertPendingTranscription({
+    required String id,
+    required DateTime createdAt,
+    required int durationMs,
+    required String audioPath,
+  }) async {
+    try {
+      final row = VoiceLog(
+        id: id,
+        createdAt: createdAt.millisecondsSinceEpoch,
+        durationMs: durationMs,
+        audioPath: audioPath,
+        rawTranscript: '',
+        processingState: ProcessingState.transcribing.wire,
+        retryCount: 0,
+      );
+      await _db.into(_db.voiceLogs).insert(row);
+      await _fts.sync(id);
+      return Ok(VoiceLogView.fromRow(row));
+    } on Object catch (e, s) {
+      return Err(
+        VoiceLogStorageError(
+          message: 'Failed to insert pending log: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+  }
+
+  /// Record a successful transcribe: `raw_transcript` is filled and the
+  /// row transitions from [ProcessingState.transcribing] to
+  /// [ProcessingState.recorded] so the refine pipeline can pick it up.
+  Future<Result<void, VoiceLogStorageError>> markTranscribed({
+    required String id,
+    required String rawTranscript,
+  }) async {
+    try {
+      await (_db.update(_db.voiceLogs)..where((t) => t.id.equals(id))).write(
+        VoiceLogsCompanion(
+          rawTranscript: Value(rawTranscript),
+          processingState: Value(ProcessingState.recorded.wire),
+          errorMessage: const Value(null),
+        ),
+      );
+      await _fts.sync(id);
+      return const Ok(null);
+    } on Object catch (e, s) {
+      return Err(
+        VoiceLogStorageError(
+          message: 'Failed to mark transcribed: $e',
+          cause: e,
+          stack: s,
+        ),
+      );
+    }
+  }
+
   /// Reverse-chronological stream of voice logs. Emits on every change.
   Stream<List<VoiceLogView>> watchAll() {
     final query = _db.select(_db.voiceLogs)

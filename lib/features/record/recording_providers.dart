@@ -11,7 +11,6 @@ import '../../core/audio_session_bridge.dart';
 import '../../core/background_task_bridge.dart';
 import '../../core/db/job_state.dart';
 import '../../core/db/providers.dart';
-import '../../core/db/repositories/transcript_segment_repository.dart';
 import '../../core/db/repositories/voice_log_repository.dart';
 import '../../core/intent_bridge.dart';
 import '../../core/live_activity_bridge.dart';
@@ -96,15 +95,11 @@ class RecordingController extends StateNotifier<RecordingState>
   RecordingController({
     required AudioRecorder recorder,
     required VoiceLogRepository repository,
-    required TranscriptSegmentRepository segmentRepository,
-    required Future<SpeechRecognizer> Function() recognizerFactory,
     required JobQueue jobQueue,
     required String docsPath,
     PipelineDebugSink debugSink = const NoopPipelineDebugSink(),
   }) : _recorder = recorder,
        _repository = repository,
-       _segmentRepository = segmentRepository,
-       _recognizerFactory = recognizerFactory,
        _jobQueue = jobQueue,
        _docsPath = docsPath,
        _debug = debugSink,
@@ -114,8 +109,6 @@ class RecordingController extends StateNotifier<RecordingState>
 
   final AudioRecorder _recorder;
   final VoiceLogRepository _repository;
-  final TranscriptSegmentRepository _segmentRepository;
-  final Future<SpeechRecognizer> Function() _recognizerFactory;
   final JobQueue _jobQueue;
   final String _docsPath;
   final PipelineDebugSink _debug;
@@ -251,11 +244,15 @@ class RecordingController extends StateNotifier<RecordingState>
     });
   }
 
-  /// Stop, transcribe the completed file, persist the raw transcript,
-  /// enqueue background refine, and return to idle.
+  /// Stop the recorder, insert a placeholder row in the
+  /// [ProcessingState.transcribing] state, enqueue a background
+  /// transcribe job, and return to idle — all within the 500ms budget the
+  /// CLAUDE.md spec calls for. Parakeet ASR, refine, embed, and the rest
+  /// of the pipeline run on the worker isolate so the user can record
+  /// another log immediately.
   ///
-  /// Requests background execution time from iOS so the pipeline completes
-  /// even if the app enters the background (e.g. stop from Live Activity).
+  /// Requests background execution time from iOS so the worker keeps
+  /// progressing even if the app enters the background after stop.
   Future<void> stop() async {
     if (state is! RecordingActive) return;
     _elapsedTimer?.cancel();
@@ -308,83 +305,13 @@ class RecordingController extends StateNotifier<RecordingState>
         return;
     }
 
-    state = const RecordingTranscribing();
-    await _allowTranscribingIndicatorToPaint();
-
-    var rawTranscript = '';
-    List<TranscriptSegmentResult> transcriptSegments = const [];
-    SpeechRecognizer? recognizer;
-    try {
-      final loadWatch = Stopwatch()..start();
-      recognizer = await _recognizerFactory();
-      _debug.record(
-        logId: logId,
-        stage: PipelineDebugStage.transcription,
-        event: 'loaded',
-        elapsedMs: loadWatch.elapsedMilliseconds,
-        message: 'ASR recognizer ready',
-      );
-
-      final transcribeWatch = Stopwatch()..start();
-      final txt = await recognizer.transcribeFileDetailed(recorded.audioPath);
-      switch (txt) {
-        case Ok(:final value):
-          rawTranscript = value.text;
-          transcriptSegments = value.segments;
-          final wordCount = value.segments.fold<int>(
-            0,
-            (sum, s) => sum + s.words.length,
-          );
-          _debug.record(
-            logId: logId,
-            stage: PipelineDebugStage.transcription,
-            event: 'succeeded',
-            elapsedMs: transcribeWatch.elapsedMilliseconds,
-            message:
-                'Transcribed ${rawTranscript.length} chars, '
-                '${value.segments.length} segments, $wordCount words',
-          );
-        case Err(:final error):
-          _log.w('Transcription failed: ${error.message}');
-          _debug.record(
-            logId: logId,
-            stage: PipelineDebugStage.transcription,
-            event: 'failed',
-            elapsedMs: transcribeWatch.elapsedMilliseconds,
-            message: error.message,
-          );
-      }
-    } on Object catch (e, s) {
-      _log.w('Transcription error', error: e, stack: s);
-      _debug.record(
-        logId: logId,
-        stage: PipelineDebugStage.transcription,
-        event: 'failed',
-        message: 'Transcription error: $e',
-      );
-    } finally {
-      if (recognizer != null) {
-        final disposeWatch = Stopwatch()..start();
-        await recognizer.dispose();
-        _debug.record(
-          logId: logId,
-          stage: PipelineDebugStage.transcription,
-          event: 'disposed',
-          elapsedMs: disposeWatch.elapsedMilliseconds,
-          message: 'ASR recognizer disposed',
-        );
-      }
-    }
-
     final relPath = p.relative(recorded.audioPath, from: _docsPath);
-
     final persistWatch = Stopwatch()..start();
-    final inserted = await _repository.insertRecorded(
+    final inserted = await _repository.insertPendingTranscription(
       id: p.basenameWithoutExtension(recorded.audioPath),
       createdAt: _startedAt ?? DateTime.now(),
       durationMs: recorded.durationMs,
       audioPath: relPath,
-      rawTranscript: rawTranscript,
     );
     final String insertedLogId;
     switch (inserted) {
@@ -395,28 +322,8 @@ class RecordingController extends StateNotifier<RecordingState>
           stage: PipelineDebugStage.persistence,
           event: 'succeeded',
           elapsedMs: persistWatch.elapsedMilliseconds,
-          message: 'Saved voice log and FTS row',
+          message: 'Saved transcribing-state log row',
         );
-        if (transcriptSegments.isNotEmpty) {
-          final segPersist = await _segmentRepository.replaceForLog(
-            logId: insertedLogId,
-            segments: transcriptSegments,
-          );
-          if (segPersist case Err(:final error)) {
-            // Word-timing persistence failure shouldn't block the user from
-            // seeing their log — degrade to text-only scrubbing.
-            _log.w(
-              'Transcript segment persist failed for $insertedLogId: '
-              '${error.message}',
-            );
-            _debug.record(
-              logId: insertedLogId,
-              stage: PipelineDebugStage.persistence,
-              event: 'failed',
-              message: 'Segment persist failed: ${error.message}',
-            );
-          }
-        }
       case Err(:final error):
         state = RecordingFailed(error.message);
         _debug.record(
@@ -439,7 +346,7 @@ class RecordingController extends StateNotifier<RecordingState>
     final enqueueWatch = Stopwatch()..start();
     final jobId = await _jobQueue.enqueue(
       logId: insertedLogId,
-      type: JobType.refine,
+      type: JobType.transcribe,
     );
     _debug.record(
       logId: insertedLogId,
@@ -447,7 +354,7 @@ class RecordingController extends StateNotifier<RecordingState>
       stage: PipelineDebugStage.queue,
       event: 'enqueued',
       elapsedMs: enqueueWatch.elapsedMilliseconds,
-      message: 'Queued refine job',
+      message: 'Queued transcribe job',
     );
     unawaited(BackgroundTaskBridge.scheduleProcessingTask());
 
@@ -524,14 +431,6 @@ class RecordingController extends StateNotifier<RecordingState>
     _liveActivityStartInFlight = false;
     unawaited(LiveActivityBridge.endActivity());
     unawaited(IntentBridge.reportRecordingState(isRecording: false));
-  }
-
-  Future<void> _allowTranscribingIndicatorToPaint() async {
-    // Give Flutter one small frame window after the recorder has stopped and
-    // before ASR model load/decode begins. The actual Parakeet work runs in a
-    // background isolate, but this guarantees the transcribing surface is
-    // visible before the memory spike starts.
-    await Future<void>.delayed(const Duration(milliseconds: 16));
   }
 
   void _startWaveformMonitor() {
@@ -641,16 +540,12 @@ final recordingControllerProvider =
       ref.keepAlive();
       final recorder = ref.watch(audioRecorderProvider);
       final repo = ref.watch(voiceLogRepositoryProvider);
-      final segmentRepo = ref.watch(transcriptSegmentRepositoryProvider);
-      final recognizerFactory = ref.watch(speechRecognizerFactoryProvider);
       final queue = ref.watch(jobQueueProvider);
       final docsPath = ref.watch(appDocumentsPathProvider);
       final debugSink = ref.watch(pipelineDebugSinkProvider);
       return RecordingController(
         recorder: recorder,
         repository: repo,
-        segmentRepository: segmentRepo,
-        recognizerFactory: recognizerFactory,
         jobQueue: queue,
         docsPath: docsPath,
         debugSink: debugSink,

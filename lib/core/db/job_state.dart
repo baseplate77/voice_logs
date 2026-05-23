@@ -28,6 +28,11 @@ enum JobState {
 /// Kinds of job the worker knows how to dispatch. Stored on
 /// `processing_jobs.job_type` as [wire].
 enum JobType {
+  /// Parakeet ASR — raw audio → raw transcript + word-timed segments.
+  /// Enqueued by RecordingController.stop() so the user is freed from
+  /// the record screen before transcription finishes.
+  transcribe('transcribe'),
+
   /// Gemma cleanup — raw transcript → cleaned text + entities.
   refine('refine'),
 

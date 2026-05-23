@@ -129,6 +129,7 @@ class JobQueue {
         await (_db.select(_db.voiceLogs)
               ..where(
                 (t) => t.processingState.isIn([
+                  ProcessingState.transcribing.wire,
                   ProcessingState.recorded.wire,
                   ProcessingState.refined.wire,
                   ProcessingState.embedded.wire,
@@ -140,6 +141,7 @@ class JobQueue {
     for (final row in rows) {
       final state = ProcessingState.fromWire(row.processingState);
       final type = switch (state) {
+        ProcessingState.transcribing => JobType.transcribe,
         ProcessingState.recorded => JobType.refine,
         ProcessingState.refined => JobType.embed,
         ProcessingState.embedded =>

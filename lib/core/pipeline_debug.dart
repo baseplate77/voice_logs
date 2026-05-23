@@ -55,6 +55,7 @@ enum PipelineDebugStage {
   /// Map a queued job type to the matching pipeline stage.
   static PipelineDebugStage fromJobType(JobType type) {
     return switch (type) {
+      JobType.transcribe => PipelineDebugStage.transcription,
       JobType.refine => PipelineDebugStage.refine,
       JobType.embed => PipelineDebugStage.embed,
       JobType.canonicalize => PipelineDebugStage.canonicalize,

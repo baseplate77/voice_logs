@@ -87,8 +87,16 @@ class _LogRowState extends ConsumerState<LogRow>
     final hasTitle = _hasRealTitle(log);
     final titleText = hasTitle ? log.title!.trim() : log.displayTitle.trim();
 
+    final isTranscribing = log.processingState == ProcessingState.transcribing;
     final isTitlePending =
         !hasTitle && log.processingState == ProcessingState.recorded;
+    // Refine has produced a title but embed/canonicalize/action jobs may
+    // still be running in the background. Surfacing this here closes the
+    // "card looks done but isn't" gap.
+    final isIndexing =
+        hasTitle &&
+        log.processingState != ProcessingState.embedded &&
+        log.processingState != ProcessingState.failed;
 
     if (hasTitle && _controller.value < 1.0 && !_controller.isAnimating) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -116,22 +124,25 @@ class _LogRowState extends ConsumerState<LogRow>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              isTitlePending
-                  ? const _GenerativeTitleLoader()
-                  : hasTitle && _controller.value < 1.0
-                  ? _TitleReveal(animation: _controller, text: titleText)
-                  : Text(
-                      titleText.isEmpty ? 'New voice log' : titleText,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.1,
-                        color: titleText.isEmpty
-                            ? theme.colorScheme.onSurfaceVariant
-                            : theme.colorScheme.onSurface,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
+              if (isTranscribing)
+                const _TitleLoader(label: 'Transcribing audio...')
+              else if (isTitlePending)
+                const _TitleLoader(label: 'Crafting title...')
+              else if (hasTitle && _controller.value < 1.0)
+                _TitleReveal(animation: _controller, text: titleText)
+              else
+                Text(
+                  titleText.isEmpty ? 'New voice log' : titleText,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.1,
+                    color: titleText.isEmpty
+                        ? theme.colorScheme.onSurfaceVariant
+                        : theme.colorScheme.onSurface,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               if (preview != null) ...[
                 SizedBox(height: 3.h),
                 Text(
@@ -151,6 +162,7 @@ class _LogRowState extends ConsumerState<LogRow>
                 durationMs: log.durationMs,
                 pendingActions: pendingActions ?? 0,
                 mentions: mentions,
+                showIndexing: isIndexing,
               ),
             ],
           ),
@@ -185,12 +197,14 @@ class _RowFooter extends StatelessWidget {
     required this.durationMs,
     required this.pendingActions,
     required this.mentions,
+    required this.showIndexing,
   });
 
   final DateTime createdAt;
   final int durationMs;
   final int pendingActions;
   final List<EntityMentionView> mentions;
+  final bool showIndexing;
 
   @override
   Widget build(BuildContext context) {
@@ -207,6 +221,7 @@ class _RowFooter extends StatelessWidget {
             fontWeight: FontWeight.w500,
           ),
         ),
+        if (showIndexing) ...[SizedBox(width: 8.w), const _IndexingPill()],
         if (pendingActions > 0) ...[
           SizedBox(width: 8.w),
           _ActionBadge(count: pendingActions),
@@ -357,6 +372,77 @@ class _ActionBadge extends StatelessWidget {
   }
 }
 
+/// Subtle "still processing" pill shown on the card while embed,
+/// canonicalize, action extraction, or memory jobs are still running for
+/// a log that already has a title and cleaned text. Disappears once the
+/// log reaches [ProcessingState.embedded] so a finished card is visually
+/// distinct from one that's still being indexed.
+class _IndexingPill extends StatefulWidget {
+  const _IndexingPill();
+
+  @override
+  State<_IndexingPill> createState() => _IndexingPillState();
+}
+
+class _IndexingPillState extends State<_IndexingPill>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final alpha = 0.55 + 0.45 * _controller.value;
+        return Container(
+          padding: EdgeInsets.symmetric(horizontal: 6.w, vertical: 2.h),
+          decoration: BoxDecoration(
+            color: VoxAppColors.muted.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(6.r),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6.r,
+                height: 6.r,
+                decoration: BoxDecoration(
+                  color: VoxAppColors.muted.withValues(alpha: alpha),
+                  shape: BoxShape.circle,
+                ),
+              ),
+              SizedBox(width: 4.w),
+              Text(
+                'Indexing',
+                style: TextStyle(
+                  fontSize: 10.5.sp,
+                  fontWeight: FontWeight.w600,
+                  color: VoxAppColors.muted,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
 String _relativeTime(DateTime date) {
   final now = DateTime.now();
   final diff = now.difference(date);
@@ -446,14 +532,19 @@ class _TitleReveal extends StatelessWidget {
   }
 }
 
-class _GenerativeTitleLoader extends StatefulWidget {
-  const _GenerativeTitleLoader();
+/// In-place loader rendered where the title will eventually appear.
+/// Used for both the "Transcribing audio…" (state=transcribing) and
+/// "Crafting title…" (state=recorded, no title yet) phases — the label
+/// is the only thing that changes between them.
+class _TitleLoader extends StatefulWidget {
+  const _TitleLoader({required this.label});
+  final String label;
 
   @override
-  State<_GenerativeTitleLoader> createState() => _GenerativeTitleLoaderState();
+  State<_TitleLoader> createState() => _TitleLoaderState();
 }
 
-class _GenerativeTitleLoaderState extends State<_GenerativeTitleLoader>
+class _TitleLoaderState extends State<_TitleLoader>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
@@ -516,7 +607,7 @@ class _GenerativeTitleLoaderState extends State<_GenerativeTitleLoader>
                   ).createShader(rect);
                 },
                 child: Text(
-                  'Crafting title...',
+                  widget.label,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     letterSpacing: 0.1,

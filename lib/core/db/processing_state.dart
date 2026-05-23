@@ -1,7 +1,12 @@
 /// State machine for a voice log's background processing pipeline.
 /// Persisted as its [wire] string in `voice_logs.processing_state`.
 enum ProcessingState {
-  /// Just recorded — raw transcript present, refine job not yet run.
+  /// Audio captured, raw transcript not yet produced. The transcribe job
+  /// is queued on the background worker; the home list shows the log
+  /// with a "Transcribing…" indicator and an empty/placeholder body.
+  transcribing('transcribing'),
+
+  /// Raw transcript present (Parakeet finished), refine job not yet run.
   recorded('recorded'),
 
   /// Gemma has produced `cleaned_text` and entity mentions.

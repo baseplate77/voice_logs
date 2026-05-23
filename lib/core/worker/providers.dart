@@ -9,6 +9,7 @@ import '../../features/digest/digest_runner.dart';
 import '../../features/memory/memory_extractor.dart';
 import '../../features/memory/memory_job.dart';
 import '../../features/record/recording_providers.dart';
+import '../../features/record/transcribe_job.dart';
 import '../../features/refine/canonicalize_job.dart';
 import '../../features/refine/embed_job.dart';
 import '../../features/refine/entity_summary_job.dart';
@@ -40,6 +41,20 @@ final llmRunnerProvider = Provider<LlmRunner>((ref) {
   final runner = Gemma3Runner();
   ref.onDispose(runner.dispose);
   return runner;
+});
+
+/// Handler for the `transcribe` job type. Parakeet ASR runs in a background
+/// isolate; the recording controller enqueues this immediately after the
+/// audio file is captured so the user is freed from the record screen
+/// before transcription completes.
+final transcribeHandlerProvider = Provider<JobHandler>((ref) {
+  return TranscribeJobHandler(
+    repository: ref.watch(voiceLogRepositoryProvider),
+    segmentRepository: ref.watch(transcriptSegmentRepositoryProvider),
+    recognizerFactory: ref.watch(speechRecognizerFactoryProvider),
+    queue: ref.watch(jobQueueProvider),
+    docsPath: ref.watch(appDocumentsPathProvider),
+  );
 });
 
 /// Handler for the `refine` job type. Gemma 3 1B runs cleanup first and then
@@ -185,6 +200,7 @@ final workerProvider = Provider<Worker>((ref) {
   ref.keepAlive();
   final queue = ref.watch(jobQueueProvider);
   final handlers = <JobType, JobHandler>{
+    JobType.transcribe: ref.watch(transcribeHandlerProvider),
     JobType.refine: ref.watch(refineHandlerProvider),
     JobType.embed: ref.watch(embedHandlerProvider),
     JobType.canonicalize: ref.watch(canonicalizeHandlerProvider),

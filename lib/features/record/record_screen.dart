@@ -619,10 +619,28 @@ class _DancingVisualizer extends StatelessWidget {
   final List<double> levels;
   final bool isPaused;
 
+  /// Linearly interpolates [src] to twice its length by inserting a
+  /// midpoint sample between each adjacent pair. The last output element
+  /// repeats the source's tail so the result has exactly `2 * src.length`
+  /// values — keeping the symmetrical mirroring math below clean.
+  List<double> _upsample(List<double> src) {
+    if (src.isEmpty) return const [];
+    final out = <double>[];
+    for (var i = 0; i < src.length; i++) {
+      out.add(src[i]);
+      final next = i + 1 < src.length ? src[i + 1] : src[i];
+      out.add((src[i] + next) / 2);
+    }
+    return out;
+  }
+
   @override
   Widget build(BuildContext context) {
-    // We construct a symmetrical layout of 24 columns from the 12 input levels
-    final mirroredLevels = [...levels.reversed, ...levels];
+    // Source levels are N samples; upsample 2× then mirror to get a
+    // symmetrical 4N-column visualizer. With the default 12-level source
+    // this produces 48 columns (was 24) for a denser dot pattern.
+    final dense = _upsample(levels);
+    final mirroredLevels = [...dense.reversed, ...dense];
 
     return RepaintBoundary(
       child: SizedBox.expand(
@@ -649,9 +667,11 @@ class _DancingVisualizerPainter extends CustomPainter {
     if (barCount == 0) return;
 
     final spacing = size.width / barCount;
-    final vSpacing = spacing.clamp(4.5, 12.0);
-    // Dynamic dot radius based on screen density & spacing
-    final dotRadius = (spacing * 0.28).clamp(1.5, 5.0);
+    // Tighter clamp than before (was 4.5–12) so the grid stays dense even
+    // on wider phones where horizontal spacing would otherwise grow.
+    final vSpacing = spacing.clamp(3.0, 6.0);
+    // Smaller dots to suit the denser packing.
+    final dotRadius = (spacing * 0.30).clamp(1.0, 2.8);
     final mid = size.height / 2;
     final maxDotsPerSide = (size.height / 2) ~/ vSpacing;
 
@@ -665,10 +685,15 @@ class _DancingVisualizerPainter extends CustomPainter {
       }
     }
 
+    // Central accent emphasises the middle third of the symmetric grid;
+    // computed proportionally so it scales with [barCount].
+    final centralStart = barCount ~/ 3;
+    final centralEnd = (barCount * 2) ~/ 3;
+
     // 2. Draw centerline and active amplitude dots
     for (var i = 0; i < barCount; i++) {
       final x = spacing * i + spacing / 2;
-      final isCentral = i >= 8 && i < 16;
+      final isCentral = i >= centralStart && i < centralEnd;
       final baseColor = isCentral ? VoxAppColors.accent : VoxAppColors.primary;
 
       // Centerline dot is always retro red (VoxAppColors.accent)

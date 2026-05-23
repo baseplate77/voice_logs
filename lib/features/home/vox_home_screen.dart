@@ -59,18 +59,24 @@ class _VoxHomeScreenState extends ConsumerState<VoxHomeScreen> {
   @override
   Widget build(BuildContext context) {
     final onboarding = ref.watch(onboardingCompleteProvider);
-    final isOnboarded = onboarding.valueOrNull ?? false;
     final logs = ref.watch(voiceLogsStreamProvider);
     final hasImportedLogs = logs.valueOrNull?.isNotEmpty ?? false;
 
-    // Use dark console background if onboarded or logs exist, showing our physical deck
+    // Only route to onboarding when we *know* the user isn't onboarded.
+    // While `onboardingCompleteProvider` is still loading from
+    // SharedPreferences (first ~100–300ms after launch), default to the
+    // home shell — existing users would otherwise see a light-background
+    // onboarding flash before the dark home renders.
+    final isExplicitlyNotOnboarded = onboarding.valueOrNull == false;
+    final showOnboarding = isExplicitlyNotOnboarded && !hasImportedLogs;
+
     return Scaffold(
-      backgroundColor: (isOnboarded || hasImportedLogs)
-          ? const Color(0xFF121315)
-          : OnboardingColors.background(context),
-      body: isOnboarded || hasImportedLogs
-          ? const _MainContent()
-          : const OnboardingFlowScreen(),
+      backgroundColor: showOnboarding
+          ? OnboardingColors.background(context)
+          : const Color(0xFF121315),
+      body: showOnboarding
+          ? const OnboardingFlowScreen()
+          : const _MainContent(),
     );
   }
 }
@@ -88,8 +94,7 @@ class _MainContent extends ConsumerWidget {
         recordingState is RecordingTranscribing;
 
     final double bottomPadding = MediaQuery.paddingOf(context).bottom;
-    final double navBarHeight =
-        58.0.h + bottomPadding; // Reduced to 58.0 base height
+    final double navBarHeight = 36.0.h + bottomPadding;
 
     return Stack(
       clipBehavior: Clip.none,

@@ -28,6 +28,7 @@ String _firstLine(String text) {
 
 String _statusText(ProcessingState state) {
   return switch (state) {
+    ProcessingState.transcribing => 'Transcribing audio...',
     ProcessingState.recorded =>
       'Refining transcript and extracting entities...',
     ProcessingState.refined => 'Embedding transcript for semantic search...',

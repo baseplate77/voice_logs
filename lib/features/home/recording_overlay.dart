@@ -27,8 +27,7 @@ class RecordingOverlay extends ConsumerWidget {
     _log.d('build state=${state.runtimeType}');
 
     final double bottomPadding = MediaQuery.paddingOf(context).bottom;
-    final double barHeight =
-        58.0.h + bottomPadding; // Reduced base height to 58.0
+    final double barHeight = 48.0.h + bottomPadding;
 
     return SizedBox(
       height: barHeight,
@@ -36,12 +35,13 @@ class RecordingOverlay extends ConsumerWidget {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Content aligned within the 64px zone, leaving safe area spacing below
+          // Content row occupies the visible (non-safe-area) portion of the
+          // deck so deck affordances stay clear of the home indicator.
           Positioned(
             left: 0.w,
             right: 0.w,
             top: 0.h,
-            height: 58.h,
+            height: 48.h,
             child: AnimatedSize(
               duration: const Duration(milliseconds: 240),
               curve: Curves.easeOut,
@@ -69,6 +69,37 @@ class RecordingOverlay extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Compact deck icon button used for the chat / settings affordances on
+/// the idle bar. Strips IconButton's default 48px tap-target padding so
+/// the icon sits at the bar's true vertical center, then re-adds a
+/// 40px circular splash zone via [InkResponse] for accessibility.
+class _DeckIconButton extends StatelessWidget {
+  const _DeckIconButton({
+    required this.icon,
+    required this.tooltip,
+    required this.onPressed,
+  });
+
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: tooltip,
+      child: InkResponse(
+        onTap: onPressed,
+        radius: 22.r,
+        child: Padding(
+          padding: EdgeInsets.all(8.r),
+          child: Icon(icon, color: Colors.white, size: 22.r),
+        ),
       ),
     );
   }
@@ -113,37 +144,25 @@ class _IdleDeck extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        // Sidebar Navigation Actions - lowered using top: 12 padding
+        // Sidebar Navigation Actions — vertically centered within the
+        // 58h deck. IconButtons use compact density + zero padding so
+        // their 48px Material tap target doesn't visually shift the
+        // icon below the bar's true centerline.
         Positioned.fill(
           child: Padding(
-            padding: EdgeInsets.only(left: 36.w, right: 36.w, top: 12.h),
+            padding: EdgeInsets.symmetric(horizontal: 36.w),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        Iconsax.message_text,
-                        color: Colors.white,
-                        size: 26.r,
-                      ),
-                      tooltip: 'Chat',
-                      onPressed: () => Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => const AskScreen(),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                IconButton(
-                  icon: Icon(
-                    Iconsax.setting_2,
-                    color: Colors.white,
-                    size: 26.r,
+                _DeckIconButton(
+                  icon: Iconsax.message_text,
+                  tooltip: 'Chat',
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(builder: (_) => const AskScreen()),
                   ),
+                ),
+                _DeckIconButton(
+                  icon: Iconsax.setting_2,
                   tooltip: 'Settings',
                   onPressed: () => Navigator.of(context).push(
                     MaterialPageRoute<void>(
@@ -157,7 +176,7 @@ class _IdleDeck extends StatelessWidget {
         ),
         // Symmetrical large tactile Record Button sitting precisely inside the scoop
         Positioned(
-          top: -46.h, // Adjusted top position for 58px bar height
+          top: -46.h,
           left: 0.w,
           right: 0.w,
           child: Center(
